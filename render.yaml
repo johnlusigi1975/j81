@@ -1,0 +1,33 @@
+# Render Blueprint for J81 Deriv Researcher.
+# Deploy: push this repo to GitHub, then in Render -> "New +" -> "Blueprint",
+# pick the repo. Render reads this file and creates the service + disk.
+#
+# NOTE: a persistent disk and an always-on (non-sleeping) instance require a
+# paid Render instance. On the free tier the service sleeps on inactivity, so
+# the 24/7 autonomous scheduler would pause between requests and a disk can't
+# be attached. For true 24/7 keep `plan: starter` (or higher).
+services:
+  - type: web
+    name: j81-deriv-researcher
+    runtime: docker
+    dockerfilePath: ./research-app/Dockerfile
+    dockerContext: ./research-app
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: j81-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: ANTHROPIC_API_KEY
+        sync: false        # set this secret in the Render dashboard
+      - key: EXTRACTOR_MODEL
+        value: claude-opus-4-7
+      # Optional: point at the Logging/Backtest app once it exists.
+      - key: LOGGING_APP_URL
+        sync: false

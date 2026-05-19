@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+research-app/.venv/
+
+# Secrets
+.env
+research-app/.env
+
+# Runtime data (must NOT be committed; lives on the persistent disk)
+research-app/out/
+research-app/data/
+research-app/config/research_config.json
+*.db
+*.db-wal
+*.db-shm
