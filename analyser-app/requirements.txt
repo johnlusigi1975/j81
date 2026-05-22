@@ -1,0 +1,13 @@
+# J81 Analyser — Phase 1 (receiver + storage + homepage)
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.10
+pydantic-settings>=2.7
+httpx>=0.28
+
+# Phase 2.1: Deriv market data
+websockets>=12.0
+
+# Phase 2.2: safe expression evaluation for LLM-derived rules.
+# (Indicators are pure-Python in app/indicators.py — no pandas-ta dep.)
+simpleeval>=1.0

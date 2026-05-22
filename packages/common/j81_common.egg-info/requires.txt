@@ -1,0 +1,8 @@
+httpx>=0.28
+fastapi>=0.115
+pydantic>=2.10
+tenacity>=9.0
+j81-contracts>=0.1.0
+
+[redis]
+redis>=5.0

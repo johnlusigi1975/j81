@@ -1,0 +1,467 @@
+"""J81 Bot SQLite store.
+
+Three tables:
+  * accounts  — one row per Deriv account a user has authorised. Tokens
+                are stored Fernet-encrypted; the plaintext never touches disk.
+  * trades    — every trade attempt (DRY_RUN or live), with full payload
+                and outcome for audit + earnings calculation.
+  * audit     — administrative actions (OAuth grants, enable/disable, key
+                rotations) so there's a permanent trail of who did what.
+
+Security stance: any code path that reads a token MUST go through
+`decrypted_token_for()`. Logging or returning tokens via the API is a bug.
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+import threading
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+from cryptography.fernet import Fernet, InvalidToken
+
+from app.config import data_path, get_settings
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _fernet() -> Fernet:
+    key = get_settings().bot_encryption_key
+    if not key:
+        raise RuntimeError(
+            "BOT_ENCRYPTION_KEY is not set — generate one with "
+            "`python -c \"from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())\"` and put it in .env"
+        )
+    return Fernet(key.encode())
+
+
+class BotStore:
+    def __init__(self, db_path: str | None = None) -> None:
+        path = Path(db_path) if db_path else data_path("data/bot.db")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._path = path
+        self._lock = threading.Lock()
+        self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA foreign_keys=ON")
+        self._init_schema()
+
+    def _init_schema(self) -> None:
+        with self._lock:
+            self._conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS accounts (
+                    id                      TEXT PRIMARY KEY,
+                    deriv_account_id        TEXT NOT NULL UNIQUE,  -- e.g. CR123456
+                    currency                TEXT,
+                    encrypted_token         BLOB NOT NULL,          -- Fernet ciphertext
+                    label                   TEXT,                   -- user-facing label
+                    enabled                 INTEGER NOT NULL DEFAULT 0,  -- opt-in to autotrade
+                    max_stake_per_trade     REAL,                   -- per-user override
+                    max_trades_per_day      INTEGER,
+                    min_confidence          REAL,
+                    allowed_trade_types     TEXT,                   -- JSON list, NULL = any
+                    allowed_symbols         TEXT,                   -- JSON list, NULL = any
+                    created_at              TEXT NOT NULL,
+                    updated_at              TEXT NOT NULL,
+                    last_trade_at           TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS trades (
+                    id              TEXT PRIMARY KEY,
+                    account_id      TEXT NOT NULL,                  -- our internal id
+                    deriv_account   TEXT NOT NULL,                  -- e.g. CR123456
+                    symbol          TEXT,
+                    trade_type      TEXT,
+                    direction       TEXT,
+                    prediction      INTEGER,
+                    duration        INTEGER,
+                    duration_unit   TEXT,
+                    stake           REAL,
+                    confidence      REAL,
+                    decision_id     TEXT,                           -- the Analyser decision id
+                    decision_payload TEXT,                          -- JSON snapshot
+                    is_dry_run      INTEGER NOT NULL,               -- 1 if not live
+                    deriv_contract_id TEXT,                          -- live trades only
+                    outcome         TEXT,                            -- pending|won|lost|error
+                    profit          REAL,
+                    payout          REAL,                            -- real/quoted contract payout
+                    buy_price       REAL,                            -- actual price paid (live)
+                    markup_earned   REAL,                            -- your slice (real once settled)
+                    error           TEXT,
+                    created_at      TEXT NOT NULL,
+                    settled_at      TEXT,
+                    FOREIGN KEY (account_id) REFERENCES accounts(id)
+                );
+                CREATE INDEX IF NOT EXISTS ix_trades_account ON trades(account_id, created_at DESC);
+                CREATE INDEX IF NOT EXISTS ix_trades_outcome ON trades(outcome);
+
+                CREATE TABLE IF NOT EXISTS audit (
+                    id          TEXT PRIMARY KEY,
+                    actor       TEXT,
+                    action      TEXT NOT NULL,
+                    detail      TEXT,
+                    created_at  TEXT NOT NULL
+                );
+                """
+            )
+            self._migrate()
+            self._conn.commit()
+
+    def _migrate(self) -> None:
+        """Add columns introduced after a DB was first created. SQLite has
+        no 'ADD COLUMN IF NOT EXISTS', so we try each and ignore the error
+        if it's already there. Called under self._lock by _init_schema."""
+        for table, col, decl in (
+            ("trades", "payout", "REAL"),
+            ("trades", "buy_price", "REAL"),
+            # Per-account session goals (the simple "stop when…" controls).
+            ("accounts", "take_profit", "REAL"),       # stop after +$X profit today
+            ("accounts", "daily_loss_limit", "REAL"),  # stop after -$Y loss today
+            ("accounts", "mpro_enabled", "INTEGER"),   # M Pro auto-cycle on/off
+            ("accounts", "mpro_config", "TEXT"),       # JSON: mode, reverse, stake, step…
+        ):
+            try:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+            except sqlite3.OperationalError:
+                pass  # column already exists
+
+    # --------------------------------------------------------------- accounts
+
+    def upsert_account(
+        self,
+        *,
+        deriv_account_id: str,
+        token: str,
+        currency: str | None = None,
+        label: str | None = None,
+    ) -> str:
+        """Encrypt+store. If the deriv_account_id is already present, the
+        token is rotated and the row's updated_at bumped. Returns our id."""
+        f = _fernet()
+        encrypted = f.encrypt(token.encode())
+        now = _now_iso()
+        settings = get_settings()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id FROM accounts WHERE deriv_account_id=?",
+                (deriv_account_id,),
+            ).fetchone()
+            if row:
+                self._conn.execute(
+                    "UPDATE accounts SET encrypted_token=?, currency=?, "
+                    "label=COALESCE(?, label), updated_at=? WHERE id=?",
+                    (encrypted, currency, label, now, row["id"]),
+                )
+                acct_id = row["id"]
+            else:
+                acct_id = uuid4().hex
+                self._conn.execute(
+                    "INSERT INTO accounts("
+                    "id, deriv_account_id, currency, encrypted_token, label, "
+                    "enabled, max_stake_per_trade, max_trades_per_day, "
+                    "min_confidence, created_at, updated_at) "
+                    "VALUES (?,?,?,?,?,0,?,?,?,?,?)",
+                    (
+                        acct_id,
+                        deriv_account_id,
+                        currency,
+                        encrypted,
+                        label or deriv_account_id,
+                        settings.default_max_stake_per_trade,
+                        settings.default_max_trades_per_day,
+                        settings.default_min_confidence,
+                        now,
+                        now,
+                    ),
+                )
+            self._record_audit(
+                "account_token_stored",
+                detail=f"deriv_account_id={deriv_account_id}",
+            )
+            self._conn.commit()
+        return acct_id
+
+    def list_accounts_public(self) -> list[dict[str, Any]]:
+        """Public view — token is NEVER returned, only `has_token: True`."""
+        rows = self._conn.execute(
+            "SELECT id, deriv_account_id, currency, label, enabled, "
+            "max_stake_per_trade, max_trades_per_day, min_confidence, "
+            "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
+            "mpro_enabled, mpro_config, "
+            "created_at, updated_at, last_trade_at FROM accounts ORDER BY created_at DESC"
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["enabled"] = bool(d["enabled"])
+            d["has_token"] = True
+            d["allowed_trade_types"] = json.loads(d["allowed_trade_types"] or "null")
+            d["allowed_symbols"] = json.loads(d["allowed_symbols"] or "null")
+            d["is_demo"] = (d["deriv_account_id"] or "").upper().startswith("VRT")
+            d["kind"] = "demo" if d["is_demo"] else "REAL MONEY"
+            d["profit_today"] = self.profit_today(d["id"])
+            d["mpro_enabled"] = bool(d.get("mpro_enabled"))
+            d["mpro_config"] = json.loads(d.get("mpro_config") or "null")
+            out.append(d)
+        return out
+
+    def get_internal(self, account_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT * FROM accounts WHERE id=?", (account_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def decrypted_token_for(self, account_id: str) -> str | None:
+        """The only path that returns plaintext. Internal use only."""
+        row = self._conn.execute(
+            "SELECT encrypted_token FROM accounts WHERE id=?", (account_id,)
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            return _fernet().decrypt(row["encrypted_token"]).decode()
+        except InvalidToken:
+            return None  # key changed — token unreadable; surface higher up
+
+    def update_account_settings(
+        self,
+        account_id: str,
+        *,
+        enabled: bool | None = None,
+        max_stake_per_trade: float | None = None,
+        max_trades_per_day: int | None = None,
+        min_confidence: float | None = None,
+        allowed_trade_types: list[str] | None = None,
+        allowed_symbols: list[str] | None = None,
+        label: str | None = None,
+        take_profit: float | None = None,
+        daily_loss_limit: float | None = None,
+        mpro_enabled: bool | None = None,
+        mpro_config: dict | None = None,
+    ) -> bool:
+        sets: list[str] = []
+        params: list[Any] = []
+
+        def _add(col: str, val: Any) -> None:
+            if val is not None:
+                sets.append(f"{col}=?")
+                params.append(val)
+
+        _add("enabled", 1 if enabled else 0 if enabled is not None else None)
+        _add("max_stake_per_trade", max_stake_per_trade)
+        _add("max_trades_per_day", max_trades_per_day)
+        _add("min_confidence", min_confidence)
+        _add("label", label)
+        _add("take_profit", take_profit)
+        _add("daily_loss_limit", daily_loss_limit)
+        _add("mpro_enabled", 1 if mpro_enabled else 0 if mpro_enabled is not None else None)
+        if mpro_config is not None:
+            sets.append("mpro_config=?")
+            params.append(json.dumps(mpro_config))
+        if allowed_trade_types is not None:
+            sets.append("allowed_trade_types=?")
+            params.append(json.dumps(allowed_trade_types))
+        if allowed_symbols is not None:
+            sets.append("allowed_symbols=?")
+            params.append(json.dumps(allowed_symbols))
+        if not sets:
+            return False
+        sets.append("updated_at=?")
+        params.append(_now_iso())
+        params.append(account_id)
+        with self._lock:
+            cur = self._conn.execute(
+                f"UPDATE accounts SET {','.join(sets)} WHERE id=?", params
+            )
+            self._record_audit("account_settings_updated", detail=account_id)
+            self._conn.commit()
+        return cur.rowcount > 0
+
+    def delete_account(self, account_id: str) -> bool:
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM accounts WHERE id=?", (account_id,)
+            )
+            self._record_audit("account_deleted", detail=account_id)
+            self._conn.commit()
+        return cur.rowcount > 0
+
+    # ----------------------------------------------------------------- trades
+
+    def record_trade(self, t: dict[str, Any]) -> str:
+        trade_id = uuid4().hex
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO trades("
+                "id, account_id, deriv_account, symbol, trade_type, direction, "
+                "prediction, duration, duration_unit, stake, confidence, "
+                "decision_id, decision_payload, is_dry_run, deriv_contract_id, "
+                "outcome, payout, buy_price, markup_earned, error, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    trade_id,
+                    t["account_id"],
+                    t["deriv_account"],
+                    t.get("symbol"),
+                    t.get("trade_type"),
+                    t.get("direction"),
+                    t.get("prediction"),
+                    t.get("duration"),
+                    t.get("duration_unit"),
+                    t.get("stake"),
+                    t.get("confidence"),
+                    t.get("decision_id"),
+                    json.dumps(t.get("decision_payload") or {}, default=str),
+                    1 if t.get("is_dry_run") else 0,
+                    t.get("deriv_contract_id"),
+                    t.get("outcome", "pending"),
+                    t.get("payout"),
+                    t.get("buy_price"),
+                    t.get("markup_earned"),
+                    t.get("error"),
+                    _now_iso(),
+                ),
+            )
+            self._conn.execute(
+                "UPDATE accounts SET last_trade_at=? WHERE id=?",
+                (_now_iso(), t["account_id"]),
+            )
+            self._conn.commit()
+        return trade_id
+
+    def list_trades(
+        self, *, account_id: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if account_id:
+            clauses.append("account_id=?")
+            params.append(account_id)
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        params.append(max(1, min(limit, 1000)))
+        rows = self._conn.execute(
+            f"SELECT * FROM trades {where} ORDER BY created_at DESC LIMIT ?",
+            params,
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["is_dry_run"] = bool(d["is_dry_run"])
+            d["decision_payload"] = json.loads(d.get("decision_payload") or "{}")
+            out.append(d)
+        return out
+
+    def list_pending_live_trades(self) -> list[dict[str, Any]]:
+        """Live trades whose contract hasn't settled yet — the settler
+        polls Deriv for these and updates outcome/profit."""
+        rows = self._conn.execute(
+            "SELECT id, account_id, deriv_account, deriv_contract_id, stake "
+            "FROM trades WHERE is_dry_run=0 AND outcome='pending' "
+            "AND deriv_contract_id IS NOT NULL"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def settle_trade(
+        self,
+        trade_id: str,
+        *,
+        outcome: str,
+        profit: float | None,
+        markup_earned: float | None = None,
+    ) -> None:
+        """Mark a live trade settled. If Deriv reported the real
+        app_markup_amount, overwrite the buy-time estimate with it so
+        earnings totals reflect what was actually credited."""
+        with self._lock:
+            if markup_earned is not None:
+                self._conn.execute(
+                    "UPDATE trades SET outcome=?, profit=?, markup_earned=?, "
+                    "settled_at=? WHERE id=?",
+                    (outcome, profit, markup_earned, _now_iso(), trade_id),
+                )
+            else:
+                self._conn.execute(
+                    "UPDATE trades SET outcome=?, profit=?, settled_at=? WHERE id=?",
+                    (outcome, profit, _now_iso(), trade_id),
+                )
+            self._conn.commit()
+
+    def trades_today(self, account_id: str) -> int:
+        from datetime import date
+        today = date.today().isoformat()
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM trades WHERE account_id=? "
+            "AND substr(created_at,1,10)=?",
+            (account_id, today),
+        ).fetchone()[0]
+
+    def profit_today(self, account_id: str) -> float:
+        """Realized profit (settled live trades) for this account, today. Used
+        by the take-profit / loss-limit goals. Dry-run trades never settle, so
+        they contribute 0 — the goals act on real/demo-live trades."""
+        from datetime import date
+        today = date.today().isoformat()
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(profit),0) FROM trades WHERE account_id=? "
+            "AND substr(created_at,1,10)=? AND profit IS NOT NULL",
+            (account_id, today),
+        ).fetchone()
+        return float(row[0] or 0.0)
+
+    def stats(self) -> dict[str, Any]:
+        total_trades = self._conn.execute(
+            "SELECT COUNT(*) FROM trades"
+        ).fetchone()[0]
+        accounts_total = self._conn.execute(
+            "SELECT COUNT(*) FROM accounts"
+        ).fetchone()[0]
+        accounts_enabled = self._conn.execute(
+            "SELECT COUNT(*) FROM accounts WHERE enabled=1"
+        ).fetchone()[0]
+        dry_run_count = self._conn.execute(
+            "SELECT COUNT(*) FROM trades WHERE is_dry_run=1"
+        ).fetchone()[0]
+        live_count = self._conn.execute(
+            "SELECT COUNT(*) FROM trades WHERE is_dry_run=0"
+        ).fetchone()[0]
+        markup = self._conn.execute(
+            "SELECT COALESCE(SUM(markup_earned),0) FROM trades"
+        ).fetchone()[0]
+        return {
+            "accounts_total": accounts_total,
+            "accounts_enabled": accounts_enabled,
+            "trades_total": total_trades,
+            "trades_dry_run": dry_run_count,
+            "trades_live": live_count,
+            "markup_earned_total": round(markup or 0.0, 4),
+        }
+
+    # ----------------------------------------------------------------- audit
+
+    def _record_audit(self, action: str, *, actor: str | None = None,
+                      detail: str | None = None) -> None:
+        # Called under self._lock by callers, so don't re-lock.
+        self._conn.execute(
+            "INSERT INTO audit(id, actor, action, detail, created_at) "
+            "VALUES (?,?,?,?,?)",
+            (uuid4().hex, actor or "system", action, detail, _now_iso()),
+        )
+
+
+_store: BotStore | None = None
+
+
+def get_store() -> BotStore:
+    global _store
+    if _store is None:
+        _store = BotStore()
+    return _store

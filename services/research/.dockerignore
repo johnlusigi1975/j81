@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.env
+out/
+data/
+config/research_config.json
+*.db
+*.db-wal
+*.db-shm

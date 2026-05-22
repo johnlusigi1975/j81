@@ -1,0 +1,21 @@
+# Core service
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.10
+pydantic-settings>=2.7
+httpx>=0.28
+
+# LLM extraction
+anthropic>=0.42
+
+# Research sources
+ddgs>=9.0                 # keyless web search (DuckDuckGo)
+trafilatura>=2.0          # robust article / paper text extraction
+yt-dlp>=2025.1.1          # YouTube / TikTok / Instagram metadata + captions
+youtube-transcript-api>=0.6
+
+# Utilities
+tenacity>=9.0
+
+# OPTIONAL (not installed by default - heavy):
+#   faster-whisper>=1.1   # speech-to-text fallback for TikTok/Instagram audio

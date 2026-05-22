@@ -19,10 +19,13 @@ from app.models import (
     ResearchRequest,
     ResearchResponse,
     SourceError,
+    SourcePlatform,
     Strategy,
     StudyLinkRequest,
     StudyLinkResponse,
 )
+from app.research_config import load_config
+from app.sharing import send_to_analyser
 from app.sources.registry import get_adapter
 from app.url_fetcher import UnsafeURLError, fetch_url
 
@@ -83,20 +86,73 @@ class ResearchPipeline:
                 error="no usable content found at that URL",
             )
 
+        from app.config import get_settings as _get
+        if not _get().anthropic_api_key:
+            return StudyLinkResponse(
+                url=req.url,
+                fetched=True,
+                platform=doc.platform,
+                title=doc.title,
+                error="LLM not configured: ANTHROPIC_API_KEY is missing — "
+                "the page was fetched but no strategies/insights could be "
+                "extracted. Add the key to research-app/.env and refresh.",
+            )
+
         strategies: list[Strategy] = []
         insights: list[Insight] = []
+        extraction_errors: list[str] = []
         if FocusMode.STRATEGIES in req.focus:
             try:
                 strategies = await self._extractor.extract(
                     doc, req.trade_type
                 )
-            except Exception:
-                strategies = []
+            except Exception as exc:
+                extraction_errors.append(f"strategy extraction: {exc!r}")
         if FocusMode.UPDATES in req.focus:
             try:
                 insights = await self._extractor.extract_insights(doc)
-            except Exception:
-                insights = []
+            except Exception as exc:
+                extraction_errors.append(f"insight extraction: {exc!r}")
+
+        # ---- broaden on shortfall ------------------------------------
+        # If the user asked for strategies and we came up short, broaden the
+        # search using terms from the page and try again. Hard-capped by
+        # config to prevent runaway costs.
+        cfg = load_config()
+        ext = cfg.extraction
+        if (
+            FocusMode.STRATEGIES in req.focus
+            and ext.min_strategies_target > 0
+            and len(strategies) < ext.min_strategies_target
+            and ext.max_broaden_iterations > 0
+        ):
+            seen_urls = {doc.url}
+            for i in range(ext.max_broaden_iterations):
+                if len(strategies) >= ext.min_strategies_target:
+                    break
+                broader_query = self._derive_broader_query(doc, req, i)
+                try:
+                    sub = await self.run(
+                        ResearchRequest(
+                            trade_type=req.trade_type,
+                            query=broader_query,
+                            sources=[
+                                SourcePlatform.WEB,
+                                SourcePlatform.YOUTUBE,
+                                SourcePlatform.REDDIT,
+                            ],
+                            focus=[FocusMode.STRATEGIES],
+                            push_to_logging_app=False,
+                            max_results_per_source=ext.broaden_results_per_source,
+                        )
+                    )
+                except Exception:
+                    continue
+                for s in sub.strategies:
+                    if s.provenance.url in seen_urls:
+                        continue
+                    seen_urls.add(s.provenance.url)
+                    strategies.append(s)
 
         pushed = insights_pushed = 0
         if req.push_to_logging_app:
@@ -104,6 +160,15 @@ class ResearchPipeline:
                 pushed = await self._logging.push(strategies)
             if insights:
                 insights_pushed = await self._logging.push_insights(insights)
+
+        # If the user has "auto-send after each studied link" enabled, ship
+        # the whole library to the analyser right now (and archive if set).
+        if load_config().sharing.auto_send_after_study_link:
+            try:
+                await send_to_analyser()
+            except Exception:
+                # Best-effort; don't fail the study because of a downstream issue.
+                pass
 
         return StudyLinkResponse(
             url=req.url,
@@ -114,7 +179,27 @@ class ResearchPipeline:
             insights=insights,
             pushed=pushed,
             insights_pushed=insights_pushed,
+            error="; ".join(extraction_errors) if extraction_errors else None,
         )
+
+    def _derive_broader_query(
+        self, doc: RawDocument, req: StudyLinkRequest, iteration: int
+    ) -> str:
+        """Build a broader search query for the broaden-on-shortfall loop.
+
+        Iteration 0: use the page title + trade type + "deriv strategy".
+        Iteration 1: drop the title, keep the trade type — wider net.
+        Iteration 2: pure trade-type sweep, no page-specific terms.
+        """
+        tt = req.trade_type.value.replace("_", " ")
+        if iteration == 0 and doc.title:
+            seed = doc.title[:80]
+            return f"{seed} deriv {tt} strategy"
+        if iteration == 1 and doc.title:
+            # take only the first few words of the title as a topic seed
+            words = doc.title.split()[:3]
+            return f"{' '.join(words)} deriv {tt} strategy rules"
+        return f"deriv {tt} strategy rules indicators"
 
     async def _gather_documents(
         self, request: ResearchRequest, query: str, per_source: int

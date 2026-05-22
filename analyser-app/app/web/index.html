@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>J81 Analyser</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23030f1a'/><text x='16' y='22' font-family='ui-sans-serif,system-ui' font-size='13' font-weight='700' text-anchor='middle' fill='%23a78bfa'>A81</text></svg>"/>
+<style>
+  :root {
+    /* Same ocean foundation as Researcher, but a violet accent so the two
+       homepages are visually distinct at a glance. */
+    --bg: #04111c;
+    --bg-card: rgba(12, 28, 44, 0.62);
+    --border: rgba(167, 139, 250, 0.14);
+    --border-strong: rgba(167, 139, 250, 0.26);
+    --text: #e7f4fb;
+    --text-dim: #9fb6c5;
+    --text-faint: #5d7585;
+    --accent: #a78bfa;
+    --accent-dim: rgba(167, 139, 250, 0.18);
+    --cyan: #76e4ff;
+    --good: #4ade80;
+    --bad: #f87171;
+    --warn: #fbbf24;
+    --radius: 14px;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1400px 700px at 50% -200px, rgba(167, 139, 250, 0.08), transparent 65%),
+      radial-gradient(1000px 700px at 95% 10%, rgba(60, 200, 220, 0.07), transparent 60%),
+      radial-gradient(1000px 800px at -10% 30%, rgba(60, 110, 200, 0.12), transparent 60%),
+      linear-gradient(180deg, #052033 0%, #04111c 55%, #030c14 100%);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: -25%;
+    background:
+      conic-gradient(from 0deg at 50% 50%,
+        rgba(167, 139, 250, 0.04) 0deg,
+        transparent 90deg,
+        rgba(80, 160, 220, 0.05) 180deg,
+        transparent 270deg,
+        rgba(167, 139, 250, 0.04) 360deg);
+    filter: blur(60px);
+    z-index: -1;
+    animation: drift 60s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes drift { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { body::before { animation: none; } }
+
+  .nav {
+    position: sticky; top: 0; z-index: 5;
+    background: rgba(4, 17, 28, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    max-width: 1180px; margin: 0 auto;
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px;
+    font-weight: 700; letter-spacing: -0.01em; }
+  .brand .mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #d8b4fe 0%, #a78bfa 45%, #6366f1 100%);
+    color: #04131c; font-size: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transform: translateY(4px);
+    box-shadow: 0 0 16px rgba(167, 139, 250, 0.35);
+  }
+  .brand .name { font-size: 18px; }
+  .brand .sub { font-size: 13px; color: var(--text-dim); font-weight: 500; }
+  .nav-spacer { flex: 1; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { font-size: 12px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.02);
+    display: inline-flex; align-items: center; gap: 6px; }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+  .pill.ok .dot { background: var(--good); box-shadow: 0 0 8px var(--good); }
+
+  .hero { max-width: 1180px; margin: 0 auto; padding: 56px 28px 24px; }
+  .hero h1 {
+    font-size: 42px; line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #b8c0d2 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { margin: 0; color: var(--text-dim); max-width: 720px; font-size: 17px; }
+  .hero .grad { color: var(--accent); }
+
+  .grid { max-width: 1180px; margin: 0 auto;
+    padding: 24px 28px 80px;
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; }
+  .card { grid-column: span 12;
+    background: var(--bg-card); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; position: relative; overflow: hidden;
+    animation: card-in .55s cubic-bezier(.2,.7,.2,1) backwards; }
+  .card:nth-child(2) { animation-delay: .06s; }
+  .card:nth-child(3) { animation-delay: .12s; }
+  .card:nth-child(4) { animation-delay: .18s; }
+  @keyframes card-in { from { transform: translateY(10px); opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+  @media (min-width: 960px) {
+    .card.span-4 { grid-column: span 4; }
+    .card.span-8 { grid-column: span 8; }
+  }
+  .card h2 { margin: 0 0 4px; font-size: 16px; letter-spacing: -0.005em;
+    display: flex; align-items: center; gap: 8px; }
+  .card .lede { color: var(--text-dim); font-size: 13px; margin: 0 0 16px; }
+  .icon { width: 22px; height: 22px; border-radius: 6px;
+    background: var(--accent-dim); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center; }
+  .icon svg { width: 14px; height: 14px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat { background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; }
+  .stat .n { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
+  .stat .l { font-size: 11px; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.06em; margin-top: 4px; }
+  .stat.cyan .n { color: var(--cyan); }
+
+  details.group { border: 1px solid var(--border); border-radius: 10px;
+    margin-top: 10px; overflow: hidden; }
+  details.group[open] { background: rgba(167, 139, 250, 0.04); }
+  details.group > summary {
+    cursor: pointer; padding: 11px 14px; list-style: none;
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; font-size: 14px;
+  }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary .count {
+    font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+    padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.05);
+  }
+  details.group > .group-body { padding: 0 14px 12px; }
+
+  .item { padding: 10px 0; border-bottom: 1px dashed var(--border); }
+  .item:last-child { border-bottom: 0; }
+  .item .title { font-weight: 600; font-size: 13.5px; }
+  .item .meta { font-size: 12px; color: var(--text-faint); margin-top: 4px;
+    display: flex; gap: 8px; flex-wrap: wrap; }
+  .item .meta .tag { padding: 2px 7px; border-radius: 999px;
+    background: rgba(255,255,255,0.05); color: var(--text-dim); }
+  .item .meta .tag.cat { color: var(--accent); background: var(--accent-dim); }
+  .item a { color: var(--text-dim); text-decoration: none; word-break: break-all; font-size: 11.5px; }
+  .item a:hover { color: var(--cyan); }
+
+  .empty { padding: 26px; text-align: center;
+    background: rgba(0, 0, 0, 0.25); border: 1px dashed var(--border);
+    border-radius: 10px; color: var(--text-faint); font-size: 13px; }
+  code { font-family: var(--mono); font-size: 12.5px;
+    background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; color: var(--cyan); }
+
+  footer { max-width: 1180px; margin: 0 auto;
+    padding: 24px 28px 60px; color: var(--text-faint); font-size: 12.5px;
+    display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+    border-top: 1px solid var(--border); }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { color: var(--cyan); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <span class="mark">A81</span>
+      <span class="name">J81 Analyser</span>
+      <span class="sub">v0.1 · phase 1: receiver</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="pills" id="status-pills">
+      <span class="pill"><span class="dot"></span>connecting…</span>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>Receives ideas, <span class="grad">tests them</span>, keeps the winners.</h1>
+  <p>This is the second system in the chain. The J81 Researcher pushes its gathered strategies and insights here; the Analyser stores them, will backtest them against real Deriv market history, and pass only the survivors to the Trading Brain.</p>
+</header>
+
+<main class="grid">
+
+  <!-- TOTALS ------------------------------------------------------------- -->
+  <section class="card span-4">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><rect x="6" y="11" width="3" height="8"/><rect x="11" y="6" width="3" height="13"/><rect x="16" y="14" width="3" height="5"/></svg></span> Stats</h2>
+    <p class="lede">What's landed here from the Researcher.</p>
+    <div class="stats-grid">
+      <div class="stat"><div class="n" id="s-total">—</div><div class="l">strategies received</div></div>
+      <div class="stat cyan"><div class="n" id="i-total">—</div><div class="l">insights received</div></div>
+    </div>
+    <div class="stats-grid" style="margin-top:10px">
+      <div class="stat"><div class="n" id="s-tt-count">—</div><div class="l">trade types</div></div>
+      <div class="stat cyan"><div class="n" id="i-tt-count">—</div><div class="l">insight categories</div></div>
+    </div>
+  </section>
+
+  <!-- STRATEGIES BY TRADE TYPE ------------------------------------------ -->
+  <section class="card span-8">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13"/><path d="M4 19h16"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span> Strategies — by trade type</h2>
+    <p class="lede">Click a group to expand. Backtesting will happen here in Phase 2.</p>
+    <div id="strategies-groups"></div>
+  </section>
+
+  <!-- INSIGHTS BY TRADE TYPE --------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".8" fill="currentColor"/></svg></span> Insights — by trade type</h2>
+    <p class="lede">Rules, updates, sentiment, warnings. The Analyser keeps these for context.</p>
+    <div id="insights-groups"></div>
+  </section>
+
+  <!-- MARKET DATA -------------------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/></svg></span> Market data <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">phase 2.1 · pulled free from Deriv</span></h2>
+    <p class="lede">Historical Deriv ticks/candles cached locally for backtesting. Pull what you need; backtests in Phase 2.3 read from this cache.</p>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px">
+      <div class="stat"><div class="n" id="md-series">—</div><div class="l">series cached</div></div>
+      <div class="stat cyan"><div class="n" id="md-total">—</div><div class="l">total candles</div></div>
+    </div>
+
+    <div id="md-list"></div>
+
+    <div style="margin-top:14px;padding:14px;background:rgba(167,139,250,0.05);border:1px dashed var(--border-strong);border-radius:10px">
+      <h4 style="margin:0 0 8px;font-size:13px">Pull new candles</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+        <div>
+          <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Symbol</label>
+          <select id="md-symbol" style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:4px">
+            <option value="R_10">Volatility 10 (R_10)</option>
+            <option value="R_25">Volatility 25 (R_25)</option>
+            <option value="R_50">Volatility 50 (R_50)</option>
+            <option value="R_75">Volatility 75 (R_75)</option>
+            <option value="R_100" selected>Volatility 100 (R_100)</option>
+            <option value="1HZ10V">Volatility 10 (1s)</option>
+            <option value="1HZ100V">Volatility 100 (1s)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Granularity</label>
+          <select id="md-gran" style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:4px">
+            <option value="60" selected>1 minute</option>
+            <option value="300">5 minutes</option>
+            <option value="900">15 minutes</option>
+            <option value="3600">1 hour</option>
+            <option value="86400">1 day</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Days back</label>
+          <input type="number" id="md-days" value="7" min="0.1" max="60" step="1"
+            style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:4px"/>
+        </div>
+      </div>
+      <button id="md-fetch" style="margin-top:10px;background:linear-gradient(180deg,#a78bfa 0%,#7c6fc6 100%);color:#04131c;font-weight:600;border:0;border-radius:10px;padding:10px 16px;cursor:pointer">Pull from Deriv</button>
+      <div id="md-result" style="margin-top:10px;font-size:12.5px;color:var(--text-dim)"></div>
+    </div>
+  </section>
+
+  <!-- INDICATORS & EXPRESSIONS ------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg></span> Indicators &amp; expressions <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">phase 2.2 · the math layer</span></h2>
+    <p class="lede">Try a rule against your cached candles before backtesting it. Indicators compute on the fly; the expression is evaluated in a safe sandbox (no eval() — LLM-derived strings can't escape).</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+      <div>
+        <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Symbol</label>
+        <select id="exp-symbol" style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:4px">
+          <option value="R_100" selected>R_100</option>
+          <option value="R_75">R_75</option>
+          <option value="R_50">R_50</option>
+          <option value="R_25">R_25</option>
+          <option value="R_10">R_10</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Granularity</label>
+        <select id="exp-gran" style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:4px">
+          <option value="60" selected>1 min</option>
+          <option value="300">5 min</option>
+          <option value="900">15 min</option>
+          <option value="3600">1 hour</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Bars to test</label>
+        <input type="number" id="exp-limit" value="500" min="50" max="5000" style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:4px"/>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Indicator (one)</label>
+      <div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px;margin-top:4px">
+        <input id="exp-ref" placeholder="ref (e.g. rsi)" value="rsi" style="background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"/>
+        <select id="exp-type" style="background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px">
+          <option value="RSI" selected>RSI</option>
+          <option value="SMA">SMA</option>
+          <option value="EMA">EMA</option>
+          <option value="MACD">MACD</option>
+          <option value="BBANDS">BBANDS</option>
+          <option value="STOCH">STOCH</option>
+          <option value="ATR">ATR</option>
+        </select>
+        <input id="exp-period" placeholder="period" value="14" style="background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"/>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Expression</label>
+      <input id="exp-expr" value="rsi &lt; 30" placeholder="e.g. rsi &lt; 30 and close &gt; open"
+        style="width:100%;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:4px;font-family:var(--mono);font-size:13px"/>
+      <div style="font-size:11.5px;color:var(--text-faint);margin-top:6px">
+        Names available: <code>open close high low price</code> · <code>last_digit</code> · your indicator ref (<code>rsi</code>).
+        For multi-line indicators: <code>macd_signal</code>, <code>bb_upper</code>, <code>stoch_k</code>, etc.
+      </div>
+    </div>
+
+    <button id="exp-run" style="margin-top:12px;background:linear-gradient(180deg,#a78bfa 0%,#7c6fc6 100%);color:#04131c;font-weight:600;border:0;border-radius:10px;padding:10px 16px;cursor:pointer">Test expression</button>
+
+    <div id="exp-result" style="margin-top:12px"></div>
+  </section>
+
+  <!-- BACKTEST RESULTS --------------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l5 5L21 5"/></svg></span> Backtest results <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">phase 2.3 · the truth filter</span></h2>
+    <p class="lede">Replays each stored strategy against cached Deriv candles. Strategies that survive (win-rate ≥ 55%, positive P&amp;L, enough trades) become eligible for decisions.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button id="bt-run" style="background:linear-gradient(180deg,#a78bfa 0%,#7c6fc6 100%);color:#04131c;font-weight:600;border:0;border-radius:10px;padding:10px 16px;cursor:pointer">Run backtest on all strategies</button>
+      <span id="bt-status" style="font-size:12.5px;color:var(--text-dim)"></span>
+    </div>
+    <div id="bt-list"></div>
+  </section>
+
+  <!-- DECISIONS ---------------------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span> Decisions <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">phase 2.3 · the brain's output</span></h2>
+    <p class="lede">The Analyser reads current market state + all surviving strategies and emits a single decision (or honest "no trade"). It will <strong>not</strong> force a trade just to have an opinion.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <select id="dec-symbol" style="background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px">
+        <option value="R_100" selected>R_100</option>
+        <option value="R_75">R_75</option>
+        <option value="R_50">R_50</option>
+        <option value="R_25">R_25</option>
+        <option value="R_10">R_10</option>
+      </select>
+      <select id="dec-tt" style="background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px">
+        <option value="">Any trade type</option>
+        <option value="rise_fall">Rise/Fall</option>
+        <option value="even_odd">Even/Odd</option>
+        <option value="over_under">Over/Under</option>
+        <option value="matches_differs">Matches/Differs</option>
+      </select>
+      <button id="dec-run" style="background:linear-gradient(180deg,#a78bfa 0%,#7c6fc6 100%);color:#04131c;font-weight:600;border:0;border-radius:10px;padding:10px 16px;cursor:pointer">Decide now</button>
+    </div>
+    <div id="dec-result" style="margin-bottom:14px"></div>
+    <h3 style="margin:18px 0 6px;font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em">Recent decisions</h3>
+    <div id="dec-list"></div>
+  </section>
+
+  <!-- RESEARCH GAPS ------------------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-5-5"/><circle cx="11" cy="11" r="7"/></svg></span> Research gaps <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">phase 2.3 · feedback to the Researcher</span></h2>
+    <p class="lede">What the brain wants the Researcher to find next. Click <em>Dispatch</em> and the Researcher receives each gap as a new topic for its next autonomous cycle.</p>
+    <div id="gap-list"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+      <button id="gap-dispatch" style="background:linear-gradient(180deg,#a78bfa 0%,#7c6fc6 100%);color:#04131c;font-weight:600;border:0;border-radius:10px;padding:10px 16px;cursor:pointer">Dispatch gaps to Researcher</button>
+      <span id="gap-status" style="font-size:12.5px;color:var(--text-dim)"></span>
+    </div>
+  </section>
+
+  <!-- COMMUNICATION DASHBOARD (shared across all three J81 apps) ---------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10h8M8 14h5"/><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z"/></svg></span> Communication <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">the 3 systems talking · live</span></h2>
+    <p class="lede">What the Researcher, Analyser and Bot are telling each other — commands, grades and advice — generated automatically on each system's 24/7 background loop.</p>
+    <div id="comms-scoreboard" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px"></div>
+    <div id="comms-log"></div>
+  </section>
+  <script>
+  (function(){
+    var HUB = location.protocol + "//" + location.hostname + ":9000";
+    var APPC = {researcher:"#76e4ff", analyser:"#a78bfa", bot:"#fb923c"};
+    function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c];});}
+    function badge(app){var col=APPC[app]||"#9fb6c5";return '<span style="font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid '+col+'55;color:'+col+';background:'+col+'18">'+esc(app)+'</span>';}
+    function typeChip(t){var c={command:"#fb923c",advice:"#fbbf24",grade:"#4ade80",report:"#9fb6c5",request:"#76e4ff"}[t]||"#9fb6c5";return '<span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:'+c+'">'+esc(t)+'</span>';}
+    async function loadComms(){
+      var logEl=document.getElementById("comms-log"), sbEl=document.getElementById("comms-scoreboard");
+      if(!logEl) return;
+      var log, sb;
+      try {
+        log = await fetch(HUB+"/comms/log?limit=40").then(function(r){return r.json();});
+        sb  = await fetch(HUB+"/comms/scoreboard").then(function(r){return r.json();});
+      } catch(e){ logEl.innerHTML='<div style="padding:18px;text-align:center;color:var(--text-faint);border:1px dashed var(--border);border-radius:10px">Comms hub (Analyser :9000) unreachable. Start it to see the conversation.</div>'; sbEl.innerHTML=""; return; }
+      // scoreboard: avg grade each app received
+      var apps=["researcher","analyser","bot"];
+      sbEl.innerHTML = apps.map(function(a){
+        var rec=(sb.grades_received||{})[a]||{}; var sent=(sb.messages_sent||{})[a]||0;
+        var g=rec.avg_grade; var col=APPC[a];
+        return '<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">'
+          +'<div style="font-size:13px;font-weight:600;color:'+col+'">'+a+'</div>'
+          +'<div style="font-size:22px;font-weight:700;margin-top:4px">'+(g!=null?g.toFixed(1)+'<span style="font-size:12px;color:var(--text-faint)">/10</span>':'<span style="font-size:13px;color:var(--text-faint)">no grades yet</span>')+'</div>'
+          +'<div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">avg grade received · '+sent+' msgs sent</div></div>';
+      }).join("");
+      // log
+      if(!log.length){ logEl.innerHTML='<div style="padding:18px;text-align:center;color:var(--text-faint);border:1px dashed var(--border);border-radius:10px">No messages yet. They appear once the systems run their background loops (a backtest, a research cycle, or a trade cycle).</div>'; return; }
+      logEl.innerHTML = log.map(function(m){
+        var gradePill = (m.grade!=null) ? '<span style="font-size:12px;font-weight:700;color:var(--good);padding:2px 8px;border-radius:999px;background:rgba(74,222,128,0.12)">'+Number(m.grade).toFixed(1)+'/10</span>' : '';
+        return '<div style="padding:11px 0;border-bottom:1px dashed var(--border)">'
+          +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+            +badge(m.from_app)+'<span style="color:var(--text-faint)">→</span>'+badge(m.to_app)
+            +typeChip(m.type)+gradePill
+            +'<span style="margin-left:auto;font-size:11px;color:var(--text-faint)">'+esc((m.created_at||"").replace("T"," ").slice(0,19))+'</span>'
+          +'</div>'
+          +'<div style="font-weight:600;font-size:13.5px;margin-top:5px">'+esc(m.subject||"")+'</div>'
+          +(m.body?'<div style="font-size:12.5px;color:var(--text-dim);margin-top:2px">'+esc(m.body)+'</div>':'')
+        +'</div>';
+      }).join("");
+    }
+    loadComms();
+    setInterval(loadComms, 10000);
+  })();
+  </script>
+
+  <section class="card" id="prod-maint-card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span> System Productivity &amp; Maintenance <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">live · self-graded</span></h2>
+    <p class="lede">Each system spends ~90% on its own job and ~5% checking the others — scoring productivity and leaving recommendations to lift it. Problems get filed to the J81 Maintenance sector; hit <b>Copy for AI</b> and paste them to Claude to fix.</p>
+    <div id="pm-priority-row" style="display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.02);flex-wrap:wrap">
+      <span style="font-size:13px">🎯 <b>Focus mode</b> — whole tree masters Rise/Fall + Even/Odd first, then expands</span>
+      <button id="pm-priority-btn" type="button" style="margin-left:auto;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:8px;padding:6px 12px;background:rgba(255,255,255,0.05);color:var(--text-dim)">…</button>
+    </div>
+    <div id="prod-rates" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+    <div style="margin:6px 0 6px">
+      <div id="recs-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);user-select:none">
+        <span id="recs-caret" style="display:inline-block;transition:transform .15s;transform:rotate(90deg);font-size:11px">&#9656;</span>
+        <span>Recommendations</span>
+        <span id="recs-count" style="font-weight:400;text-transform:none;color:var(--text-faint)"></span>
+        <span style="font-weight:400;text-transform:none;color:var(--text-faint);font-size:11px">— what each system advises the others</span>
+        <button id="recs-copy" type="button" style="margin-left:auto;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:#0b1620;background:#a78bfa;border:none;border-radius:7px;padding:5px 11px">Copy recommendations</button>
+      </div>
+      <div id="recs-body" style="margin-top:8px"><div id="prod-recs"></div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin:20px 0 8px;flex-wrap:wrap">
+      <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin:0">J81 Maintenance <span id="maint-count" style="font-weight:400;text-transform:none;color:var(--text-faint)"></span></h3>
+      <button id="maint-copy" style="margin-left:auto;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:#0b1620;background:#76e4ff;border:none;border-radius:8px;padding:7px 14px">Copy for AI</button>
+    </div>
+    <div id="maint-list"></div>
+    <div style="margin:18px 0 6px">
+      <div id="study-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);user-select:none">
+        <span id="study-caret" style="display:inline-block;transition:transform .15s;transform:rotate(90deg);font-size:11px">&#9656;</span>
+        <span>Brain Self-Study</span>
+        <span id="study-count" style="font-weight:400;text-transform:none;color:var(--text-faint)"></span>
+        <span style="font-weight:400;text-transform:none;color:var(--text-faint);font-size:11px">— each system learning how to improve</span>
+        <button id="study-copy" type="button" style="margin-left:auto;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:#0b1620;background:#4ade80;border:none;border-radius:7px;padding:5px 11px">Copy enhancement ideas for AI</button>
+      </div>
+      <div id="study-body" style="margin-top:8px"><div id="study-list"></div></div>
+    </div>
+  </section>
+  <script>
+  (function(){
+    var HUB = location.protocol + "//" + location.hostname + ":9000";
+    var APPC = {researcher:"#76e4ff", analyser:"#a78bfa", bot:"#fb923c"};
+    function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c];});}
+    function badge(app){var col=APPC[app]||"#9fb6c5";return '<span style="font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid '+col+'55;color:'+col+';background:'+col+'18">'+esc(app)+'</span>';}
+    function band(sc){return sc<40?"#f87171":sc<70?"#fbbf24":"#4ade80";}
+    function empty(t){return '<div style="padding:16px;text-align:center;color:var(--text-faint);border:1px dashed var(--border);border-radius:10px">'+t+'</div>';}
+    async function loadPM(){
+      var ratesEl=document.getElementById("prod-rates"); if(!ratesEl) return;
+      var prod, recs, issues, study;
+      try {
+        prod  = await fetch(HUB+"/productivity").then(function(r){return r.json();});
+        recs  = await fetch(HUB+"/comms/recommendations?limit=12").then(function(r){return r.json();});
+        issues= await fetch(HUB+"/maintenance/issues").then(function(r){return r.json();});
+        study = await fetch(HUB+"/study?kind=enhancement&limit=20").then(function(r){return r.json();});
+      } catch(e){ ratesEl.innerHTML=empty("Hub (Analyser :9000) unreachable. Start it to see productivity."); return; }
+      var byApp={}; (prod.systems||[]).forEach(function(s){byApp[s.app]=s;});
+      ratesEl.innerHTML = ["researcher","analyser","bot"].map(function(a){
+        var s=byApp[a]; var sc=s?Number(s.score):null; var col=APPC[a];
+        var bar = sc!=null ? '<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden;margin-top:8px"><div style="height:100%;width:'+sc+'%;background:'+band(sc)+'"></div></div>' : '';
+        return '<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">'
+          +'<div style="font-size:13px;font-weight:600;color:'+col+'">'+a+'</div>'
+          +'<div style="font-size:22px;font-weight:700;margin-top:4px">'+(sc!=null?sc.toFixed(0)+'<span style="font-size:12px;color:var(--text-faint)">/100</span>':'<span style="font-size:13px;color:var(--text-faint)">no report yet</span>')+'</div>'
+          +bar
+          +'<div style="font-size:11px;color:var(--text-dim);margin-top:6px">'+esc(s?s.summary:"")+'</div></div>';
+      }).join("");
+      var recEl=document.getElementById("prod-recs");
+      var recCount=document.getElementById("recs-count"); if(recCount) recCount.textContent="("+recs.length+")";
+      recEl.innerHTML = (!recs.length) ? empty("No recommendations yet — they appear as the systems run their loops.")
+        : recs.map(function(m){
+          return '<div style="padding:9px 0;border-bottom:1px dashed var(--border);font-size:12.5px">'
+            +badge(m.from_app)+' <span style="color:var(--text-faint)">&rarr;</span> '+badge(m.to_app)
+            +'<div style="color:var(--text-dim);margin-top:3px">'+esc(m.body)+'</div></div>';
+        }).join("");
+      document.getElementById("maint-count").textContent = "("+issues.length+" open)";
+      var mEl=document.getElementById("maint-list");
+      mEl.innerHTML = (!issues.length) ? empty("No open issues. All systems nominal ✅")
+        : issues.map(function(it){
+          var sc={info:"#9fb6c5",warning:"#fbbf24",error:"#f87171",critical:"#ef4444"}[it.severity]||"#9fb6c5";
+          return '<div style="padding:9px 0;border-bottom:1px dashed var(--border)">'
+            +'<span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:'+sc+'">'+esc(it.severity)+'</span> '
+            +badge(it.from_app)+' <span style="font-weight:600;font-size:13px">'+esc(it.summary)+'</span>'
+            +(it.detail?'<div style="font-size:12px;color:var(--text-dim);margin-top:2px">'+esc(it.detail)+'</div>':'')
+            +'</div>';
+        }).join("");
+      var stEl=document.getElementById("study-list");
+      var stCount=document.getElementById("study-count"); if(stCount) stCount.textContent="("+study.length+")";
+      if(stEl) stEl.innerHTML = (!study.length) ? empty("No self-study proposals yet — they appear as the systems study (every ~10 min).")
+        : study.map(function(s){
+          return '<div style="padding:9px 0;border-bottom:1px dashed var(--border);font-size:12.5px">'
+            +badge(s.app)+' <span style="color:var(--text-faint);font-size:11px">'+esc(s.topic||"")+'</span>'
+            +'<div style="color:var(--text-dim);margin-top:3px">'+esc(s.body)+'</div></div>';
+        }).join("");
+    }
+    var copyBtn=document.getElementById("maint-copy");
+    if(copyBtn) copyBtn.addEventListener("click", async function(){
+      var txt;
+      try { txt = await fetch(HUB+"/maintenance/export").then(function(r){return r.text();}); }
+      catch(e){ copyBtn.textContent="hub unreachable"; setTimeout(function(){copyBtn.textContent="Copy for AI";},2500); return; }
+      try { await navigator.clipboard.writeText(txt); copyBtn.textContent="Copied! paste to AI"; }
+      catch(e){ window.prompt("Copy these issues and paste to the AI:", txt); copyBtn.textContent="Copy for AI"; }
+      setTimeout(function(){copyBtn.textContent="Copy for AI";},2500);
+    });
+    var recHeader=document.getElementById("recs-header"), recBody=document.getElementById("recs-body"), recCaret=document.getElementById("recs-caret");
+    if(recHeader) recHeader.addEventListener("click", function(e){
+      if(e.target && e.target.id==="recs-copy") return;  // the button handles its own click
+      var open = recBody.style.display !== "none";
+      recBody.style.display = open ? "none" : "block";
+      if(recCaret) recCaret.style.transform = open ? "rotate(0deg)" : "rotate(90deg)";
+    });
+    var recCopy=document.getElementById("recs-copy");
+    if(recCopy) recCopy.addEventListener("click", async function(e){
+      e.stopPropagation();
+      var rs;
+      try { rs = await fetch(HUB+"/comms/recommendations?limit=200").then(function(r){return r.json();}); }
+      catch(err){ recCopy.textContent="hub unreachable"; setTimeout(function(){recCopy.textContent="Copy recommendations";},2500); return; }
+      if(!rs.length){ recCopy.textContent="nothing to copy"; setTimeout(function(){recCopy.textContent="Copy recommendations";},2000); return; }
+      var txt = "J81 RECOMMENDATIONS ("+rs.length+")\n========================================\n\n"
+        + rs.map(function(m){ return "["+(m.created_at||"").replace("T"," ").slice(0,19)+"] "+m.from_app+" -> "+m.to_app+": "+(m.body||""); }).join("\n");
+      try { await navigator.clipboard.writeText(txt); recCopy.textContent="Copied!"; }
+      catch(err){ window.prompt("Copy these recommendations and paste elsewhere:", txt); }
+      setTimeout(function(){recCopy.textContent="Copy recommendations";},2500);
+    });
+    var studyHeader=document.getElementById("study-header"), studyBody=document.getElementById("study-body"), studyCaret=document.getElementById("study-caret");
+    if(studyHeader) studyHeader.addEventListener("click", function(e){
+      if(e.target && e.target.id==="study-copy") return;
+      var open = studyBody.style.display !== "none";
+      studyBody.style.display = open ? "none" : "block";
+      if(studyCaret) studyCaret.style.transform = open ? "rotate(0deg)" : "rotate(90deg)";
+    });
+    var studyCopy=document.getElementById("study-copy");
+    if(studyCopy) studyCopy.addEventListener("click", async function(e){
+      e.stopPropagation();
+      var txt;
+      try { txt = await fetch(HUB+"/study/export").then(function(r){return r.text();}); }
+      catch(err){ studyCopy.textContent="hub unreachable"; setTimeout(function(){studyCopy.textContent="Copy enhancement ideas for AI";},2500); return; }
+      try { await navigator.clipboard.writeText(txt); studyCopy.textContent="Copied! paste to AI"; }
+      catch(err){ window.prompt("Copy these enhancement ideas and paste to the AI:", txt); }
+      setTimeout(function(){studyCopy.textContent="Copy enhancement ideas for AI";},2500);
+    });
+    var pmPrio=document.getElementById("pm-priority-btn");
+    async function loadPmPriority(){
+      if(!pmPrio) return;
+      try{ var p=await fetch(HUB+"/priority").then(function(r){return r.json();});
+        pmPrio.dataset.enabled=p.enabled?"1":"0";
+        pmPrio.textContent=p.enabled?"ON — focusing Rise/Fall + Even/Odd":"OFF — all trade types";
+        pmPrio.style.color=p.enabled?"#4ade80":"var(--text-dim)";
+      }catch(e){ pmPrio.textContent="hub offline"; }
+    }
+    if(pmPrio) pmPrio.addEventListener("click", async function(){
+      var next=pmPrio.dataset.enabled!=="1"; pmPrio.textContent="…";
+      try{ await fetch(HUB+"/priority",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled:next})}); }
+      catch(e){ pmPrio.textContent="couldn't reach hub"; return; }
+      loadPmPriority();
+    });
+    loadPmPriority(); setInterval(loadPmPriority, 12000);
+    loadPM(); setInterval(loadPM, 12000);
+  })();
+  </script>
+</main>
+
+
+<footer>
+  <span>J81 Analyser — receives, tests, picks survivors.</span>
+  <span><a href="/docs">API reference</a> &middot; <a href="/health">/health</a> &middot; <a href="/stats">/stats</a></span>
+</footer>
+
+<script>
+async function api(p) { const r = await fetch(p); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function loadHealth() {
+  try {
+    const h = await api("/health");
+    $("status-pills").innerHTML =
+      `<span class="pill ok"><span class="dot"></span>healthy</span>` +
+      `<span class="pill"><span class="dot"></span>${esc(h.version)}</span>` +
+      `<span class="pill"><span class="dot"></span>${h.auth_required ? "auth on" : "open mode"}</span>`;
+  } catch (e) {
+    $("status-pills").innerHTML = `<span class="pill"><span class="dot"></span>${esc(e.message)}</span>`;
+  }
+}
+
+async function loadStats() {
+  try {
+    const s = await api("/stats");
+    $("s-total").textContent = s.strategies.total;
+    $("i-total").textContent = s.insights.total;
+    $("s-tt-count").textContent = Object.keys(s.strategies.by_trade_type).length;
+    $("i-tt-count").textContent = Object.keys(s.insights.by_trade_type).length;
+  } catch (e) { /* no-op */ }
+}
+
+async function loadStrategies() {
+  const root = $("strategies-groups");
+  try {
+    const grouped = await api("/strategies/by_trade_type");
+    const entries = Object.entries(grouped);
+    if (!entries.length) {
+      root.innerHTML = `<div class="empty">No strategies received yet. Once the Researcher pushes to this Analyser, they'll show up here grouped by trade type.</div>`;
+      return;
+    }
+    root.innerHTML = entries.map(([tt, arr]) => `
+      <details class="group" ${entries.length <= 2 ? "open" : ""}>
+        <summary><span>${esc(tt)}</span><span class="count">${arr.length}</span></summary>
+        <div class="group-body">
+          ${arr.slice(0, 20).map(s => `
+            <div class="item">
+              <div class="title">${esc(s.name || "(unnamed)")}</div>
+              <div class="meta">
+                ${s.confidence != null ? `<span class="tag">conf ${Number(s.confidence).toFixed(2)}</span>` : ""}
+                ${s.source_platform ? `<span class="tag">${esc(s.source_platform)}</span>` : ""}
+                ${s.source_language ? `<span class="tag">${esc(s.source_language)}</span>` : ""}
+                <span class="tag">${esc(s.status)}</span>
+              </div>
+              ${s.source_url ? `<a href="${esc(s.source_url)}" target="_blank" rel="noopener">${esc(s.source_url)}</a>` : ""}
+            </div>`).join("")}
+        </div>
+      </details>`).join("");
+  } catch (e) {
+    root.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+}
+
+async function loadInsights() {
+  const root = $("insights-groups");
+  try {
+    const grouped = await api("/insights/by_trade_type");
+    const entries = Object.entries(grouped);
+    if (!entries.length) {
+      root.innerHTML = `<div class="empty">No insights received yet.</div>`;
+      return;
+    }
+    root.innerHTML = entries.map(([tt, arr]) => `
+      <details class="group" ${entries.length <= 2 ? "open" : ""}>
+        <summary><span>${esc(tt)}</span><span class="count">${arr.length}</span></summary>
+        <div class="group-body">
+          ${arr.slice(0, 20).map(i => `
+            <div class="item">
+              <div class="title">${esc(i.summary || "(no summary)")}</div>
+              <div class="meta">
+                ${i.category ? `<span class="tag cat">${esc(i.category)}</span>` : ""}
+                ${i.sentiment ? `<span class="tag">${esc(i.sentiment)}</span>` : ""}
+                ${i.source_platform ? `<span class="tag">${esc(i.source_platform)}</span>` : ""}
+                ${i.source_language ? `<span class="tag">${esc(i.source_language)}</span>` : ""}
+              </div>
+              ${i.source_url ? `<a href="${esc(i.source_url)}" target="_blank" rel="noopener">${esc(i.source_url)}</a>` : ""}
+            </div>`).join("")}
+        </div>
+      </details>`).join("");
+  } catch (e) {
+    root.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+}
+
+async function loadMarketData() {
+  try {
+    const s = await api("/data/cache_stats");
+    $("md-series").textContent = s.series.length;
+    $("md-total").textContent = s.total_candles.toLocaleString();
+    const list = $("md-list");
+    if (!s.series.length) {
+      list.innerHTML = `<div class="empty">No market data cached yet. Pull some below to enable backtesting.</div>`;
+      return;
+    }
+    list.innerHTML = s.series.map(r => {
+      const first = new Date(r.first_epoch * 1000).toISOString().slice(0,16).replace("T"," ");
+      const last  = new Date(r.last_epoch  * 1000).toISOString().slice(0,16).replace("T"," ");
+      const granLabel = r.granularity >= 3600 ? `${r.granularity/3600}h` : `${r.granularity/60}m`;
+      return `<div class="item"><div class="title">${esc(r.symbol)} · ${esc(granLabel)}</div>
+        <div class="meta">
+          <span class="tag cat">${r.candles.toLocaleString()} candles</span>
+          <span class="tag">${esc(first)} UTC</span>
+          <span class="tag">→ ${esc(last)} UTC</span>
+        </div></div>`;
+    }).join("");
+  } catch (e) { /* leave previous content */ }
+}
+
+document.getElementById("md-fetch").addEventListener("click", async (ev) => {
+  const btn = ev.currentTarget;
+  const result = $("md-result");
+  const orig = btn.textContent;
+  btn.textContent = "Pulling…"; btn.disabled = true;
+  result.innerHTML = "";
+  try {
+    const r = await fetch("/data/fetch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbol: $("md-symbol").value,
+        granularity: parseInt($("md-gran").value, 10),
+        days: parseFloat($("md-days").value),
+      }),
+    });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
+    result.innerHTML = `<strong style="color:var(--good)">✓ Done.</strong>
+      Fetched ${body.candles_fetched} candles
+      (${body.candles_new} new, ${body.candles_duplicate} already cached) for
+      <code>${esc(body.symbol)}</code> @ ${body.granularity}s.`;
+    loadMarketData();
+  } catch (e) {
+    result.innerHTML = `<strong style="color:var(--bad)">✗ ${esc(e.message)}</strong>`;
+  } finally {
+    btn.textContent = orig; btn.disabled = false;
+  }
+});
+
+document.getElementById("exp-run").addEventListener("click", async (ev) => {
+  const btn = ev.currentTarget;
+  const result = $("exp-result");
+  const orig = btn.textContent;
+  btn.textContent = "Testing…"; btn.disabled = true;
+  result.innerHTML = "";
+  try {
+    const body = {
+      symbol: $("exp-symbol").value,
+      granularity: parseInt($("exp-gran").value, 10),
+      limit: parseInt($("exp-limit").value, 10),
+      expression: $("exp-expr").value,
+      indicators: [{
+        ref: $("exp-ref").value.trim(),
+        type: $("exp-type").value,
+        params: { period: parseInt($("exp-period").value || "14", 10) },
+      }],
+    };
+    if (!body.indicators[0].ref) body.indicators = []; // bare expression OK
+    const r = await fetch("/expressions/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+    const ratePct = (data.signal_rate * 100).toFixed(1);
+    const last30 = data.last_30_bars.slice(-30);
+    const hits = last30.filter(b => b.signal).length;
+    result.innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat"><div class="n">${data.bars_evaluated}</div><div class="l">bars tested</div></div>
+        <div class="stat cyan"><div class="n">${data.true_signals}</div><div class="l">signals fired</div></div>
+        <div class="stat"><div class="n">${ratePct}%</div><div class="l">signal rate</div></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-dim)">Last 30 bars (■ = signal, · = no signal):</div>
+      <div style="margin-top:6px;font-family:var(--mono);font-size:18px;letter-spacing:2px;color:var(--accent)">
+        ${last30.map(b => b.signal ? "■" : '<span style="color:var(--text-faint)">·</span>').join("")}
+      </div>
+      <div style="margin-top:4px;font-size:11px;color:var(--text-faint)">${hits}/30 fired in the most recent window</div>`;
+  } catch (e) {
+    result.innerHTML = `<div class="empty" style="color:var(--bad)">✗ ${esc(e.message)}</div>`;
+  } finally {
+    btn.textContent = orig; btn.disabled = false;
+  }
+});
+
+// ---------- Backtest card ------------------------------------------------
+async function loadBacktests() {
+  const root = $("bt-list");
+  try {
+    const rows = await api("/backtests?limit=50");
+    if (!rows.length) {
+      root.innerHTML = `<div class="empty">No backtests yet. Click the button above to run one.</div>`;
+      return;
+    }
+    root.innerHTML = rows.map(r => {
+      const wr = (r.win_rate != null ? (r.win_rate*100).toFixed(1)+"%" : "—");
+      const pf = (r.profit_factor != null ? Number(r.profit_factor).toFixed(2) : "∞");
+      const pnl = (r.total_pnl != null ? Number(r.total_pnl).toFixed(2) : "—");
+      const cls =
+        r.status === "survived" ? "badge ok" :
+        r.status === "rejected" ? "badge err" : "badge";
+      return `<div class="item"><div class="title">${esc(r.strategy_name || "(unnamed strategy)")}</div>
+        <div class="meta">
+          <span class="${cls}">${esc(r.status || "—")}</span>
+          <span class="tag">${esc(r.symbol)} ${r.granularity}s</span>
+          <span class="tag">trades ${r.trade_count}</span>
+          <span class="tag">win ${wr}</span>
+          <span class="tag">PnL ${pnl}</span>
+          <span class="tag">PF ${pf}</span>
+        </div></div>`;
+    }).join("");
+  } catch (e) { root.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$("bt-run").addEventListener("click", async (ev) => {
+  const btn = ev.currentTarget;
+  const status = $("bt-status");
+  const orig = btn.textContent;
+  btn.textContent = "Running…"; btn.disabled = true;
+  status.textContent = "";
+  try {
+    const r = await fetch("/backtest/run", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({}),
+    });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
+    status.innerHTML = `<span style="color:var(--good)">✓</span> tested ${body.tested}, survived <strong>${body.survived}</strong>, rejected ${body.rejected}, inconclusive ${body.inconclusive}`;
+    loadBacktests();
+    loadResearchGaps();
+  } catch (e) { status.innerHTML = `<span style="color:var(--bad)">✗ ${esc(e.message)}</span>`; }
+  finally { btn.textContent = orig; btn.disabled = false; }
+});
+
+// ---------- Decisions card ----------------------------------------------
+async function loadDecisions() {
+  const root = $("dec-list");
+  try {
+    const rows = await api("/decisions?limit=20");
+    if (!rows.length) {
+      root.innerHTML = `<div class="empty">No decisions yet. Click "Decide now" above.</div>`;
+      return;
+    }
+    root.innerHTML = rows.map(d => {
+      const confPct = (d.confidence * 100).toFixed(0) + "%";
+      const cls = d.is_trade ? "badge ok" : "badge";
+      const trade = d.is_trade ? `${esc(d.trade_type || "?")} · ${esc(d.direction || d.prediction || "")}` : "NO TRADE";
+      return `<div class="item"><div class="title">${esc(d.symbol)} → ${esc(trade)}</div>
+        <div class="meta">
+          <span class="${cls}">${confPct} confidence</span>
+          <span class="tag">${esc(d.created_at)}</span>
+        </div>
+        ${d.rationale ? `<p class="meta" style="margin-top:6px;color:var(--text-dim)">${esc(d.rationale)}</p>` : ""}</div>`;
+    }).join("");
+  } catch (e) { /* no-op */ }
+}
+function renderDecision(d) {
+  const conf = (d.confidence * 100).toFixed(0);
+  const cls = d.is_trade ? "ok" : "";
+  const headline = d.is_trade
+    ? `<strong style="color:var(--good)">TRADE</strong> ${esc(d.trade_type||"")} → ${esc(d.direction||d.prediction||"?")}`
+    : `<strong style="color:var(--warn)">NO TRADE</strong>`;
+  $("dec-result").innerHTML = `
+    <div class="panel" style="padding:14px">
+      <div style="font-size:18px;font-weight:600">${headline} on ${esc(d.symbol)} <span style="color:var(--accent);font-size:14px">· ${conf}% confidence</span></div>
+      ${d.rationale ? `<p class="lede" style="margin-top:6px">${esc(d.rationale)}</p>` : ""}
+      ${d.contributing_strategies && d.contributing_strategies.length
+        ? `<div class="meta" style="margin-top:8px"><strong>Contributing:</strong> ${d.contributing_strategies.map(c=>esc(c.name||c.id||"")).join(", ")}</div>` : ""}
+    </div>`;
+}
+$("dec-run").addEventListener("click", async (ev) => {
+  const btn = ev.currentTarget; const orig = btn.textContent;
+  btn.textContent = "Deciding…"; btn.disabled = true;
+  try {
+    const r = await fetch("/decide", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        symbol: $("dec-symbol").value,
+        trade_type: $("dec-tt").value || null,
+      }),
+    });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
+    renderDecision(body);
+    loadDecisions();
+  } catch (e) {
+    $("dec-result").innerHTML = `<div class="empty" style="color:var(--bad)">✗ ${esc(e.message)}</div>`;
+  } finally { btn.textContent = orig; btn.disabled = false; }
+});
+
+// ---------- Research gaps card ------------------------------------------
+async function loadResearchGaps() {
+  const root = $("gap-list");
+  try {
+    const body = await api("/research-gaps");
+    if (!body.gaps.length) {
+      root.innerHTML = `<div class="empty">No gaps right now — your library covers all trade types and survivors look healthy.</div>`;
+      return;
+    }
+    root.innerHTML = body.gaps.map(g => `
+      <div class="item"><div class="title">${esc(g.query)}</div>
+        <div class="meta">
+          <span class="badge ${g.priority==='high'?'err':''}">${esc(g.priority||'medium')} priority</span>
+          <span class="tag">${esc(g.trade_type || 'any')}</span>
+          <span class="tag">${esc(g.kind)}</span>
+        </div>
+        <p class="meta" style="margin-top:6px;color:var(--text-dim)">${esc(g.why || "")}</p>
+      </div>`).join("");
+  } catch (e) { root.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$("gap-dispatch").addEventListener("click", async (ev) => {
+  const btn = ev.currentTarget; const status = $("gap-status"); const orig = btn.textContent;
+  btn.textContent = "Dispatching…"; btn.disabled = true;
+  status.textContent = "";
+  try {
+    const r = await fetch("/research-gaps/dispatch", {method:"POST"});
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
+    status.innerHTML = `<span style="color:var(--good)">✓</span> sent ${body.sent}, failed ${body.failed}${body.note?` — ${esc(body.note)}`:""}`;
+  } catch (e) { status.innerHTML = `<span style="color:var(--bad)">✗ ${esc(e.message)}</span>`; }
+  finally { btn.textContent = orig; btn.disabled = false; }
+});
+
+function refresh() {
+  loadHealth(); loadStats(); loadStrategies(); loadInsights();
+  loadMarketData(); loadBacktests(); loadDecisions(); loadResearchGaps();
+}
+refresh();
+setInterval(refresh, 30000);
+</script>
+<script>
+/* Cross-app navigation — links to the sister J81 apps, computed from the
+   current host so it works on localhost and on any deployed hostname. */
+(function(){
+  const apps = [
+    {label:"Researcher", port:8000, color:"#76e4ff"},
+    {label:"Analyser",   port:9000, color:"#a78bfa"},
+    {label:"Bot",        port:9500, color:"#fb923c"},
+  ];
+  const here = location.port || "80";
+  const wrap = document.createElement("nav");
+  wrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-left:18px";
+  wrap.innerHTML = apps.map(a => {
+    const active = String(a.port) === here;
+    return `<a href="${location.protocol}//${location.hostname}:${a.port}/" title="J81 ${a.label}"
+      style="font-size:12px;padding:5px 11px;border-radius:8px;text-decoration:none;
+      border:1px solid ${active?a.color:'rgba(255,255,255,0.12)'};
+      color:${active?a.color:'#9fb6c5'};
+      background:${active?a.color+'22':'transparent'};font-weight:${active?'600':'400'}">${a.label}</a>`;
+  }).join("");
+  const navInner = document.querySelector(".nav-inner");
+  const spacer = navInner && navInner.querySelector(".nav-spacer");
+  if (navInner && spacer) navInner.insertBefore(wrap, spacer);
+  else if (navInner) navInner.appendChild(wrap);
+})();
+</script>
+</body>
+</html>

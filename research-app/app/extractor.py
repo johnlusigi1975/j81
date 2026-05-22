@@ -35,6 +35,32 @@ from app.models import (
 
 MAX_TOKENS = 16000
 
+# IMPORTANT — we use FORCED tool_choice for both extractions
+# ({"type": "tool", "name": "submit_strategies"} / submit_insights).
+# That guarantees the model emits the structured tool call. With
+# tool_choice "any" + extra server tools (web_search, web_fetch), Anthropic
+# would let the model end the response WITHOUT calling our submit tool —
+# producing 200 responses with empty results and no error, which is exactly
+# the failure mode we were debugging.
+# Forced tool_choice precludes other tools in the same call, so we don't
+# list web_search/web_fetch here. We can re-add a SEPARATE pre-extraction
+# search pass later if a topic needs grounding.
+
+# Per-call diagnostic trail — written to <DATA_DIR>/logs/extractor-trail.log
+# so the operator can see exactly what Claude returned (stop_reason, block
+# counts, types) without burning more credits to guess.
+def _trail_log(line: str) -> None:
+    try:
+        from datetime import datetime, timezone
+        from app.config import data_path
+        path = data_path("logs/extractor-trail.log")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with path.open("a") as f:
+            f.write(f"{ts}  {line}\n")
+    except Exception:
+        pass  # logging should never break extraction
+
 
 # --- What we ask the model to produce (no provenance/id/status) ------------
 
@@ -51,6 +77,7 @@ class LLMStrategy(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     tags: list[str] = Field(default_factory=list)
     raw_excerpt: str = ""
+    source_language: str | None = None
 
 
 class LLMStrategies(BaseModel):
@@ -62,14 +89,36 @@ for the Deriv platform. You read researched content (video transcripts, \
 articles, forum posts) about trading and extract any concrete, rule-based \
 trading strategies into a strict machine-testable format.
 
+Multilingual input: the source content may be in ANY language (English, \
+Spanish, Portuguese, French, Arabic, Hindi, Swahili, Chinese, Japanese, \
+Indonesian, Russian, etc.). Read and understand it natively. Translate \
+the user-facing fields (`name`, `description`, `tags`) into clear English. \
+Indicator names, rule expressions, symbols, and timeframes are technical \
+and should stay in their canonical English/ASCII form. Keep `raw_excerpt` \
+VERBATIM in the original source language — do not translate it. Detect the \
+content's language and put its ISO 639-1 code in `source_language` \
+(e.g. 'en','es','pt','fr','ar','hi','sw','zh','ja','ru','id'); use 'mixed' \
+if multilingual, omit if unknown.
+
 Hard rules:
-- Only extract strategies that have OBJECTIVE, testable entry/exit logic. \
-Discard vague advice ("trade with the trend", "manage risk"), hype, signal-\
-selling promotions, and anything that cannot be expressed as a rule.
-- If the content contains no testable strategy, return an empty list.
-- Never invent indicators or thresholds the source did not state. If a needed \
-parameter is missing, make the smallest reasonable assumption and lower the \
-confidence accordingly.
+- ALWAYS attempt extraction. If the source mentions ANY rule-like behaviour \
+(an indicator threshold, a digit target, a duration, an entry signal, an \
+exit cue, a stake-management rule), emit a strategy with whatever fields \
+you can populate confidently.
+- For strategies that are MOSTLY testable but missing one piece (e.g. an \
+exact threshold, period, or exit condition), STILL emit them with \
+confidence <= 0.5 and leave the missing field at its default — never \
+fabricate the missing parameter.
+- Trade-type relevance: the request specifies a target trade_type. If the \
+source describes that exact trade_type, emit strategies tagged with it. If \
+the source describes a RELATED trade_type the user might still find useful \
+(e.g. even/odd content when target is over/under), emit it anyway with the \
+source's actual trade_type — the user can re-route later.
+- Never invent indicators, trade types, or thresholds the source did not \
+state. Lower confidence to reflect uncertainty.
+- Auto-generated captions are noisy ("even OD" instead of "even odd", \
+"running your boat" instead of "running your bot"). Read past the typos \
+and extract the intended meaning.
 
 Strategy format:
 - trade_type is one of: rise_fall, even_odd, over_under, matches_differs, \
@@ -114,6 +163,7 @@ class LLMInsight(BaseModel):
     hashtags: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
     raw_excerpt: str = ""
+    source_language: str | None = None
 
 
 class LLMInsights(BaseModel):
@@ -124,6 +174,13 @@ INSIGHT_SYSTEM_PROMPT = """You monitor what people online are saying about \
 the Deriv trading platform (and its synthetic indices / binary trading). You \
 read researched content and extract concise, factual INSIGHTS — not trading \
 strategies.
+
+Multilingual input: source content may be in ANY language. Translate \
+`summary` and `details` into clear English so downstream systems and the \
+backtester read a single language. Keep `raw_excerpt` VERBATIM in the \
+original language (no translation) for audit. Detect the language and set \
+`source_language` to its ISO 639-1 code (e.g. 'en','es','pt','fr','ar', \
+'hi','sw','zh','ja','ru','id'); use 'mixed' if multilingual.
 
 Capture things like:
 - rule: HOW a Deriv contract or market actually works — payout/multiplier \
@@ -143,6 +200,9 @@ Rules:
 - Only include things actually stated in the content. No speculation. For \
 "hidden" rules, only report what the source actually claims — do not invent \
 mechanics; lower `confidence` when it is anecdotal.
+- When a term/feature/rule the source mentions is unfamiliar to you, USE the \
+web_search tool to look up what it means before deciding which category and \
+how to summarise it. Multiple searches are fine.
 - Set `trade_type` to the Deriv trade type the insight is about \
 (rise_fall, even_odd, over_under, matches_differs, touch_no_touch, \
 higher_lower, asian) when it is specific to one; leave it null if general.
@@ -169,12 +229,33 @@ def _insight_tool_schema() -> dict:
 class StrategyExtractor:
     def __init__(self) -> None:
         settings = get_settings()
+        self._provider = (settings.llm_provider or "anthropic").strip().lower()
         self._model = settings.extractor_model
+        # Anthropic client is only meaningfully used when provider=anthropic,
+        # but instantiating is cheap and harmless either way.
         self._client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
         self._tool = _tool_schema()
         self._insight_tool = _insight_tool_schema()
 
+    # ---- public dispatch ------------------------------------------------
+
     async def extract(
+        self, doc: RawDocument, trade_type: TradeType
+    ) -> list[Strategy]:
+        if self._provider == "google":
+            from app.extractor_gemini import extract_strategies as _gemini
+            return await _gemini(doc, trade_type, SYSTEM_PROMPT)
+        return await self._extract_anthropic(doc, trade_type)
+
+    async def extract_insights(self, doc: RawDocument) -> list[Insight]:
+        if self._provider == "google":
+            from app.extractor_gemini import extract_insights as _gemini_ins
+            return await _gemini_ins(doc, INSIGHT_SYSTEM_PROMPT)
+        return await self._extract_insights_anthropic(doc)
+
+    # ---- Anthropic implementation (unchanged from earlier) --------------
+
+    async def _extract_anthropic(
         self, doc: RawDocument, trade_type: TradeType
     ) -> list[Strategy]:
         user_content = (
@@ -185,6 +266,12 @@ class StrategyExtractor:
             f"--- CONTENT START ---\n{doc.text}\n--- CONTENT END ---"
         )
 
+        # Anthropic constraint: adaptive thinking + forced tool_choice are
+        # mutually exclusive ("Thinking may not be enabled when tool_choice
+        # forces tool use"). Picking forced submit over thinking because
+        # silent-empty responses are worse than slightly less reasoning.
+        # Future: a 2-stage flow (think → then forced submit) can restore
+        # both.
         response = await self._client.messages.create(
             model=self._model,
             max_tokens=MAX_TOKENS,
@@ -200,10 +287,25 @@ class StrategyExtractor:
             messages=[{"role": "user", "content": user_content}],
         )
 
+        block_types = [b.type for b in response.content]
+        _trail_log(
+            f"extract url={doc.url!s:.80} tt={trade_type.value} "
+            f"text_len={len(doc.text)} stop_reason={response.stop_reason} "
+            f"blocks={block_types}"
+        )
+
         tool_block = next(
-            (b for b in response.content if b.type == "tool_use"), None
+            (
+                b for b in response.content
+                if b.type == "tool_use" and b.name == "submit_strategies"
+            ),
+            None,
         )
         if tool_block is None:
+            _trail_log(
+                f"extract NO_SUBMIT_TOOL_CALL url={doc.url!s:.80} "
+                f"stop_reason={response.stop_reason}"
+            )
             return []
 
         try:
@@ -232,13 +334,16 @@ class StrategyExtractor:
                 params=s.params,
                 provenance=provenance,
                 raw_excerpt=s.raw_excerpt or doc.text[:500],
+                source_language=s.source_language,
                 confidence=s.confidence,
                 tags=s.tags,
             )
             for s in parsed.strategies
         ]
 
-    async def extract_insights(self, doc: RawDocument) -> list[Insight]:
+    async def _extract_insights_anthropic(
+        self, doc: RawDocument
+    ) -> list[Insight]:
         user_content = (
             f"Source platform: {doc.platform.value}\n"
             f"Source URL: {doc.url}\n"
@@ -246,6 +351,7 @@ class StrategyExtractor:
             f"--- CONTENT START ---\n{doc.text}\n--- CONTENT END ---"
         )
 
+        # Same constraint as extract() above — see note there.
         response = await self._client.messages.create(
             model=self._model,
             max_tokens=MAX_TOKENS,
@@ -261,10 +367,24 @@ class StrategyExtractor:
             messages=[{"role": "user", "content": user_content}],
         )
 
+        block_types = [b.type for b in response.content]
+        _trail_log(
+            f"insights url={doc.url!s:.80} text_len={len(doc.text)} "
+            f"stop_reason={response.stop_reason} blocks={block_types}"
+        )
+
         tool_block = next(
-            (b for b in response.content if b.type == "tool_use"), None
+            (
+                b for b in response.content
+                if b.type == "tool_use" and b.name == "submit_insights"
+            ),
+            None,
         )
         if tool_block is None:
+            _trail_log(
+                f"insights NO_SUBMIT_TOOL_CALL url={doc.url!s:.80} "
+                f"stop_reason={response.stop_reason}"
+            )
             return []
 
         try:
@@ -290,6 +410,7 @@ class StrategyExtractor:
                 hashtags=i.hashtags,
                 provenance=provenance,
                 raw_excerpt=i.raw_excerpt or doc.text[:500],
+                source_language=i.source_language,
                 confidence=i.confidence,
             )
             for i in parsed.insights

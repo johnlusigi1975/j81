@@ -33,6 +33,31 @@ class UnsafeURLError(ValueError):
     pass
 
 
+_NAT64_PREFIX = ipaddress.IPv6Network("64:ff9b::/96")
+
+
+def _is_unsafe(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """Reject only addresses that are actually local/internal. For NAT64-
+    wrapped IPv4 (common on dual-stack WSL2 / IPv6-only networks), unwrap
+    to the underlying IPv4 first — the wrapper itself is "reserved" per
+    RFC 6052, but what matters is whether the real destination is public."""
+    if isinstance(ip, ipaddress.IPv6Address) and ip in _NAT64_PREFIX:
+        ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_unspecified
+    ):
+        return True
+    # is_reserved is meaningful for IPv4 (catches 240.0.0.0/4 etc.)
+    # but overly broad on IPv6 once we've stripped NAT64.
+    if isinstance(ip, ipaddress.IPv4Address) and ip.is_reserved:
+        return True
+    return False
+
+
 def _assert_safe_url(url: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -46,14 +71,7 @@ def _assert_safe_url(url: str) -> None:
         raise UnsafeURLError(f"cannot resolve host: {host}") from exc
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-            or ip.is_unspecified
-        ):
+        if _is_unsafe(ip):
             raise UnsafeURLError(
                 f"host {host} resolves to a non-public address ({ip})"
             )

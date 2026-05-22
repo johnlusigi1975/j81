@@ -5,8 +5,10 @@ pydantic>=2.10
 pydantic-settings>=2.7
 httpx>=0.28
 
-# LLM extraction
+# LLM extraction — pick one via LLM_PROVIDER env var.
+# Both stay installed so switching is a zero-restart .env edit.
 anthropic>=0.42
+google-genai>=0.3
 
 # Research sources
 ddgs>=9.0                 # keyless web search (DuckDuckGo)

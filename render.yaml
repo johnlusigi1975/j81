@@ -1,22 +1,31 @@
-# Render Blueprint for J81 Deriv Researcher.
-# Deploy: push this repo to GitHub, then in Render -> "New +" -> "Blueprint",
-# pick the repo. Render reads this file and creates the service + disk.
+# Render Blueprint for the J81 tree (Bot + Analyser + Researcher).
 #
-# NOTE: a persistent disk and an always-on (non-sleeping) instance require a
-# paid Render instance. On the free tier the service sleeps on inactivity, so
-# the 24/7 autonomous scheduler would pause between requests and a disk can't
-# be attached. For true 24/7 keep `plan: starter` (or higher).
+# Deploy: push this repo to GitHub → Render → "New +" → "Blueprint" → pick the
+# repo. Render reads this file and creates the 3 services + their disks.
+#
+# The Bot (j81-trade-desk) is the PUBLIC, client-facing URL. It calls the Analyser
+# over its public URL; the Researcher feeds the Analyser strategies.
+#
+# COST/UPTIME: 24/7 (no sleeping) + persistent disks need PAID instances
+# (plan: starter, ~$7/mo each). Minimum to run the trading app = j81-trade-desk +
+# j81-analyser. j81-researcher is optional (adds strategy gathering) — comment
+# it out to save cost.
+#
+# AFTER FIRST DEPLOY: confirm each service's real URL in the dashboard. If
+# Render appended a suffix to a name, update the *_URL env vars below to match.
+
 services:
+  # ---------------- BOT (public, client-facing) ----------------
   - type: web
-    name: j81-deriv-researcher
+    name: j81-trade-desk
     runtime: docker
-    dockerfilePath: ./research-app/Dockerfile
-    dockerContext: ./research-app
+    dockerfilePath: ./bot-app/Dockerfile
+    dockerContext: ./bot-app
     plan: starter
     healthCheckPath: /health
     autoDeploy: true
     disk:
-      name: j81-data
+      name: j81-trade-desk-data
       mountPath: /var/data
       sizeGB: 1
     envVars:
@@ -24,10 +33,81 @@ services:
         value: /var/data
       - key: PYTHONUNBUFFERED
         value: "1"
-      - key: ANTHROPIC_API_KEY
-        sync: false        # set this secret in the Render dashboard
-      - key: EXTRACTOR_MODEL
-        value: claude-opus-4-7
-      # Optional: point at the Logging/Backtest app once it exists.
-      - key: LOGGING_APP_URL
+      # Master safety switch — keep true until you've tested on demo.
+      - key: DRY_RUN
+        value: "true"
+      # Where the Bot reads decisions / scan from (the Analyser service URL).
+      - key: ANALYSER_URL
+        value: https://j81-analyser.onrender.com
+      # STABLE encryption key for stored tokens. Generate once, paste in the
+      # dashboard. If this ever changes, previously stored tokens break.
+      - key: BOT_ENCRYPTION_KEY
         sync: false
+      # Your Deriv app + OAuth (after registering at api.deriv.com/dashboard).
+      - key: DERIV_APP_ID
+        sync: false
+      - key: DERIV_OAUTH_REDIRECT_URI
+        value: https://j81-trade-desk.onrender.com/oauth/callback
+      # New-platform OAuth2 (PKCE): set the token URL to enable it; blank = legacy.
+      - key: DERIV_OAUTH_TOKEN_URL
+        sync: false
+      - key: DERIV_MARKUP_PERCENT
+        value: "2"
+      # Your referral link (public).
+      - key: DERIV_REFERRAL_URL
+        value: https://track.deriv.com/_6uqV-95nzXtZl7VyVw174GNd7ZgqdRLk/1/
+
+  # ---------------- ANALYSER (brain + scanner + comms hub) ----------------
+  - type: web
+    name: j81-analyser
+    runtime: docker
+    dockerfilePath: ./analyser-app/Dockerfile
+    dockerContext: ./analyser-app
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: j81-analyser-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: RESEARCHER_URL
+        value: https://j81-researcher.onrender.com
+      # Optional: protect the ingest endpoints with a bearer token.
+      - key: INCOMING_API_KEY
+        sync: false
+
+  # ---------------- RESEARCHER (optional — gathers strategies) ----------------
+  - type: web
+    name: j81-researcher
+    runtime: docker
+    dockerfilePath: ./research-app/Dockerfile
+    dockerContext: ./research-app
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: j81-researcher-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # On Gemini (free tier) — set GOOGLE_API_KEY in the dashboard.
+      - key: LLM_PROVIDER
+        value: google
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      # Ship the gathered library to the Analyser + obey it as the comms hub.
+      - key: LOGGING_APP_URL
+        value: https://j81-analyser.onrender.com
+      - key: COMMS_HUB_URL
+        value: https://j81-analyser.onrender.com

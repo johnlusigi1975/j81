@@ -1,0 +1,12 @@
+# J81 Bot — Phase 3.1 (OAuth + encrypted token store + DRY_RUN trade executor)
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.10
+pydantic-settings>=2.7
+httpx>=0.28
+
+# Deriv WebSocket
+websockets>=12.0
+
+# Token encryption at rest (Fernet — AES-128 + HMAC)
+cryptography>=42.0

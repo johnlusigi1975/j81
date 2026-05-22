@@ -23,7 +23,9 @@ def _config_path() -> Path:
 
 class AutonomousConfig(BaseModel):
     enabled: bool = False
-    interval_seconds: int = Field(default=3600, ge=60)
+    # 10-minute default so the tree keeps producing. On a paid LLM (Opus) this
+    # adds up — use Gemini's free tier for frequent cycles, or raise this.
+    interval_seconds: int = Field(default=600, ge=60)
     max_results_per_source: int = Field(default=5, ge=1, le=25)
 
 
@@ -107,11 +109,43 @@ def _default_topics() -> list[ResearchTopic]:
     ]
 
 
+class ExtractionConfig(BaseModel):
+    """Controls how hard J81 tries to find strategies when a link is sparse."""
+
+    # If a study-link finds fewer strategies than this, J81 will broaden the
+    # search using terms from the page and run extra research cycles. Set to
+    # 0 to disable the broaden behaviour entirely.
+    min_strategies_target: int = Field(default=2, ge=0, le=10)
+    # Hard budget on broaden iterations (each runs the full source pipeline).
+    # Tradeoff: higher = more thorough, more API tokens used.
+    max_broaden_iterations: int = Field(default=2, ge=0, le=5)
+    # How many results per source on each broaden attempt.
+    broaden_results_per_source: int = Field(default=3, ge=1, le=10)
+
+
+class LibrarySharing(BaseModel):
+    """How and when the gathered library is shipped to the J81 analyser."""
+
+    auto_send_to_analyser: bool = False
+    auto_send_interval_seconds: int = Field(default=7200, ge=300)  # default 2h
+    auto_send_after_study_link: bool = False
+    # Fire the analyser-send after every N autonomous research cycles.
+    # 0 = disabled (use the time-based loop instead). 2 = "ship every other cycle".
+    auto_send_every_n_cycles: int = Field(default=0, ge=0, le=100)
+    archive_after_send: bool = True  # frees the library for fresh data
+
+
 class ResearchConfig(BaseModel):
     autonomous: AutonomousConfig = Field(default_factory=AutonomousConfig)
     sources: SourceToggles = Field(default_factory=SourceToggles)
     focus: FocusToggles = Field(default_factory=FocusToggles)
     topics: list[ResearchTopic] = Field(default_factory=_default_topics)
+    sharing: LibrarySharing = Field(default_factory=LibrarySharing)
+    extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
+    # Per-trade-type search weighting, set by the Analyser via balance
+    # commands. Higher weight = more results pulled for topics of that type.
+    # Empty = all weighted 1.0.
+    trade_type_weights: dict[str, float] = Field(default_factory=dict)
 
 
 def load_config() -> ResearchConfig:

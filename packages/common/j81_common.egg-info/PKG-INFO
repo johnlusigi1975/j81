@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: j81-common
+Version: 0.1.0
+Summary: Shared HTTP client, auth, and event-bus helpers for J81 services
+Requires-Python: >=3.10
+Requires-Dist: httpx>=0.28
+Requires-Dist: fastapi>=0.115
+Requires-Dist: pydantic>=2.10
+Requires-Dist: tenacity>=9.0
+Requires-Dist: j81-contracts>=0.1.0
+Provides-Extra: redis
+Requires-Dist: redis>=5.0; extra == "redis"

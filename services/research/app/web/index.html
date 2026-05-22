@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>J81 Deriv Researcher</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2305060a'/><text x='16' y='22' font-family='ui-sans-serif,system-ui' font-size='16' font-weight='700' text-anchor='middle' fill='%2376e4ff'>J81</text></svg>"/>
+<style>
+  :root {
+    --bg: #04131c;                    /* deep abyssal water */
+    --bg-elev: #0a1f2c;
+    --bg-card: rgba(10, 32, 48, 0.62); /* tinted glass over ocean */
+    --border: rgba(118, 228, 255, 0.12);
+    --border-strong: rgba(118, 228, 255, 0.22);
+    --text: #e7f4fb;
+    --text-dim: #9fb6c5;
+    --text-faint: #5d7585;
+    --accent: #76e4ff;                /* surface light through water */
+    --accent-dim: rgba(118, 228, 255, 0.18);
+    --good: #4ade80;
+    --bad: #f87171;
+    --warn: #fbbf24;
+    --radius: 14px;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;        /* tells the browser native UI (dropdowns,
+                                  scrollbars, form controls) is dark-themed */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      /* sunlight from above filtering down through water */
+      radial-gradient(1400px 700px at 50% -200px, rgba(186, 240, 255, 0.10), transparent 65%),
+      /* warm reef glow on the right */
+      radial-gradient(1000px 700px at 95% 10%, rgba(60, 200, 220, 0.10), transparent 60%),
+      /* deep current on the left */
+      radial-gradient(1000px 800px at -10% 30%, rgba(40, 110, 200, 0.14), transparent 60%),
+      /* abyssal teal base */
+      linear-gradient(180deg, #052233 0%, #04131c 55%, #03101a 100%);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01", "cv11";
+    line-height: 1.5;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* slow drifting "current" — a soft conic gradient that rotates very gently */
+  body::before {
+    content: "";
+    position: fixed; inset: -25%;
+    background:
+      conic-gradient(from 0deg at 50% 50%,
+        rgba(118, 228, 255, 0.04) 0deg,
+        transparent 90deg,
+        rgba(80, 160, 220, 0.05) 180deg,
+        transparent 270deg,
+        rgba(118, 228, 255, 0.04) 360deg);
+    filter: blur(60px);
+    z-index: -1;
+    animation: drift 60s linear infinite;
+    pointer-events: none;
+  }
+  /* faint "caustics" — diagonal light ripples gently breathing */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(115deg, transparent 40%, rgba(160, 230, 255, 0.025) 50%, transparent 60%),
+      linear-gradient(65deg,  transparent 40%, rgba(160, 230, 255, 0.02)  50%, transparent 60%);
+    background-size: 1200px 1200px, 900px 900px;
+    z-index: -1;
+    animation: caustics 24s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes drift    { to { transform: rotate(360deg); } }
+  @keyframes caustics {
+    0%   { background-position: 0px 0px, 0px 0px; opacity: 0.7; }
+    100% { background-position: 200px 120px, -160px 100px; opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body::before, body::after { animation: none; }
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: var(--mono); }
+
+  /* ---- top nav --------------------------------------------------------- */
+  .nav {
+    position: sticky; top: 0; z-index: 5;
+    background: rgba(4, 19, 28, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    max-width: 1180px; margin: 0 auto;
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 10px;
+    font-weight: 700; letter-spacing: -0.01em;
+  }
+  .brand .mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #b6f1ff 0%, #5fcadd 45%, #2470c0 100%);
+    color: #04131c; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transform: translateY(4px);
+    box-shadow: 0 0 16px rgba(118, 228, 255, 0.35);
+  }
+  .brand .name { font-size: 18px; }
+  .brand .sub { font-size: 13px; color: var(--text-dim); font-weight: 500; }
+  .nav-spacer { flex: 1; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.02);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+  .pill.ok .dot { background: var(--good); box-shadow: 0 0 8px var(--good); }
+  .pill.warn .dot { background: var(--warn); }
+  .pill.off .dot { background: var(--text-faint); }
+  .pill.live { color: var(--text); border-color: var(--border-strong); }
+
+  /* ---- hero ------------------------------------------------------------ */
+  .hero {
+    max-width: 1180px; margin: 0 auto;
+    padding: 56px 28px 24px;
+  }
+  .hero h1 {
+    font-size: 42px; line-height: 1.08; letter-spacing: -0.02em;
+    margin: 0 0 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #b8c0d2 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p {
+    margin: 0; color: var(--text-dim); max-width: 720px;
+    font-size: 17px;
+  }
+  .hero .grad-accent {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+  }
+
+  /* ---- grid + cards ---------------------------------------------------- */
+  .grid {
+    max-width: 1180px; margin: 0 auto;
+    padding: 32px 28px 80px;
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px;
+  }
+  .card {
+    grid-column: span 12;
+    background: var(--bg-card);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 22px 20px;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 30%);
+  }
+  .card.span-7 { grid-column: span 12; }
+  .card.span-5 { grid-column: span 12; }
+  @media (min-width: 960px) {
+    .card.span-7 { grid-column: span 7; }
+    .card.span-5 { grid-column: span 5; }
+    .card.span-6 { grid-column: span 6; }
+  }
+  .card h2 {
+    margin: 0 0 4px; font-size: 16px; letter-spacing: -0.005em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card .lede { color: var(--text-dim); font-size: 13px; margin: 0 0 16px; }
+  .card .icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--accent-dim); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .card .icon svg { width: 14px; height: 14px; }
+
+  /* ---- form bits ------------------------------------------------------- */
+  label { display: block; font-size: 12px; color: var(--text-dim); margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  input[type=text], input[type=url], select, textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px; padding: 11px 13px;
+    font-family: inherit; font-size: 14px;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    background: rgba(255,255,255,0.05);
+  }
+  /* dark-themed dropdown options (the popup the browser opens on click) */
+  select option, select optgroup {
+    background-color: #0a1f2c;
+    color: var(--text);
+  }
+  select option:checked {
+    background-color: #123247;
+    color: #ffffff;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 0; }
+  .checks { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .check {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 13px; color: var(--text-dim);
+    user-select: none;
+  }
+  .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    padding: 11px 16px; border-radius: 10px;
+    background: linear-gradient(180deg, #76e4ff 0%, #5fb5d6 100%);
+    color: #04121a;
+    transition: transform .08s, opacity .15s, filter .15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+  .btn.danger {
+    background: transparent; color: var(--bad);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+  }
+  .btn .spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid currentColor; border-top-color: transparent;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+
+  /* ---- output panels --------------------------------------------------- */
+  .panel {
+    margin-top: 14px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+    font-size: 13px;
+  }
+  .panel.empty { color: var(--text-faint); text-align: center; padding: 22px; }
+  .panel.error { border-color: rgba(248, 113, 113, 0.35); color: var(--bad); }
+  .panel-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .panel-row:last-child { border-bottom: 0; }
+  .panel-row .k { color: var(--text-dim); }
+  .panel-row .v { color: var(--text); font-family: var(--mono); font-size: 12.5px; }
+
+  .item {
+    padding: 12px 0; border-bottom: 1px dashed var(--border);
+  }
+  .item:last-child { border-bottom: 0; }
+  .item .title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .item .meta { font-size: 12px; color: var(--text-faint); display: flex; gap: 10px; flex-wrap: wrap; }
+  .item .meta .tag { padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,0.05); color: var(--text-dim); }
+  .item .meta .tag.cat { color: var(--accent); background: var(--accent-dim); }
+  .item p.body { margin: 6px 0 0; color: var(--text-dim); font-size: 13px; }
+
+  details.group {
+    border: 1px solid var(--border); border-radius: 10px;
+    margin-top: 10px; overflow: hidden;
+  }
+  details.group[open] { background: rgba(255,255,255,0.015); }
+  details.group > summary {
+    cursor: pointer; padding: 11px 14px;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; font-size: 14px;
+  }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary .count {
+    font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+    padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.05);
+  }
+  details.group > .group-body { padding: 0 14px 12px; }
+
+  .secret {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(255,255,255,0.05); padding: 8px 10px;
+    border-radius: 8px; word-break: break-all; color: var(--accent);
+    border: 1px dashed var(--accent-dim);
+  }
+  .warning {
+    margin-top: 8px; padding: 8px 12px;
+    border-radius: 8px; background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    color: var(--warn); font-size: 12.5px;
+  }
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-top: 12px;
+  }
+  .stat {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+  }
+  .stat .n { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .stat .l { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+  /* -- new: "How it works" intro strip ---------------------------------- */
+  .how {
+    max-width: 1180px; margin: 0 auto;
+    padding: 8px 28px 8px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  @media (max-width: 760px) { .how { grid-template-columns: 1fr; } }
+  .how-step {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(118, 228, 255, 0.04), transparent);
+    border-radius: 12px; padding: 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .how-step .num {
+    flex-shrink: 0;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent-dim); color: var(--accent);
+    font-weight: 700; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .how-step h3 { margin: 0 0 4px; font-size: 14px; }
+  .how-step p  { margin: 0; font-size: 13px; color: var(--text-dim); line-height: 1.45; }
+
+  /* -- new: small "?" helper popover next to labels --------------------- */
+  details.help { display: inline-block; vertical-align: middle; margin-left: 6px; }
+  details.help > summary {
+    cursor: pointer; list-style: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: rgba(118, 228, 255, 0.12); color: var(--accent);
+    font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    vertical-align: middle;
+  }
+  details.help > summary::-webkit-details-marker { display: none; }
+  details.help[open] > summary { background: var(--accent); color: #04131c; }
+  details.help .help-body {
+    margin-top: 6px; padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(4, 19, 28, 0.85);
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim); font-size: 12.5px; line-height: 1.5;
+    font-weight: normal; text-transform: none; letter-spacing: normal;
+    max-width: 360px;
+  }
+
+  /* -- new: toast notifications ---------------------------------------- */
+  #toasts {
+    position: fixed; top: 76px; right: 20px; z-index: 50;
+    display: flex; flex-direction: column; gap: 10px;
+    max-width: 360px; pointer-events: none;
+  }
+  .toast {
+    background: rgba(10, 32, 48, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 12px 14px;
+    color: var(--text); font-size: 13.5px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    animation: toast-in .25s ease-out;
+    pointer-events: auto;
+  }
+  .toast.ok   { border-left-color: var(--good); }
+  .toast.err  { border-left-color: var(--bad); }
+  .toast .t   { font-weight: 600; margin-bottom: 2px; }
+  .toast .b   { color: var(--text-dim); font-size: 12.5px; }
+  @keyframes toast-in {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  /* -- share section inside the library card ---------------------------- */
+  .share {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px dashed var(--border);
+  }
+  .share h3 { margin: 0 0 4px; font-size: 14px; }
+  .share .lede { font-size: 12.5px; margin: 0 0 12px; }
+  .share-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px; margin-bottom: 8px;
+  }
+  .share .reveal {
+    margin-top: 10px; padding: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .share .reveal[hidden] { display: none; }
+  .share .autos {
+    margin-top: 14px; padding: 12px;
+    background: rgba(118, 228, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .share .autos h4 { margin: 0 0 8px; font-size: 13px; }
+  .share .autos label { display: flex; align-items: center; gap: 8px;
+    text-transform: none; letter-spacing: normal; font-size: 13px;
+    color: var(--text); margin-bottom: 6px; cursor: pointer; }
+  .share .autos input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  .share .autos input[type=number] { width: 60px; padding: 4px 6px; font-size: 13px; }
+  .share-status { margin-top: 10px; font-size: 12.5px; }
+
+  /* -- connectors registry --------------------------------------------- */
+  .conn-list { margin-top: 8px; }
+  .conn-item {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding: 12px 0; border-bottom: 1px dashed var(--border);
+    align-items: center;
+  }
+  .conn-item:last-child { border-bottom: 0; }
+  .conn-item .meta { font-size: 12px; color: var(--text-faint); display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .conn-item .meta .tag { padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,0.05); color: var(--text-dim); }
+  .conn-item .meta .tag.kind { color: var(--accent); background: var(--accent-dim); }
+  .conn-item .meta .tag.off { color: var(--bad); }
+  .conn-item .actions { gap: 6px; margin-top: 0; }
+  .conn-item .actions .btn { padding: 6px 10px; font-size: 12px; }
+  .conn-form { display: none; margin-top: 10px; padding: 14px; border-radius: 10px;
+    background: rgba(118, 228, 255, 0.04); border: 1px solid var(--border); }
+  .conn-form.open { display: block; }
+  .conn-form .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 640px) { .conn-form .grid2 { grid-template-columns: 1fr; } }
+  .conn-auth-fields > div { margin-top: 8px; }
+
+  /* -- new: card entrance animation (one-time on load) ------------------ */
+  .card { animation: card-in .55s cubic-bezier(.2,.7,.2,1) backwards; }
+  .card:nth-child(2) { animation-delay: .06s; }
+  .card:nth-child(3) { animation-delay: .12s; }
+  .card:nth-child(4) { animation-delay: .18s; }
+  .card:nth-child(5) { animation-delay: .24s; }
+  @keyframes card-in {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none; }
+  }
+
+  footer {
+    max-width: 1180px; margin: 0 auto;
+    padding: 24px 28px 60px;
+    color: var(--text-faint); font-size: 12.5px;
+    display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <span class="mark">J81</span>
+      <span class="name">J81 Deriv Researcher</span>
+      <span class="sub">v0.3</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="pills" id="status-pills">
+      <span class="pill"><span class="dot"></span>connecting...</span>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>Gather, arrange by <span class="grad-accent">trade type</span>, send to be tested.</h1>
+  <p>J81 reads the internet for you — articles, YouTube videos, Reddit threads, TikTok and Instagram posts — picks out trading ideas about Deriv, sorts them neatly, and hands them to the next app to be tested. It can run on its own day and night.</p>
+</header>
+
+<section class="how">
+  <div class="how-step">
+    <span class="num">1</span>
+    <div><h3>It looks</h3><p>J81 searches the web in any language. You can also paste a link you've seen.</p></div>
+  </div>
+  <div class="how-step">
+    <span class="num">2</span>
+    <div><h3>It sorts</h3><p>Every idea or rule it finds is grouped by trade type (Rise/Fall, Even/Odd, …).</p></div>
+  </div>
+  <div class="how-step">
+    <span class="num">3</span>
+    <div><h3>It hands off</h3><p>The sorted ideas are sent to the testing app so you only act on the ones that work.</p></div>
+  </div>
+</section>
+
+<div id="toasts" aria-live="polite"></div>
+
+<main class="grid">
+
+  <!-- STUDY A LINK ------------------------------------------------------- -->
+  <section class="card span-7">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1-1"/></svg></span> Study a link</h2>
+    <p class="lede">Saw a video or article about Deriv? Paste the link here — J81 will read the whole thing for you and pull out what matters.</p>
+    <label for="url">Paste the link here</label>
+    <input type="url" id="url" placeholder="https://..." />
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label for="trade-type">Trade type<details class="help"><summary>?</summary><div class="help-body"><strong>Trade type</strong> is the kind of Deriv contract the idea is meant for — e.g. Rise/Fall (will price go up or down?), Even/Odd (will the last digit be even or odd?). Pick what matches the link's topic; J81 uses it to label any strategies it finds.</div></details></label>
+        <select id="trade-type">
+          <option value="rise_fall">Rise / Fall</option>
+          <option value="even_odd">Even / Odd</option>
+          <option value="over_under">Over / Under</option>
+          <option value="matches_differs">Matches / Differs</option>
+          <option value="touch_no_touch">Touch / No Touch</option>
+          <option value="higher_lower">Higher / Lower</option>
+          <option value="asian">Asian</option>
+        </select>
+      </div>
+      <div>
+        <label>What to look for<details class="help"><summary>?</summary><div class="help-body"><strong>Strategies</strong> = concrete buy/sell rules that can be tested. <strong>Updates / rules / sentiment</strong> = anything else worth knowing — how Deriv works, what people are saying, news, warnings. Leave both on to capture everything.</div></details></label>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="f-strat" checked /> Strategies</label>
+          <label class="check"><input type="checkbox" id="f-updates" checked /> Updates / rules / sentiment</label>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="study-btn">Study link</button>
+      <span class="lede" id="study-hint" style="margin:0">Only public web links — private addresses are blocked for safety.</span>
+    </div>
+    <div id="study-result"></div>
+  </section>
+
+  <!-- AUTONOMOUS --------------------------------------------------------- -->
+  <section class="card span-5">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span> Run it 24/7<details class="help"><summary>?</summary><div class="help-body"><strong>Autonomous</strong> means J81 keeps researching on its own, on the topics you've set up, even when you're not watching. Press <em>Start</em> to turn it on, <em>Stop</em> to pause. Safe to toggle any time.</div></details></h2>
+    <p class="lede">Let J81 keep searching on its own, day and night. You can start or stop it any time.</p>
+    <div id="auto-panel" class="panel empty">loading...</div>
+    <div class="actions">
+      <button class="btn" id="auto-start">Start</button>
+      <button class="btn ghost" id="auto-stop">Stop</button>
+      <button class="btn ghost" id="auto-refresh">Refresh</button>
+    </div>
+  </section>
+
+  <!-- LIBRARY ------------------------------------------------------------ -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13"/><path d="M4 19h16"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span> Your library<details class="help"><summary>?</summary><div class="help-body">Everything J81 has found so far — neatly grouped by trade type. Click a group to expand it. This is exactly what gets handed to the testing app.</div></details></h2>
+    <p class="lede">All the ideas and notes J81 has gathered, sorted into folders by trade type.</p>
+    <div id="library"></div>
+    <div class="actions">
+      <button class="btn ghost" id="lib-refresh">Refresh library</button>
+    </div>
+
+    <div class="share">
+      <h3>Send or share this library<details class="help"><summary>?</summary><div class="help-body">Ship what's gathered above to wherever you want to test it. The "J81 Analyser" button uses the address you set in <code>LOGGING_APP_URL</code>; "webhook" sends to any other URL you paste (handy if a friend has their own analyser); "email" attaches the data as JSON; "share" opens your phone or laptop's share sheet so you can send it via WhatsApp, Telegram, Messages, etc.</div></details></h3>
+      <p class="lede">Pick a destination below. The whole library (every trade-type folder) is sent in one go.</p>
+
+      <div class="share-grid">
+        <button class="btn"        id="share-analyser">Send to J81 Analyser</button>
+        <button class="btn ghost"  id="share-webhook-btn">Send to a webhook…</button>
+        <button class="btn ghost"  id="share-email-btn">Email it…</button>
+        <button class="btn ghost"  id="share-os">Share via my device</button>
+        <button class="btn ghost"  id="share-download">Download as JSON</button>
+      </div>
+
+      <div class="reveal" id="share-webhook" hidden>
+        <label>Webhook URL (someone else's analyser)</label>
+        <input type="url" id="webhook-url" placeholder="https://my-analyser.example.com" />
+        <label style="margin-top:8px">Bearer token (optional)</label>
+        <input type="text" id="webhook-key" placeholder="leave empty if not needed" />
+        <div class="actions">
+          <button class="btn" id="webhook-send">Send to this webhook</button>
+        </div>
+      </div>
+
+      <div class="reveal" id="share-email" hidden>
+        <label>Recipient email</label>
+        <input type="email" id="email-to" placeholder="me@example.com" />
+        <div class="actions">
+          <button class="btn" id="email-send">Send via server</button>
+          <button class="btn ghost" id="email-mailto">Open my mail app instead</button>
+        </div>
+        <p class="lede" id="email-hint" style="margin-top:8px">If your server doesn't have email set up, use the second button — it opens your default mail app pre-filled.</p>
+      </div>
+
+      <div class="autos">
+        <h4>Automatic sending</h4>
+        <label><input type="checkbox" id="auto-analyser" /> Send to J81 Analyser every
+          <input type="number" id="auto-interval-min" min="5" max="1440" /> minutes</label>
+        <label><input type="checkbox" id="auto-after-link" /> Also send right after each studied link</label>
+        <label><input type="checkbox" id="auto-archive" /> Clear the library after sending (frees space for fresh data)</label>
+      </div>
+
+      <div id="share-status" class="share-status panel empty">no sends yet</div>
+    </div>
+  </section>
+
+  <!-- API CONNECTIONS ---------------------------------------------------- -->
+  <section class="card">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7H6a4 4 0 0 0 0 8h3"/><path d="M15 17h3a4 4 0 0 0 0-8h-3"/><path d="M9 12h6"/></svg></span> API connections<details class="help"><summary>?</summary><div class="help-body">Save every analyser (or any other service) J81 should talk to as a named <em>connector</em>. The library is fanned out to every enabled analyser automatically; you can also pick one connector and send to it on demand. Supports Bearer, Basic, custom header and query-param auth — works with most APIs out there.</div></details></h2>
+    <p class="lede">Add the J81 Analyser, a friend's analyser, or any other service that should receive the library.</p>
+    <div id="conn-list" class="conn-list"></div>
+    <div class="actions">
+      <button class="btn" id="conn-add-btn">Add a connection</button>
+      <button class="btn ghost" id="conn-refresh">Refresh</button>
+      <button class="btn ghost" id="conn-fanout">Send library to all analysers</button>
+    </div>
+
+    <div class="conn-form" id="conn-form">
+      <div class="grid2">
+        <div><label>Name</label>
+          <input type="text" id="cf-name" placeholder="My J81 Analyser" /></div>
+        <div><label>Kind</label>
+          <select id="cf-kind">
+            <option value="analyser">analyser (receives library)</option>
+            <option value="webhook">webhook (generic sink)</option>
+          </select></div>
+      </div>
+      <div style="margin-top:8px"><label>Base URL</label>
+        <input type="url" id="cf-url" placeholder="https://analyser.example.com" /></div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Auth</label>
+          <select id="cf-auth-kind">
+            <option value="none">none</option>
+            <option value="bearer">Bearer token</option>
+            <option value="basic">HTTP Basic (user + pass)</option>
+            <option value="header">Custom header</option>
+            <option value="query">Query parameter</option>
+          </select></div>
+        <div><label>Payload</label>
+          <select id="cf-payload">
+            <option value="split">split (POST /strategies + /insights — J81 native)</option>
+            <option value="single">single (one POST with the full library)</option>
+          </select></div>
+      </div>
+      <div class="conn-auth-fields" id="cf-auth-fields"></div>
+      <div class="actions">
+        <button class="btn" id="conn-save">Save connection</button>
+        <button class="btn ghost" id="conn-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONNECT A BOT ------------------------------------------------------ -->
+  <section class="card span-6">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3"/><circle cx="9" cy="13" r="1.4"/><circle cx="15" cy="13" r="1.4"/></svg></span> Connect a bot<details class="help"><summary>?</summary><div class="help-body">Have a trading bot already? Register it here to get a one-time key. Your bot then sends every trade it makes to J81 so you have a full record. Skip this section if you don't run a bot yet.</div></details></h2>
+    <p class="lede">If you already use a trading bot, give it a key so it can send its trade history here.</p>
+    <div id="bot-section"></div>
+  </section>
+
+  <!-- BOT STATS ---------------------------------------------------------- -->
+  <section class="card span-6">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><rect x="6" y="11" width="3" height="8"/><rect x="11" y="6" width="3" height="13"/><rect x="16" y="14" width="3" height="5"/></svg></span> Your bot's results</h2>
+    <p class="lede">How your bot has been doing — total trades, win rate, profit so far.</p>
+    <div id="stats-section" class="panel empty">Connect a bot in the panel on the left first, then come back here.</div>
+  </section>
+
+</main>
+
+<footer>
+  <span>J81 Deriv Researcher — strategy + insight research, arranged by trade type.</span>
+  <span><a href="/docs">API reference</a> &middot; <a href="/health">/health</a> &middot; <a href="/library">/library</a></span>
+</footer>
+
+<script>
+// --- tiny fetch helper ------------------------------------------------------
+async function api(path, opts = {}) {
+  const r = await fetch(path, {
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    ...opts,
+  });
+  let body = null;
+  try { body = await r.json(); } catch (_) {}
+  if (!r.ok) throw new Error((body && (body.detail || body.error)) || `HTTP ${r.status}`);
+  return body;
+}
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function withSpin(btn, on) {
+  if (on) { btn.dataset._label = btn.innerHTML; btn.innerHTML = '<span class="spin"></span>working...'; btn.disabled = true; }
+  else { btn.innerHTML = btn.dataset._label || btn.innerHTML; btn.disabled = false; }
+}
+// Toast notifications — small confirmations / errors that appear top-right
+// and fade out automatically. Pass kind: "ok" | "err" | "" (neutral).
+function toast(title, body = "", kind = "") {
+  const wrap = $("toasts");
+  const el = document.createElement("div");
+  el.className = "toast" + (kind ? " " + kind : "");
+  el.innerHTML = `<div class="t">${esc(title)}</div>${body ? `<div class="b">${esc(body)}</div>` : ""}`;
+  wrap.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = "opacity .3s, transform .3s";
+    el.style.opacity = "0"; el.style.transform = "translateX(20px)";
+    setTimeout(() => el.remove(), 320);
+  }, 4200);
+}
+
+// --- status pills -----------------------------------------------------------
+async function loadHealth() {
+  const pills = $("status-pills");
+  try {
+    const h = await api("/health");
+    const auto = h.autonomous_enabled
+      ? `<span class="pill ok live"><span class="dot"></span>autonomous on</span>`
+      : `<span class="pill off"><span class="dot"></span>autonomous off</span>`;
+    const llm = h.llm_configured
+      ? `<span class="pill ok"><span class="dot"></span>LLM configured</span>`
+      : `<span class="pill warn"><span class="dot"></span>no ANTHROPIC_API_KEY</span>`;
+    pills.innerHTML = `${auto}${llm}<span class="pill"><span class="dot"></span>${esc(h.model)}</span><span class="pill"><span class="dot"></span>${esc(h.logging_app)}</span>`;
+  } catch (e) {
+    pills.innerHTML = `<span class="pill warn"><span class="dot"></span>${esc(e.message)}</span>`;
+  }
+}
+
+// --- study a link -----------------------------------------------------------
+$("study-btn").addEventListener("click", async () => {
+  const btn = $("study-btn"), out = $("study-result");
+  const url = $("url").value.trim();
+  if (!url) { out.innerHTML = `<div class="panel error">enter a URL first</div>`; return; }
+  const focus = [];
+  if ($("f-strat").checked) focus.push("strategies");
+  if ($("f-updates").checked) focus.push("updates");
+  withSpin(btn, true);
+  out.innerHTML = `<div class="panel empty">studying ${esc(url)}...</div>`;
+  try {
+    const r = await api("/study-link", {
+      method: "POST",
+      body: JSON.stringify({ url, trade_type: $("trade-type").value, focus, push_to_logging_app: true }),
+    });
+    out.innerHTML = renderStudyResult(r);
+    if (r.fetched) {
+      toast("Link studied",
+        `${r.strategies.length} strateg${r.strategies.length===1?"y":"ies"} · ${r.insights.length} insight${r.insights.length===1?"":"s"}`,
+        "ok");
+    } else {
+      toast("Couldn't study that link", r.error || "unknown reason", "err");
+    }
+    loadLibrary();
+  } catch (e) {
+    out.innerHTML = `<div class="panel error">${esc(e.message)}</div>`;
+    toast("Something went wrong", e.message, "err");
+  } finally { withSpin(btn, false); }
+});
+function renderStudyResult(r) {
+  if (!r.fetched) return `<div class="panel error">could not study: ${esc(r.error || "unknown")}</div>`;
+  const meta = `<div class="panel"><div class="panel-row"><span class="k">platform</span><span class="v">${esc(r.platform)}</span></div>${r.title ? `<div class="panel-row"><span class="k">title</span><span class="v">${esc(r.title)}</span></div>` : ""}<div class="panel-row"><span class="k">strategies extracted</span><span class="v">${r.strategies.length}</span></div><div class="panel-row"><span class="k">insights extracted</span><span class="v">${r.insights.length}</span></div><div class="panel-row"><span class="k">pushed</span><span class="v">${r.pushed} strategies / ${r.insights_pushed} insights</span></div></div>`;
+  const slist = r.strategies.length ? `<div class="panel"><strong style="font-size:13px">Strategies</strong>${r.strategies.map(s => `
+    <div class="item"><div class="title">${esc(s.name)}</div>
+      <div class="meta"><span class="tag cat">${esc(s.trade_type)}</span><span class="tag">conf ${Number(s.confidence).toFixed(2)}</span></div>
+      ${s.description ? `<p class="body">${esc(s.description)}</p>` : ""}
+    </div>`).join("")}</div>` : "";
+  const ilist = r.insights.length ? `<div class="panel"><strong style="font-size:13px">Insights</strong>${r.insights.map(i => `
+    <div class="item"><div class="title">${esc(i.summary)}</div>
+      <div class="meta"><span class="tag cat">${esc(i.category)}</span>${i.trade_type ? `<span class="tag">${esc(i.trade_type)}</span>` : `<span class="tag">general</span>`}<span class="tag">${esc(i.sentiment)}</span></div>
+      ${i.details ? `<p class="body">${esc(i.details)}</p>` : ""}
+    </div>`).join("")}</div>` : "";
+  return meta + slist + ilist;
+}
+
+// --- autonomous -------------------------------------------------------------
+async function loadAuto() {
+  const p = $("auto-panel");
+  try {
+    const a = await api("/autonomous/status");
+    const c = a.config, rt = a.runtime;
+    p.classList.remove("empty", "error");
+    p.innerHTML = `
+      <div class="panel-row"><span class="k">enabled</span><span class="v">${c.enabled ? "ON" : "off"}</span></div>
+      <div class="panel-row"><span class="k">interval</span><span class="v">${c.interval_seconds}s</span></div>
+      <div class="panel-row"><span class="k">cycles run</span><span class="v">${rt.cycles ?? 0}</span></div>
+      <div class="panel-row"><span class="k">last run</span><span class="v">${esc(rt.last_run || "—")}</span></div>
+      <div class="panel-row"><span class="k">next run</span><span class="v">${esc(rt.next_run || "—")}</span></div>
+      ${rt.last_error ? `<div class="panel-row"><span class="k">last error</span><span class="v" style="color:var(--bad)">${esc(rt.last_error)}</span></div>` : ""}`;
+  } catch (e) {
+    p.classList.add("error"); p.textContent = e.message;
+  }
+}
+$("auto-start").addEventListener("click", async (e) => { withSpin(e.currentTarget, true); try { await api("/autonomous/start", { method: "POST" }); toast("24/7 research is on", "J81 will start its next cycle shortly.", "ok"); await loadAuto(); await loadHealth(); } catch (err) { toast("Couldn't start", err.message, "err"); } finally { withSpin(e.currentTarget, false); } });
+$("auto-stop").addEventListener("click",  async (e) => { withSpin(e.currentTarget, true); try { await api("/autonomous/stop",  { method: "POST" }); toast("24/7 research is off", "J81 will idle until you start it again.", ""); await loadAuto(); await loadHealth(); } catch (err) { toast("Couldn't stop", err.message, "err"); } finally { withSpin(e.currentTarget, false); } });
+$("auto-refresh").addEventListener("click", loadAuto);
+
+// --- library ----------------------------------------------------------------
+async function loadLibrary() {
+  const root = $("library");
+  try {
+    const lib = await api("/library");
+    const sgroups = Object.entries(lib.strategies_by_trade_type || {});
+    const igroups = Object.entries(lib.insights_by_trade_type || {});
+    if (!sgroups.length && !igroups.length) {
+      root.innerHTML = `<div class="panel empty">Nothing here yet. Two ways to fill this up:<br><br>
+        <strong>Quick:</strong> paste a link above and press <em>Study link</em> — anything J81 finds will appear here, sorted by trade type.<br>
+        <strong>Hands-off:</strong> press <em>Start</em> on the <em>Run it 24/7</em> card and J81 will keep adding to this library on its own.</div>`;
+      return;
+    }
+    const ren = (label, groups, item) => groups.length
+      ? `<h3 style="margin:18px 0 6px;font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em">${label}</h3>${groups.map(([tt, arr]) => `
+          <details class="group" ${groups.length<=2?"open":""}>
+            <summary><span>${esc(tt)}</span><span class="count">${arr.length}</span></summary>
+            <div class="group-body">${arr.slice(0, 25).map(item).join("")}</div>
+          </details>`).join("")}`
+      : "";
+    root.innerHTML = ren("Strategies", sgroups, s => `
+      <div class="item"><div class="title">${esc(s.name || "(unnamed)")}</div>
+        <div class="meta"><span class="tag">conf ${Number(s.confidence ?? 0).toFixed(2)}</span><span class="tag">${esc((s.provenance && s.provenance.platform) || "")}</span></div>
+        ${s.description ? `<p class="body">${esc(s.description)}</p>` : ""}
+      </div>`)
+      + ren("Insights", igroups, i => `
+      <div class="item"><div class="title">${esc(i.summary || "(no summary)")}</div>
+        <div class="meta"><span class="tag cat">${esc(i.category)}</span><span class="tag">${esc(i.sentiment || "n/a")}</span><span class="tag">${esc((i.provenance && i.provenance.platform) || "")}</span></div>
+      </div>`);
+  } catch (e) {
+    root.innerHTML = `<div class="panel error">${esc(e.message)}</div>`;
+  }
+}
+$("lib-refresh").addEventListener("click", loadLibrary);
+
+// --- connect a bot ----------------------------------------------------------
+const KEY_STORAGE = "j81.bot.key";
+function renderBotSection() {
+  const root = $("bot-section");
+  const k = localStorage.getItem(KEY_STORAGE);
+  if (k) {
+    root.innerHTML = `
+      <div class="panel">
+        <div class="panel-row"><span class="k">bot connected</span><span class="v">yes</span></div>
+        <div class="panel-row"><span class="k">api key (saved locally)</span><span class="v">${esc(k.slice(0, 6))}…${esc(k.slice(-4))}</span></div>
+      </div>
+      <p class="lede" style="margin-top:10px">Have your bot POST trades to <code>/trades</code> with this header:</p>
+      <div class="secret">Authorization: Bearer ${esc(k)}</div>
+      <div class="actions">
+        <button class="btn ghost" id="forget-key">Forget key</button>
+        <button class="btn" id="load-stats">Load stats</button>
+      </div>`;
+    $("forget-key").addEventListener("click", () => { localStorage.removeItem(KEY_STORAGE); renderBotSection(); $("stats-section").innerHTML = '<div class="panel empty">connect a bot first</div>'; });
+    $("load-stats").addEventListener("click", loadStats);
+  } else {
+    root.innerHTML = `
+      <label for="bot-name">Bot name</label>
+      <input type="text" id="bot-name" placeholder="MyDerivBot" />
+      <div class="actions">
+        <button class="btn" id="register-btn">Register & get key</button>
+      </div>
+      <div id="register-result"></div>`;
+    $("register-btn").addEventListener("click", registerBot);
+  }
+}
+async function registerBot(ev) {
+  const btn = ev.currentTarget, out = $("register-result");
+  const name = $("bot-name").value.trim();
+  if (!name) { out.innerHTML = `<div class="panel error">enter a name first</div>`; return; }
+  withSpin(btn, true);
+  try {
+    const r = await api("/accounts/register", { method: "POST", body: JSON.stringify({ name }) });
+    localStorage.setItem(KEY_STORAGE, r.api_key);
+    out.innerHTML = `<div class="warning">Your key is shown only once. It's saved in this browser, but copy it somewhere safe now if you'll set it up on another device or in your bot's settings.</div>`;
+    toast("Bot connected", `${name} is registered. Copy the key below into your bot.`, "ok");
+    setTimeout(renderBotSection, 50);
+  } catch (e) {
+    out.innerHTML = `<div class="panel error">${esc(e.message)}</div>`;
+    toast("Couldn't register", e.message, "err");
+  } finally { withSpin(btn, false); }
+}
+async function loadStats() {
+  const k = localStorage.getItem(KEY_STORAGE);
+  const root = $("stats-section");
+  if (!k) { root.innerHTML = `<div class="panel empty">connect a bot first</div>`; return; }
+  try {
+    const s = await api("/trades/stats", { headers: { Authorization: `Bearer ${k}` } });
+    const symBlock = Object.keys(s.by_symbol || {}).length
+      ? `<div class="panel" style="margin-top:10px"><strong style="font-size:13px">By symbol</strong>${Object.entries(s.by_symbol).map(([sym, n]) => `<div class="panel-row"><span class="k">${esc(sym)}</span><span class="v">${n}</span></div>`).join("")}</div>`
+      : "";
+    root.classList.remove("empty","error");
+    root.innerHTML = `
+      <div class="stats">
+        <div class="stat"><div class="n">${s.total}</div><div class="l">trades</div></div>
+        <div class="stat"><div class="n">${(s.win_rate*100).toFixed(1)}%</div><div class="l">win rate</div></div>
+        <div class="stat"><div class="n" style="color:${s.total_profit>=0?'var(--good)':'var(--bad)'}">${s.total_profit.toFixed(2)}</div><div class="l">P/L</div></div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <div class="panel-row"><span class="k">wins / losses</span><span class="v">${s.wins} / ${s.losses}</span></div>
+        <div class="panel-row"><span class="k">total stake</span><span class="v">${s.total_stake.toFixed(2)}</span></div>
+      </div>${symBlock}`;
+  } catch (e) {
+    root.classList.add("error"); root.textContent = e.message;
+  }
+}
+
+// --- share / send the library --------------------------------------------
+async function sendLibrary(body, btn, friendly) {
+  if (btn) withSpin(btn, true);
+  try {
+    const r = await api("/library/send", { method: "POST", body: JSON.stringify(body) });
+    if (r.sent) {
+      toast("Sent to " + friendly,
+        `${r.strategies_sent} strategies · ${r.insights_sent} insights${r.archived ? " (library cleared)" : ""}`,
+        "ok");
+      loadLibrary(); loadShareStatus();
+    } else {
+      toast("Could not send", r.error || "unknown error", "err");
+    }
+  } catch (e) {
+    toast("Send failed", e.message, "err");
+  } finally { if (btn) withSpin(btn, false); }
+}
+
+$("share-analyser").addEventListener("click", e =>
+  sendLibrary({ destination: "analyser" }, e.currentTarget, "J81 Analyser"));
+
+$("share-webhook-btn").addEventListener("click", () => {
+  const el = $("share-webhook"); el.hidden = !el.hidden;
+  $("share-email").hidden = true;
+});
+$("share-email-btn").addEventListener("click", () => {
+  const el = $("share-email"); el.hidden = !el.hidden;
+  $("share-webhook").hidden = true;
+});
+
+$("webhook-send").addEventListener("click", e => {
+  const url = $("webhook-url").value.trim();
+  if (!url) { toast("Need a URL", "Paste the webhook URL first.", "err"); return; }
+  sendLibrary({ destination: "webhook", url, api_key: $("webhook-key").value.trim() || null },
+    e.currentTarget, "webhook");
+});
+$("email-send").addEventListener("click", e => {
+  const email = $("email-to").value.trim();
+  if (!email) { toast("Need an email", "Enter the recipient address first.", "err"); return; }
+  sendLibrary({ destination: "email", email }, e.currentTarget, "email");
+});
+$("email-mailto").addEventListener("click", () => {
+  const email = $("email-to").value.trim() || "";
+  const link = location.origin + "/library.json";
+  const subj = encodeURIComponent("J81 Deriv Researcher — library export");
+  const body = encodeURIComponent(
+    "Here's my J81 library export.\n\nDownload the full JSON here:\n" + link
+    + "\n\n(Sent from the J81 Deriv Researcher homepage.)"
+  );
+  location.href = `mailto:${encodeURIComponent(email)}?subject=${subj}&body=${body}`;
+});
+
+$("share-download").addEventListener("click", () => {
+  window.location = "/library.json";
+});
+
+$("share-os").addEventListener("click", async () => {
+  if (!navigator.share) {
+    try {
+      await navigator.clipboard.writeText(location.origin + "/library.json");
+      toast("Link copied", "Your device's share menu isn't available; the library link was copied to your clipboard instead.", "ok");
+    } catch (_) {
+      toast("Not supported here", "This browser can't open a system share sheet.", "err");
+    }
+    return;
+  }
+  try {
+    await navigator.share({
+      title: "J81 Deriv Researcher — library",
+      text: "My J81 research library (JSON):",
+      url: location.origin + "/library.json",
+    });
+  } catch (_) { /* user cancelled; no toast */ }
+});
+
+// --- automatic-send toggles -> live config updates -----------------------
+async function loadShareStatus() {
+  const s = await api("/library/sharing/status").catch(() => null);
+  if (!s) return;
+  const c = s.config, rt = s.runtime;
+  $("auto-analyser").checked = c.auto_send_to_analyser;
+  $("auto-after-link").checked = c.auto_send_after_study_link;
+  $("auto-archive").checked = c.archive_after_send;
+  $("auto-interval-min").value = Math.round((c.auto_send_interval_seconds || 7200) / 60);
+  const last = rt && rt.last_result;
+  const root = $("share-status");
+  if (!last) {
+    root.classList.add("empty"); root.textContent = "no sends yet"; return;
+  }
+  root.classList.remove("empty", "error");
+  if (last.sent) {
+    root.innerHTML = `<div class="panel-row"><span class="k">last sent</span><span class="v">${esc(rt.last_send_at || "—")}</span></div>
+      <div class="panel-row"><span class="k">destination</span><span class="v">${esc(last.destination)}</span></div>
+      <div class="panel-row"><span class="k">items</span><span class="v">${last.strategies_sent}s · ${last.insights_sent}i${last.archived?" · cleared":""}</span></div>
+      ${rt.next_send_at ? `<div class="panel-row"><span class="k">next send</span><span class="v">${esc(rt.next_send_at)}</span></div>` : ""}`;
+  } else {
+    root.classList.add("error");
+    root.textContent = `last send failed: ${last.error || "unknown"}`;
+  }
+}
+async function saveShareToggles() {
+  const cfg = await api("/config");
+  cfg.sharing.auto_send_to_analyser = $("auto-analyser").checked;
+  cfg.sharing.auto_send_after_study_link = $("auto-after-link").checked;
+  cfg.sharing.archive_after_send = $("auto-archive").checked;
+  const mins = parseInt($("auto-interval-min").value || "120", 10);
+  cfg.sharing.auto_send_interval_seconds = Math.max(300, mins * 60);
+  await api("/config", { method: "PUT", body: JSON.stringify(cfg) });
+  toast("Saved", "Automatic sending updated.", "ok");
+  loadShareStatus();
+}
+["auto-analyser", "auto-after-link", "auto-archive"].forEach(id =>
+  $(id).addEventListener("change", saveShareToggles));
+$("auto-interval-min").addEventListener("change", saveShareToggles);
+
+// --- API connections registry --------------------------------------------
+async function loadConnectors() {
+  const root = $("conn-list");
+  let list;
+  try { list = await api("/connectors"); }
+  catch (e) { root.innerHTML = `<div class="panel error">${esc(e.message)}</div>`; return; }
+  if (!list.length) {
+    root.innerHTML = `<div class="panel empty">No connections saved yet. Click <em>Add a connection</em> to point J81 at your analyser.</div>`;
+    return;
+  }
+  root.innerHTML = list.map(c => `
+    <div class="conn-item" data-id="${esc(c.id)}">
+      <div>
+        <div style="font-weight:600">${esc(c.name)}</div>
+        <div class="meta">
+          <span class="tag kind">${esc(c.kind)}</span>
+          <span class="tag">${esc(c.base_url)}</span>
+          <span class="tag">${esc(c.auth.kind)}</span>
+          <span class="tag">${esc(c.payload_mode)}</span>
+          ${c.enabled ? '' : '<span class="tag off">disabled</span>'}
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" data-act="test">Test</button>
+        <button class="btn"       data-act="send">Send library</button>
+        <button class="btn ghost" data-act="toggle">${c.enabled ? "Disable" : "Enable"}</button>
+        <button class="btn danger" data-act="delete">Delete</button>
+      </div>
+    </div>`).join("");
+  // delegate clicks
+  root.querySelectorAll(".conn-item").forEach(item => {
+    const id = item.dataset.id;
+    item.querySelectorAll("[data-act]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const act = btn.dataset.act;
+        if (act === "test") {
+          withSpin(btn, true);
+          try { const r = await api(`/connectors/${id}/test`, { method: "POST" });
+            toast(r.reachable ? "Reachable" : "Unreachable",
+              r.reachable ? `HTTP ${r.status_code} · ${r.latency_ms}ms` : (r.error || "unknown"),
+              r.reachable ? "ok" : "err");
+          } catch (e) { toast("Test failed", e.message, "err"); }
+          finally { withSpin(btn, false); }
+        } else if (act === "send") {
+          withSpin(btn, true);
+          try { const r = await api(`/connectors/${id}/send-library`, { method: "POST" });
+            toast(r.sent ? "Sent" : "Send failed",
+              r.sent ? `${r.strategies_sent}s · ${r.insights_sent}i${r.archived ? " · cleared" : ""}` : (r.error || "unknown"),
+              r.sent ? "ok" : "err");
+            loadLibrary(); loadShareStatus();
+          } catch (e) { toast("Send failed", e.message, "err"); }
+          finally { withSpin(btn, false); }
+        } else if (act === "toggle") {
+          const current = list.find(c => c.id === id);
+          await api(`/connectors/${id}`, { method: "PUT", body: JSON.stringify({ enabled: !current.enabled }) });
+          loadConnectors();
+        } else if (act === "delete") {
+          if (!confirm(`Delete connector "${list.find(c=>c.id===id).name}"?`)) return;
+          await api(`/connectors/${id}`, { method: "DELETE" });
+          toast("Deleted", "Connector removed.", "ok");
+          loadConnectors();
+        }
+      });
+    });
+  });
+}
+
+// add-connector form: show conditional auth fields based on chosen kind
+function renderAuthFields(kind) {
+  const m = {
+    none:   ``,
+    bearer: `<div><label>Bearer token</label><input type="password" id="cf-token" placeholder="paste token"/></div>`,
+    basic:  `<div><label>Username</label><input type="text" id="cf-user"/></div>
+             <div><label>Password</label><input type="password" id="cf-pass"/></div>`,
+    header: `<div><label>Header name</label><input type="text" id="cf-header-name" placeholder="X-API-Key"/></div>
+             <div><label>Header value</label><input type="password" id="cf-token"/></div>`,
+    query:  `<div><label>Query param name</label><input type="text" id="cf-query-name" placeholder="api_key"/></div>
+             <div><label>Query value</label><input type="password" id="cf-token"/></div>`,
+  };
+  $("cf-auth-fields").innerHTML = m[kind] || "";
+}
+$("cf-auth-kind").addEventListener("change", e => renderAuthFields(e.target.value));
+renderAuthFields("none");
+
+$("conn-add-btn").addEventListener("click", () => {
+  $("conn-form").classList.add("open");
+  $("cf-name").focus();
+});
+$("conn-cancel").addEventListener("click", () => $("conn-form").classList.remove("open"));
+$("conn-refresh").addEventListener("click", loadConnectors);
+
+$("conn-fanout").addEventListener("click", async (e) => {
+  withSpin(e.currentTarget, true);
+  try {
+    const r = await api("/library/send", { method: "POST",
+      body: JSON.stringify({ destination: "analyser" }) });
+    if (r.sent > 0) {
+      toast("Fanned out", `${r.sent} analyser${r.sent===1?"":"s"} received the library${r.archived ? " · cleared" : ""}`, "ok");
+    } else {
+      const why = (r.results && r.results[0] && r.results[0].error) || "no enabled analyser connectors";
+      toast("Nothing sent", why, "err");
+    }
+    loadLibrary(); loadShareStatus();
+  } catch (err) { toast("Fan-out failed", err.message, "err"); }
+  finally { withSpin(e.currentTarget, false); }
+});
+
+$("conn-save").addEventListener("click", async (e) => {
+  const authKind = $("cf-auth-kind").value;
+  const auth = { kind: authKind };
+  if (authKind === "bearer")      auth.token = ($("cf-token").value || "").trim();
+  else if (authKind === "basic")  { auth.username = $("cf-user").value.trim(); auth.password = $("cf-pass").value; }
+  else if (authKind === "header") { auth.header_name = $("cf-header-name").value.trim(); auth.token = $("cf-token").value; }
+  else if (authKind === "query")  { auth.query_param = $("cf-query-name").value.trim(); auth.token = $("cf-token").value; }
+
+  const body = {
+    name: $("cf-name").value.trim(),
+    kind: $("cf-kind").value,
+    base_url: $("cf-url").value.trim(),
+    auth, payload_mode: $("cf-payload").value, enabled: true,
+  };
+  if (!body.name || !body.base_url) {
+    toast("Missing info", "Name and URL are required.", "err"); return;
+  }
+  withSpin(e.currentTarget, true);
+  try {
+    await api("/connectors", { method: "POST", body: JSON.stringify(body) });
+    toast("Connection saved", `${body.name} added.`, "ok");
+    $("conn-form").classList.remove("open");
+    ["cf-name","cf-url"].forEach(i => $(i).value = "");
+    renderAuthFields("none"); $("cf-auth-kind").value = "none";
+    loadConnectors();
+  } catch (err) { toast("Save failed", err.message, "err"); }
+  finally { withSpin(e.currentTarget, false); }
+});
+
+// --- boot -------------------------------------------------------------------
+loadHealth();
+loadAuto();
+loadLibrary();
+renderBotSection();
+loadShareStatus();
+loadConnectors();
+setInterval(loadHealth, 30000);
+setInterval(loadShareStatus, 60000);
+</script>
+</body>
+</html>

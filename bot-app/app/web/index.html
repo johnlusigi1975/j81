@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>J81 Trade Desk — smart trading on Deriv</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23080709'/><text x='16' y='22' font-family='Georgia,serif' font-size='13' font-weight='800' text-anchor='middle' fill='%23d4af37'>J81</text></svg>"/>
+<style>
+  :root{
+    /* black + gold premium palette. --amber kept as the name but gold-valued. */
+    --bg:#08070a; --panel:rgba(255,255,255,.025); --bd:rgba(212,175,55,.16); --bd2:rgba(212,175,55,.34);
+    --text:#ece7da; --dim:#b3ab98; --faint:#7a7464;
+    --amber:#d4af37; --amber2:#f1d488; --good:#54c98a; --bad:#d9637a; --warn:#e8c887;
+    --cyan:#c9b063; --violet:#cdbf8f;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:"Georgia",ui-serif,"Times New Roman",serif;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{ min-height:100vh; color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; line-height:1.5;
+    background:
+      radial-gradient(1200px 620px at 82% -220px, rgba(212,175,55,.10), transparent 60%),
+      radial-gradient(900px 600px at 0% 8%, rgba(212,175,55,.045), transparent 55%),
+      linear-gradient(180deg,#0b0a0d 0%, var(--bg) 58%, #060509 100%);}
+  ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:#374151;border-radius:99px}
+  a{color:var(--amber);text-decoration:none} code{font-family:var(--mono)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+
+  /* nav */
+  .nav{position:sticky;top:0;z-index:20;background:rgba(3,7,18,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)}
+  .nav-in{max-width:1080px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:14px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800}
+  .brand .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#f7e7b0,#d4af37 55%,#8a6d1c);color:#0a0a0a;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 0 18px rgba(212,175,55,.4)}
+  .brand>span:last-child{font-family:var(--serif);letter-spacing:.01em}
+  .nav-sp{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--bd);background:var(--panel)}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+  .navbtn{font-family:inherit;font-size:13px;color:var(--dim);background:transparent;border:1px solid var(--bd);border-radius:9px;padding:7px 13px;cursor:pointer;transition:all .12s}
+  .navbtn:hover{color:var(--text);border-color:var(--bd2)}
+
+  /* floating gold bars + cash bundles — premium wealth background (login) */
+  #money-bg{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none;display:none}
+  #money-bg::after{content:"";position:absolute;left:-10%;right:-10%;bottom:-80px;height:340px;
+    background:radial-gradient(60% 100% at 50% 100%, rgba(212,175,55,.12), transparent 72%);filter:blur(10px)}
+  .fx{position:absolute;bottom:-120px;opacity:0;animation:rise linear infinite;will-change:transform,opacity}
+  @keyframes rise{
+    0%{transform:translateY(0) translateX(0) rotate(-8deg);opacity:0}
+    12%{opacity:.9}
+    40%{transform:translateY(-36vh) translateX(26px) rotate(7deg)}
+    70%{transform:translateY(-72vh) translateX(-20px) rotate(-6deg)}
+    90%{opacity:.8}
+    100%{transform:translateY(-120vh) translateX(16px) rotate(8deg);opacity:0}}
+  .fx svg{display:block}
+  .fx .bar{filter:drop-shadow(0 10px 14px rgba(0,0,0,.55)) drop-shadow(0 0 9px rgba(212,175,55,.28))}
+  /* stacked drop-shadows = a real bundle of notes */
+  .fx .note{filter:drop-shadow(2px 3px 0 rgba(10,52,36,.95)) drop-shadow(4px 6px 0 rgba(8,44,30,.9)) drop-shadow(6px 9px 0 rgba(7,38,26,.85)) drop-shadow(0 14px 14px rgba(0,0,0,.5))}
+  /* moving glint across the gold bar */
+  .fx .bar{position:relative}
+  .fx .glint{position:absolute;inset:0;overflow:hidden;border-radius:2px;pointer-events:none}
+  .fx .glint::after{content:"";position:absolute;top:-20%;left:-40%;width:30%;height:140%;transform:rotate(8deg);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);animation:glint 4.2s ease-in-out infinite}
+  @keyframes glint{0%{left:-40%}55%,100%{left:130%}}
+
+  /* views */
+  .view{position:relative;z-index:1;display:block;padding:32px 0 80px;animation:fade .25s ease}
+  .view[hidden]{display:none}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* shared bits */
+  .btn{background:linear-gradient(180deg,#f1d488 0%,#d4af37 50%,#b3902a 100%);color:#0a0a0a;font-weight:800;border:0;border-radius:11px;padding:11px 18px;cursor:pointer;font-family:inherit;font-size:14px;letter-spacing:.01em;box-shadow:0 12px 30px -12px rgba(212,175,55,.65),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .12s,filter .12s}
+  .btn:hover{transform:translateY(-2px);filter:brightness(1.06)} .btn:active{transform:translateY(0) scale(.98)}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--bd2);box-shadow:none}
+  .btn.big{padding:14px 22px;font-size:16px;width:100%}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .glass{background:var(--panel);border:1px solid var(--bd);border-radius:18px;padding:22px;backdrop-filter:blur(14px);box-shadow:0 30px 70px -34px rgba(0,0,0,.8)}
+  .lede{color:var(--dim);font-size:14px} .faint{color:var(--faint)}
+  input,select{font-family:inherit;font-size:14px;color:var(--text);background:rgba(0,0,0,.4);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(212,175,55,.20)}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  .pill{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--bd);color:var(--dim);display:inline-flex;gap:6px;align-items:center}
+  .pill.warn{color:var(--warn);border-color:rgba(251,191,36,.4)} .pill.bad{color:var(--bad);border-color:rgba(248,113,113,.4)}
+  .empty{padding:18px;text-align:center;color:var(--faint);border:1px dashed var(--bd);border-radius:12px;font-size:13px}
+  .banner{border-radius:12px;padding:13px 15px;font-size:13.5px;margin-bottom:14px}
+  .banner.warn{background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.3);color:#fde68a}
+  .banner.live{background:rgba(248,113,113,.10);border:1px solid rgba(248,113,113,.35);color:#fecaca}
+  .banner.ok{background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.3);color:#a7f3d0}
+
+  /* connect hero */
+  .hero{text-align:center;max-width:640px;margin:18px auto 26px}
+  .hero h1{font-family:var(--serif);font-size:44px;line-height:1.1;letter-spacing:-.01em;margin:0 0 12px;background:linear-gradient(180deg,#fff,#efe6cd);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero h1 .g{background:linear-gradient(90deg,#f1d488,#d4af37 60%,#b3902a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--dim);font-size:16px;margin:0}
+  .connect-card{max-width:520px;margin:0 auto}
+  .orline{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px;margin:18px 0}
+  .orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--bd)}
+
+  /* loading */
+  .loadwrap{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
+  .ring{width:64px;height:64px;border-radius:50%;border:4px solid rgba(212,175,55,.18);border-top-color:var(--amber);animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .steps{display:flex;flex-direction:column;gap:8px;font-size:13.5px;color:var(--dim)}
+  .steps .s{opacity:.4;transition:opacity .3s} .steps .s.on{opacity:1;color:var(--text)} .steps .s.on::before{content:"✓ ";color:var(--good)}
+
+  /* home choose grid */
+  .sec-title{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:26px 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.grid{grid-template-columns:1fr}}
+  .gcard{position:relative;border-radius:16px;border:1px solid var(--bd);background:var(--panel);padding:18px;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;overflow:hidden;min-height:130px;display:flex;flex-direction:column;gap:6px}
+  .gcard:hover{transform:translateY(-3px);border-color:var(--amber);box-shadow:0 18px 40px -20px rgba(212,175,55,.45)}
+  .gcard.soon{opacity:.5;cursor:not-allowed} .gcard.soon:hover{transform:none;border-color:var(--bd);box-shadow:none}
+  .gcard .ic{font-size:22px;font-weight:800;color:var(--amber);font-family:var(--serif);letter-spacing:1px}
+  .gcard .t{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+  .gcard .d{font-size:12.5px;color:var(--dim)}
+  .badge{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:999px}
+  .badge.new{background:var(--good);color:#06210f} .badge.soon{background:rgba(255,255,255,.08);color:var(--faint)}
+  .statstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
+  .stat{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:13px}
+  .stat .n{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--amber)} .stat.good .n{color:var(--good)}
+  .stat .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-top:3px}
+
+  /* trade terminal */
+  .term-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .term-title{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+  .term-market{font-size:22px;font-weight:800;margin-top:2px}
+  .spot{font-family:var(--mono);font-size:30px;font-weight:800;text-align:right;transition:color .2s}
+  .spot small{display:block;font-family:var(--sans);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin-bottom:4px;font-weight:700}
+  .spot.up{color:var(--good)} .spot.down{color:var(--bad)}
+  .read{display:flex;align-items:center;gap:14px;margin:18px 0;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.02));border:1px solid var(--bd)}
+  .eq{display:flex;align-items:flex-end;gap:3px;height:24px;flex-shrink:0}
+  .eq span{width:4px;height:6px;background:var(--amber);border-radius:2px;box-shadow:0 0 8px var(--amber);animation:eq 1s ease-in-out infinite}
+  .eq span:nth-child(2){animation-delay:.15s}.eq span:nth-child(3){animation-delay:.3s}.eq span:nth-child(4){animation-delay:.45s}.eq span:nth-child(5){animation-delay:.6s}
+  @keyframes eq{0%,100%{height:6px;opacity:.5}50%{height:24px;opacity:1}}
+  .read .lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint)} .read .val{font-size:15px;font-weight:700;margin-top:2px}
+  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0}
+  .tbtn{border:none;border-radius:16px;cursor:pointer;padding:20px 12px 15px;color:#08121c;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:800;transition:transform .12s,filter .12s}
+  .tbtn .big{font-size:22px} .tbtn .pay{font-size:11.5px;font-weight:700;opacity:.78;font-family:var(--mono)}
+  .tbtn:hover{transform:translateY(-3px);filter:brightness(1.07)} .tbtn:active{transform:translateY(0) scale(.97)}
+  .tbtn{box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+  .tbtn.up{background:linear-gradient(135deg,#7bd6a4,#1f9d57);color:#06210f;box-shadow:0 16px 36px -16px rgba(31,157,87,.7)}
+  .tbtn.down{background:linear-gradient(135deg,#e08a98,#b22a3e);color:#fff;box-shadow:0 16px 36px -16px rgba(178,42,62,.7)}
+  .tbtn.even{background:linear-gradient(135deg,#f7e7b0,#d4af37 60%,#b3902a);color:#241d05;box-shadow:0 16px 36px -16px rgba(212,175,55,.75)}
+  .tbtn.odd{background:linear-gradient(135deg,#eef0f5,#aab0bd 60%,#7c8290);color:#15151c;box-shadow:0 16px 36px -16px rgba(170,176,189,.6)}
+  .tbtn.sug{outline:2px solid rgba(255,255,255,.9);outline-offset:3px;animation:sug 1.5s ease-in-out infinite}
+  @keyframes sug{0%,100%{box-shadow:0 16px 36px -14px rgba(255,255,255,.45)}50%{box-shadow:0 20px 48px -10px rgba(255,255,255,.85)}}
+  .autobox{margin-top:16px;padding:15px;border-radius:14px;border:1px solid rgba(212,175,55,.32);background:linear-gradient(135deg,rgba(212,175,55,.08),transparent)}
+  .seg{display:inline-flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  .segbtn{background:transparent;color:var(--dim);border:none;padding:9px 15px;cursor:pointer;font-weight:800;font-size:13px;font-family:inherit}
+  .segbtn.on{background:var(--amber);color:#08121c}
+  .scan-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .scan-table th{text-align:right;color:var(--faint);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-bottom:1px solid var(--bd)}
+  .scan-table th:first-child,.scan-table td:first-child{text-align:left}
+  .scan-table td{padding:7px 8px;border-bottom:1px dashed var(--bd);font-family:var(--mono);text-align:right}
+  .scan-table td:first-child{font-family:var(--sans)} .scan-table tr.top td{background:rgba(212,175,55,.10)}
+  .dbar{display:flex;align-items:flex-end;gap:5px;height:74px}
+  .dbar .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-end;height:100%}
+  .dbar .bar{width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#f1d488,#b3902a);min-height:2px;transition:height .3s}
+  .dbar .col.odd .bar{background:linear-gradient(180deg,#eef0f5,#8c93a1)}
+  .dbar .d{font-size:11px;font-weight:800} .dbar .n{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+  .backbtn{font-family:inherit;font-size:13px;color:var(--dim);background:transparent;border:none;cursor:pointer;padding:0;margin-bottom:14px}
+  .backbtn:hover{color:var(--text)}
+  footer{max-width:1080px;margin:0 auto;padding:24px 22px 50px;color:var(--faint);font-size:12px;border-top:1px solid var(--bd)}
+</style>
+</head>
+<body>
+
+<div id="money-bg" aria-hidden="true"></div>
+
+<nav class="nav"><div class="nav-in">
+  <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
+  <div class="nav-sp"></div>
+  <span class="chip" id="nav-acct" hidden><span class="dot"></span><span id="nav-acct-txt">—</span></span>
+  <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Home</button>
+  <button class="navbtn" id="nav-exit" hidden onclick="exitApp()">Exit</button>
+</div></nav>
+
+<!-- ============ VIEW: CONNECT ============ -->
+<div class="view wrap" id="view-connect">
+  <div class="hero">
+    <h1>Your private <span class="g">trade desk</span> for Deriv</h1>
+    <p>J81 researches and analyses the markets for you, suggests a call, and can trade on Auto until your profit target — with limits that protect your money.</p>
+  </div>
+  <div class="glass connect-card">
+    <div id="enc-setup"></div>
+    <h2 style="margin:0 0 12px;font-size:18px">Connect your Deriv account</h2>
+
+    <!-- Option 1: OAuth -->
+    <a href="/oauth/start" style="text-decoration:none"><button class="btn big" type="button">Connect with Deriv (OAuth)</button></a>
+    <div class="faint" style="font-size:12px;margin-top:7px">One-tap sign-in on Deriv — handles both the legacy &amp; new platforms. Needs a public website, so on your own computer use the token option below.</div>
+
+    <div class="orline"><span>or</span></div>
+
+    <!-- Option 2: Manual API token -->
+    <div style="font-weight:800;font-size:14px;margin-bottom:4px">Manual API token</div>
+    <p class="lede" style="margin:0 0 10px">Create one at <b>app.deriv.com → Settings → API token</b> (tick <b>Read</b> + <b>Trade</b>), paste it here. Saved <b>encrypted on this machine only</b> — never shown again, never sent to chat. Use a <b>demo</b> token to practise first.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="password" id="pat-input" placeholder="paste Deriv API token…" style="flex:1;min-width:220px;font-family:var(--mono);font-size:13px">
+      <button class="btn" id="pat-btn">Connect →</button>
+    </div>
+    <div id="pat-result" style="font-size:12.5px;margin-top:10px"></div>
+
+    <!-- No account yet → referral signup -->
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bd);text-align:center">
+      <div class="faint" style="font-size:13px;margin-bottom:9px">New to Deriv? You’ll need an account first.</div>
+      <a id="ref-link" href="https://deriv.com/signup/" target="_blank" rel="noopener" style="text-decoration:none"><button class="btn ghost" type="button">Open a free Deriv account →</button></a>
+    </div>
+
+    <!-- TESTING: preview the app without connecting -->
+    <div style="margin-top:14px;text-align:center">
+      <button id="preview-btn" type="button" style="background:none;border:none;color:var(--faint);font-family:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline">Just looking? Preview the app (demo) →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW: LOADING ============ -->
+<div class="view wrap" id="view-loading" hidden>
+  <div class="loadwrap">
+    <div class="ring"></div>
+    <div style="font-size:20px;font-weight:800">Connecting to Deriv…</div>
+    <div class="steps" id="load-steps">
+      <div class="s" data-i="0">Authorising your account</div>
+      <div class="s" data-i="1">Loading your markets</div>
+      <div class="s" data-i="2">Waking up the J81 brain</div>
+      <div class="s" data-i="3">Ready</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW: HOME (choose) ============ -->
+<div class="view wrap" id="view-home" hidden>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <div><div class="term-title">Welcome</div><div style="font-size:24px;font-weight:800" id="home-hello">Choose how you want to trade</div></div>
+    <div id="home-mode"></div>
+  </div>
+
+  <div class="statstrip" style="margin-top:18px">
+    <div class="stat good"><div class="n" id="s-profit">—</div><div class="l">profit today</div></div>
+    <div class="stat"><div class="n" id="s-wins">—</div><div class="l">wins / settled</div></div>
+    <div class="stat"><div class="n" id="s-trades">—</div><div class="l">trades</div></div>
+    <div class="stat"><div class="n" id="s-acct">—</div><div class="l">account</div></div>
+  </div>
+
+  <div class="sec-title">Pick a game</div>
+  <div class="grid" id="choose-grid"></div>
+
+  <div class="sec-title">Recent activity</div>
+  <div class="glass" style="padding:14px"><div id="trades-mini"><div class="empty">no trades yet</div></div></div>
+</div>
+
+<!-- ============ VIEW: TRADE (per type) ============ -->
+<div class="view wrap" id="view-trade" hidden>
+  <button class="backbtn" onclick="showView('home')">← back to games</button>
+  <div class="glass">
+    <div class="term-head">
+      <div><div class="term-title" id="trade-kind">Trade</div><div class="term-market" id="term-market">—</div></div>
+      <div class="spot" id="term-spot"><small>spot price</small>—</div>
+    </div>
+
+    <div class="read">
+      <div class="eq"><span></span><span></span><span></span><span></span><span></span></div>
+      <div style="flex:1;min-width:0"><div class="lab">J81 is analysing for you</div><div class="val" id="assist-msg">studying the market…</div></div>
+      <button class="btn ghost" id="assist-use" style="display:none">Use this call</button>
+    </div>
+
+    <div class="row" style="margin-bottom:12px">
+      <label class="field">Market<select id="t-symbol" style="min-width:150px"></select></label>
+      <label class="field">Stake $<input id="t-stake" type="number" value="1" min="0.35" step="0.5" style="width:90px"></label>
+      <label class="field">Ticks<input id="t-duration" type="number" value="5" min="1" max="10" style="width:70px"></label>
+    </div>
+
+    <!-- manual buttons (Rise/Fall or Even/Odd) -->
+    <div class="tgrid" id="trade-buttons"></div>
+
+    <!-- M Pro scanner (only for the scanner game) -->
+    <div id="mpro-extra" hidden>
+      <div class="row" style="margin:12px 0">
+        <div class="field">Mode<div class="seg" id="mpro-mode"><button type="button" class="segbtn on" data-mode="auto">AUTO</button><button type="button" class="segbtn" data-mode="even">EVEN</button><button type="button" class="segbtn" data-mode="odd">ODD</button></div></div>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;text-transform:none"><input type="checkbox" id="mpro-reverse" style="width:auto"> Reverse</label>
+        <label class="field">Min edge %<input id="mpro-mingap" type="number" value="15" style="width:80px"></label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:16px;align-items:start;margin-top:6px">
+        <div><div class="term-title" style="margin-bottom:8px">Digit strength <span id="mpro-digit-sym" class="faint"></span></div><div class="dbar" id="mpro-digits"></div></div>
+        <div><div class="term-title" style="margin-bottom:8px">Market scanner <span id="scan-ready" class="faint"></span></div><div id="scan-table"><div class="empty">collecting ticks…</div></div></div>
+      </div>
+    </div>
+
+    <!-- AUTO box (every game) -->
+    <div class="autobox">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="font-weight:800;font-size:15px">Auto-trade <span class="faint" style="font-weight:400;font-size:12px">runs by itself until your win target</span></div>
+        <div class="spot" id="auto-pnl" style="font-size:20px"><small>session P/L</small>+0.00</div>
+      </div>
+      <div class="row" style="margin:12px 0">
+        <label class="field" style="color:var(--good)">Stop at WIN $<input id="auto-tp" type="number" min="0" placeholder="5" style="width:100px"></label>
+        <label class="field" style="color:var(--bad)">Stop at LOSS $<input id="auto-ll" type="number" min="0" placeholder="3" style="width:100px"></label>
+        <label class="field">Martingale steps<input id="auto-steps" type="number" min="0" max="8" value="0" style="width:80px"></label>
+        <button class="btn" id="auto-btn" style="margin-left:auto">Start Auto</button>
+      </div>
+      <div class="read" style="margin:0"><div class="eq"><span></span><span></span><span></span><span></span><span></span></div><div style="flex:1"><div class="lab">Auto status</div><div class="val" id="auto-status">off — set a target and press Start Auto</div></div></div>
+      <div class="faint" style="font-size:11.5px;margin-top:8px">Martingale raises stake after a loss (capped by your max stake) — higher risk. Auto only places real trades when DRY_RUN is off; otherwise it practises.</div>
+    </div>
+
+    <div id="t-result" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<footer class="wrap">J81 Trade Desk · trades on your Deriv account · practice mode keeps it pretend until you go live. Trading carries risk — never stake money you can’t afford to lose.</footer>
+
+<script>
+// ---------- helpers ----------
+async function api(p,opts={}){ const r=await fetch(p,{headers:{"Content-Type":"application/json",...(opts.headers||{})},...opts}); let b=null;try{b=await r.json()}catch(_){ } if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status)); return b; }
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const VIEWS=["connect","loading","home","trade"];
+function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
+  const on=(v!=="connect"&&v!=="loading"); ["nav-acct","nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!on;});
+  const mb=$("money-bg"); if(mb) mb.style.display=(v==="connect"||v==="loading")?"block":"none";
+  if(v==="home") loadHome(); }
+
+// floating REAL gold bars + REAL banknotes — premium wealth background (login)
+function spawnMoney(){
+  const bg=$("money-bg"); if(!bg||bg._spawned) return; bg._spawned=true;
+  const BAR=`<div class="bar"><svg width="64" height="42" viewBox="0 0 64 42" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6da"/><stop offset=".5" stop-color="#f1d27e"/><stop offset="1" stop-color="#d6af48"/></linearGradient>
+      <linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eecb6c"/><stop offset=".55" stop-color="#caa23c"/><stop offset="1" stop-color="#8f6d1b"/></linearGradient>
+    </defs>
+    <polygon points="15,2 61,2 51,14 5,14" fill="url(#gt)" stroke="#b8902f" stroke-width=".6"/>
+    <polygon points="5,14 51,14 58,40 -1,40" fill="url(#gf)" stroke="#7e600d" stroke-width=".6"/>
+    <text x="28" y="26" font-family="Georgia,serif" font-size="5.4" fill="#7a5d12" text-anchor="middle" font-weight="700">FINE GOLD</text>
+    <text x="28" y="34" font-family="ui-monospace,monospace" font-size="6.6" fill="#7a5d12" text-anchor="middle" font-weight="700">999.9</text>
+  </svg><div class="glint"></div></div>`;
+  const NOTE=`<div class="note"><svg width="68" height="34" viewBox="0 0 68 34" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="nn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#236c4b"/><stop offset="1" stop-color="#123c2a"/></linearGradient></defs>
+    <rect x="1.5" y="1.5" width="65" height="31" rx="3" fill="url(#nn)" stroke="#cda53e" stroke-width="1.1"/>
+    <rect x="4.5" y="4.5" width="59" height="25" rx="2" fill="none" stroke="#cda53e" stroke-width=".4" opacity=".55"/>
+    <circle cx="34" cy="17" r="8.2" fill="#0e3122" stroke="#dce9e1" stroke-width=".5" opacity=".75"/>
+    <text x="34" y="20.6" font-family="Georgia,serif" font-size="9.5" fill="#ecd79a" text-anchor="middle" font-weight="700">$</text>
+    <text x="9" y="12" font-family="Georgia,serif" font-size="6" fill="#ecd79a" font-weight="700">100</text>
+    <text x="59" y="28" font-family="Georgia,serif" font-size="6" fill="#ecd79a" font-weight="700" text-anchor="end">100</text>
+    <path d="M5 29.5 Q19 24 34 29.5 T63 29.5" stroke="#cda53e" stroke-width=".4" fill="none" opacity=".5"/>
+  </svg></div>`;
+  let html="";
+  for(let i=0;i<15;i++){
+    const left=Math.random()*100, dur=15+Math.random()*15, delay=-(Math.random()*dur), scale=(0.7+Math.random()*0.8).toFixed(2);
+    const art=Math.random()<0.55?BAR:NOTE;
+    html+=`<div class="fx" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s"><div style="transform:scale(${scale})">${art}</div></div>`;
+  }
+  bg.innerHTML=html;
+}
+
+let CUR=null;          // current account (public dict)
+let GAME=null;         // current trade view game: rise_fall | even_odd | m_pro
+let DRY=true;
+let _prevSpot=null, _lastRead=null;
+
+// ---------- boot ----------
+async function boot(){
+  spawnMoney();
+  try{ const h=await api("/health"); DRY=h.dry_run; if(!h.encryption_configured) showEncSetup();
+       const rl=$("ref-link"); if(rl&&h.referral_url) rl.href=h.referral_url; }catch(_){}
+  let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
+  if(accts && accts.length){ CUR=accts[0]; enterApp(); }
+  else showView("connect");
+}
+function enterApp(){ updateNav(); showView("home"); }
+function exitApp(){ CUR=null; showView("connect"); }
+function updateNav(){
+  if(!CUR) return;
+  $("nav-acct").hidden=false; $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL");
+}
+
+// ---------- encryption one-click ----------
+function showEncSetup(){
+  const el=$("enc-setup"); if(!el) return;
+  el.innerHTML=`<div class="banner warn"><b>One-time setup:</b> J81 needs an encryption key before it can store your token. <button class="btn" id="enc-btn" style="margin-left:6px;padding:7px 12px">Generate key</button></div>`;
+  $("enc-btn").onclick=async e=>{ e.target.disabled=true; e.target.textContent="…"; try{ await api("/setup/encryption-key",{method:"POST",body:"{}"}); el.innerHTML=""; }catch(err){ e.target.textContent="failed"; } };
+}
+
+// ---------- connect ----------
+$("pat-btn").addEventListener("click",async()=>{
+  const inp=$("pat-input"),res=$("pat-result"),tok=(inp.value||"").trim();
+  if(!tok){ res.innerHTML='<span style="color:var(--warn)">Paste your token first.</span>'; return; }
+  $("pat-btn").disabled=true; res.textContent="connecting…";
+  try{
+    const r=await api("/connect/pat",{method:"POST",body:JSON.stringify({token:tok})});
+    inp.value="";
+    runLoading(async()=>{ try{ const a=await api("/accounts"); CUR=a.find(x=>x.deriv_account_id===r.connected)||a[0]; }catch(_){ } enterApp(); });
+  }catch(e){ res.innerHTML='<span style="color:var(--bad)">'+esc(e.message)+'</span>'; }
+  finally{ $("pat-btn").disabled=false; }
+});
+// TESTING: preview the app with a local demo account (no Deriv connection)
+(function(){ const b=$("preview-btn"); if(b) b.addEventListener("click",async()=>{
+  b.disabled=true; b.textContent="opening preview…";
+  try{ const r=await api("/preview/enter",{method:"POST",body:"{}"}); CUR=r.account; runLoading(()=>enterApp()); }
+  catch(e){ $("pat-result").innerHTML='<span style="color:var(--bad)">'+esc(e.message)+'</span>'; b.disabled=false; b.textContent="Just looking? Preview the app (demo) →"; }
+}); })();
+
+function runLoading(done){
+  showView("loading");
+  const steps=[...document.querySelectorAll("#load-steps .s")]; steps.forEach(s=>s.classList.remove("on"));
+  let i=0; const t=setInterval(()=>{ if(i<steps.length) steps[i].classList.add("on"); i++; if(i>steps.length){ clearInterval(t); done(); } },550);
+}
+
+// ---------- home ----------
+const GAMES=[
+  {id:"rise_fall",ic:"↗↘",name:"Rise / Fall",d:"Will the price go up or down?",status:"live"},
+  {id:"even_odd",ic:"E·O",name:"Even / Odd",d:"Will the last digit be even or odd?",status:"live"},
+  {id:"m_pro",ic:"★",name:"M Pro · Auto Scanner",d:"Scans 10 markets, auto-trades the best even/odd edge",status:"live"},
+  {id:"m_digit",ic:"№",name:"M Digit",d:"Adaptive single-digit predictor",status:"soon"},
+  {id:"sniper_x",ic:"◎",name:"Sniper X",d:"Best over/under pairs · 11-market",status:"soon"},
+  {id:"antiloss",ic:"↺",name:"AntiLoss",d:"Recovery engine",status:"soon"},
+];
+function renderGames(){
+  $("choose-grid").innerHTML=GAMES.map(g=>`<div class="gcard ${g.status==='soon'?'soon':''}" data-game="${g.id}" data-live="${g.status}">
+    <div class="ic">${g.ic}</div>
+    <div class="t">${esc(g.name)} <span class="badge ${g.status==='live'?'new':'soon'}">${g.status==='live'?'live':'soon'}</span></div>
+    <div class="d">${esc(g.d)}</div></div>`).join("");
+  document.querySelectorAll(".gcard").forEach(c=>c.addEventListener("click",()=>{ if(c.dataset.live==="live") openTrade(c.dataset.game); }));
+}
+async function loadHome(){
+  renderGames();
+  if(CUR){ $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL"); }
+  $("home-mode").innerHTML = DRY?'<span class="pill warn"><span class="dot" style="background:var(--warn)"></span>practice mode</span>':'<span class="pill bad"><span class="dot" style="background:var(--bad)"></span>REAL MONEY</span>';
+  try{ const s=await api("/assistant/summary"); const p=Number(s.profit_today||0);
+    const pe=$("s-profit"); pe.textContent=(p>=0?"+$":"-$")+Math.abs(p).toFixed(2); pe.style.color=p>=0?"var(--good)":"var(--bad)";
+    $("s-wins").textContent=s.settled?`${s.wins}/${s.settled}`:"0/0"; $("s-trades").textContent=s.trades_total;
+    $("s-acct").textContent=CUR?(CUR.is_demo?"demo":"REAL"):"—";
+  }catch(_){}
+  try{ const t=await api("/trades?limit=6"); const el=$("trades-mini");
+    el.innerHTML = (!t.length)?'<div class="empty">no trades yet — pick a game above</div>'
+      : t.map(x=>`<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
+        <span class="pill ${x.is_dry_run?'warn':''}">${x.is_dry_run?'practice':'live'}</span>
+        <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
+        <span style="margin-left:auto" class="${x.outcome==='won'?'':''}">${esc(x.outcome||'')}</span>
+        ${x.profit!=null?`<span style="color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:''}</div>`).join("");
+  }catch(_){}
+}
+
+// ---------- trade view ----------
+async function openTrade(game){
+  GAME=game; showView("trade");
+  $("trade-kind").textContent = game==="m_pro"?"M Pro · Auto Scanner":(game==="rise_fall"?"Rise / Fall":"Even / Odd");
+  $("mpro-extra").hidden = (game!=="m_pro");
+  $("trade-buttons").hidden = (game==="m_pro");
+  // buttons
+  if(game==="rise_fall"){
+    $("trade-buttons").innerHTML=`<button class="tbtn up" data-tt="rise_fall" data-dir="up"><span class="big">▲ RISE</span><span class="pay" id="pay-a">—</span></button>
+      <button class="tbtn down" data-tt="rise_fall" data-dir="down"><span class="big">▼ FALL</span><span class="pay" id="pay-b">—</span></button>`;
+  } else if(game==="even_odd"){
+    $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="even_odd" data-pred="even"><span class="big">EVEN</span><span class="pay" id="pay-a">—</span></button>
+      <button class="tbtn odd" data-tt="even_odd" data-pred="odd"><span class="big">ODD</span><span class="pay" id="pay-b">—</span></button>`;
+  }
+  // markets
+  try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
+  loadAssistant(); loadAutoState();
+  if(game==="m_pro") loadScan();
+}
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".tbtn"); if(b) placeTrade(b); });
+
+async function placeTrade(btn){
+  if(!CUR){ showView("connect"); return; }
+  const tt=btn.dataset.tt, res=$("t-result");
+  const body={account_id:CUR.id,trade_type:tt,symbol:$("t-symbol").value,stake:parseFloat($("t-stake").value||"1"),duration:parseInt($("t-duration").value||"5",10),duration_unit:"t"};
+  if(tt==="rise_fall") body.direction=btn.dataset.dir; if(tt==="even_odd") body.prediction=btn.dataset.pred;
+  const call=tt==="rise_fall"?body.direction.toUpperCase():body.prediction.toUpperCase();
+  res.innerHTML='<div class="banner warn" style="margin:0">placing '+esc(call)+'…</div>'; btn.disabled=true;
+  try{
+    const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body)});
+    const pay=(typeof r.payout==="number")?("$"+r.payout.toFixed(2)):"—";
+    if(r.outcome==="dry_run") res.innerHTML='<div class="banner warn" style="margin:0">✓ Practice '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · no real money (DRY_RUN)</div>';
+    else if(r.outcome==="pending") res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · settles automatically</div>';
+    else res.innerHTML='<div class="banner warn" style="margin:0">Couldn’t trade: '+esc(r.reason||r.error||"unknown")+'</div>';
+  }catch(e){ res.innerHTML='<div class="banner bad" style="margin:0">Error: '+esc(e.message)+'</div>'; }
+  finally{ btn.disabled=false; }
+}
+
+async function loadAssistant(){
+  if(GAME!=="rise_fall"&&GAME!=="even_odd"&&GAME!=="m_pro") return;
+  const sym=($("t-symbol")||{}).value||"R_100", mk=$("term-market"), ss=$("t-symbol");
+  if(mk&&ss&&ss.selectedOptions[0]) mk.textContent=ss.selectedOptions[0].textContent;
+  try{
+    const r=await api("/assistant/read?symbol="+encodeURIComponent(sym)); _lastRead=r;
+    $("assist-msg").textContent=r.message||"studying…";
+    const se=$("term-spot"); if(se&&r.spot!=null){ const d=(_prevSpot!=null&&r.spot!==_prevSpot)?(r.spot>_prevSpot?"up":"down"):""; se.className="spot "+d; se.innerHTML='<small>spot price</small>'+Number(r.spot).toFixed(2); _prevSpot=r.spot; }
+    const stake=parseFloat(($("t-stake")||{}).value||"1")||1, pay=(r.payout!=null)?("win $"+(r.payout*stake).toFixed(2)):"—";
+    ["pay-a","pay-b"].forEach(id=>{const e=$(id);if(e)e.textContent=pay;});
+    document.querySelectorAll(".tbtn").forEach(b=>b.classList.remove("sug"));
+    const ub=$("assist-use"); let sel=null;
+    if(r.suggestion&&r.suggestion!=="wait"){
+      if(r.trade_type==="rise_fall"&&GAME==="rise_fall") sel=(r.direction==="up")?".tbtn.up":".tbtn.down";
+      else if(r.trade_type==="even_odd"&&GAME==="even_odd") sel=(r.prediction==="even")?".tbtn.even":".tbtn.odd";
+      if(sel){const b=document.querySelector(sel); if(b)b.classList.add("sug");}
+    }
+    if(ub){ if(sel){ub.style.display="";ub.textContent="Use this call ("+r.suggestion+")";} else ub.style.display="none"; }
+  }catch(_){ $("assist-msg").textContent="J81 is warming up its analysis…"; }
+}
+(function(){ const u=$("assist-use"); if(u) u.addEventListener("click",()=>{ if(!_lastRead||_lastRead.suggestion==="wait")return; const f={dataset:{tt:_lastRead.trade_type},disabled:false}; if(_lastRead.trade_type==="rise_fall")f.dataset.dir=_lastRead.direction; if(_lastRead.trade_type==="even_odd")f.dataset.pred=_lastRead.prediction; placeTrade(f); }); })();
+(function(){ const s=$("t-symbol"); if(s) s.addEventListener("change",()=>{loadAssistant(); if(GAME==="m_pro")loadScan();}); })();
+
+// ---------- scanner (m_pro) ----------
+function renderDigits(top){ const el=$("mpro-digits"),sym=$("mpro-digit-sym"); if(!el)return;
+  if(!top||!top.digit_freq){el.innerHTML='<div class="empty" style="height:74px">collecting…</div>';if(sym)sym.textContent='';return;}
+  if(sym)sym.textContent=top.name; const f=top.digit_freq,max=Math.max.apply(null,Object.values(f).concat([1]));
+  el.innerHTML=[0,1,2,3,4,5,6,7,8,9].map(d=>{const v=f[String(d)]||0,h=Math.round(v/max*100);return `<div class="col ${d%2===0?'even':'odd'}"><div class="d">${v}</div><div class="bar" style="height:${h}%"></div><div class="n">${d}</div></div>`;}).join("");
+}
+function renderScan(d){ const el=$("scan-table"),rd=$("scan-ready"); if(!el)return; if(rd)rd.textContent=`${d.markets_ready||0}/${d.markets_total||0} ready`;
+  const rows=d.ranked||[]; if(!rows.length){el.innerHTML='<div class="empty">collecting ticks…</div>';return;}
+  el.innerHTML='<table class="scan-table"><thead><tr><th>Market</th><th>Even</th><th>Odd</th><th>Gap</th><th>Stab</th><th>Qual</th></tr></thead><tbody>'+
+    rows.map(r=>{ if(!r.ready) return `<tr><td>${esc(r.name)}</td><td colspan="5" class="faint" style="text-align:left">${esc(r.collecting||'…')}</td></tr>`;
+      const dir=r.direction==='even'?'<span style="color:#22d3ee">E</span>':'<span style="color:#a78bfa">O</span>';
+      return `<tr class="${r.rank===1?'top':''}"><td>${r.rank===1?'▸ ':''}${esc(r.name)} ${dir}</td><td>${r.even}</td><td>${r.odd}</td><td style="color:var(--amber);font-weight:700">${r.gap}</td><td>${r.stability}</td><td>${r.quality}</td></tr>`;
+    }).join("")+'</tbody></table>';
+}
+async function loadScan(){ if(GAME!=="m_pro")return; try{ const d=await api("/scan"); renderScan(d); renderDigits(d.top); }catch(_){ const el=$("scan-table"); if(el)el.innerHTML='<div class="empty">scanner offline — start the Analyser (:9000)</div>'; } }
+function setMpMode(m){ document.querySelectorAll('#mpro-mode .segbtn').forEach(b=>b.classList.toggle('on',b.dataset.mode===m)); }
+function curMpMode(){ const b=document.querySelector('#mpro-mode .segbtn.on'); return b?b.dataset.mode:'auto'; }
+(function(){ document.querySelectorAll('#mpro-mode .segbtn').forEach(b=>b.addEventListener('click',()=>setMpMode(b.dataset.mode))); })();
+
+// ---------- AUTO (runs to take-profit) ----------
+async function loadAutoState(){
+  if(!CUR) return;
+  try{ const a=(await api("/accounts")).find(x=>x.id===CUR.id); if(a) CUR=a; }catch(_){}
+  const tp=CUR.take_profit, ll=CUR.daily_loss_limit, cfg=CUR.mpro_config||{};
+  $("auto-tp").value=(tp!=null&&tp>0)?tp:''; $("auto-ll").value=(ll!=null&&ll>0)?ll:'';
+  $("auto-steps").value=cfg.max_steps!=null?cfg.max_steps:0;
+  const running = GAME==="m_pro" ? CUR.mpro_enabled : (CUR.enabled && !CUR.mpro_enabled);
+  const btn=$("auto-btn"); btn.dataset.on=running?'1':'0'; btn.textContent=running?'Stop Auto':'Start Auto'; btn.style.background=running?'var(--bad)':'';
+  updateAutoStatus();
+}
+async function updateAutoStatus(){
+  const p = Number((CUR&&CUR.profit_today)||0), pe=$("auto-pnl");
+  pe.innerHTML=`<small>session P/L</small>${p>=0?'+':''}${p.toFixed(2)}`; pe.className='spot '+(p>0?'up':p<0?'down':'');
+  if(GAME==="m_pro"){ try{ const s=await api("/mpro/status"); const mine=(s.accounts||[]).find(x=>x.account_id===(CUR&&CUR.id)); if(mine) $("auto-status").textContent=mine.status; }catch(_){ } }
+}
+$("auto-btn").addEventListener("click",async()=>{
+  if(!CUR){ showView("connect"); return; }
+  const on=$("auto-btn").dataset.on==='1', start=!on, st=$("auto-status");
+  const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value), steps=parseInt($("auto-steps").value||"0",10);
+  const stake=parseFloat($("t-stake").value||"1");
+  const body={};
+  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  if(GAME==="m_pro" || GAME==="even_odd"){
+    body.mpro_enabled=start; body.enabled=start;
+    body.mpro_config={ mode: GAME==="even_odd"?"auto":curMpMode(), reverse:(GAME==="m_pro"?$("mpro-reverse").checked:false),
+      min_gap: GAME==="m_pro"?parseFloat($("mpro-mingap").value||"15"):10, base_stake:stake, cooldown:20, max_steps:steps, step_mult:2, duration:parseInt($("t-duration").value||"1",10) };
+  } else { // rise_fall → autonomous decision loop restricted to rise_fall
+    body.enabled=start; body.mpro_enabled=false; body.allowed_trade_types=["rise_fall"]; body.max_stake_per_trade=stake;
+  }
+  $("auto-btn").disabled=true; st.textContent=start?'starting…':'stopping…';
+  try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); }
+  catch(e){ st.textContent=e.message; $("auto-btn").disabled=false; return; }
+  $("auto-btn").disabled=false; loadAutoState();
+  st.textContent = start ? (DRY?'running in practice mode — will stop at your win target':'running LIVE — will stop at your win target') : 'stopped';
+});
+
+// ---------- polls ----------
+setInterval(()=>{ if(!$("view-trade").hidden){ loadAssistant(); updateAutoStatus(); if(GAME==="m_pro")loadScan(); } },10000);
+setInterval(()=>{ if(!$("view-home").hidden) loadHome(); }, 20000);
+boot();
+</script>
+</body>
+</html>

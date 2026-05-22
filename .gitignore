@@ -1,16 +1,28 @@
 # Python
 __pycache__/
 *.pyc
-research-app/.venv/
+*.pyo
 
-# Secrets
+# Virtualenvs (machine-specific, huge — never commit; Docker builds its own)
+.venv/
+**/.venv/
+venv/
+
+# Secrets — NEVER commit (set these in the host's env / Render dashboard)
 .env
-research-app/.env
+**/.env
+*.env
+connections.json
+**/connections.json
 
-# Runtime data (must NOT be committed; lives on the persistent disk)
-research-app/out/
-research-app/data/
-research-app/config/research_config.json
+# Runtime data (lives on the persistent disk in production)
+data/
+**/data/
+out/
+**/out/
+logs/
+**/logs/
 *.db
 *.db-wal
 *.db-shm
+**/config/research_config.json

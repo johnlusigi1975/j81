@@ -1,0 +1,65 @@
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+APP_NAME = "J81 Trade Desk"
+APP_VERSION = "0.1.0"
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    host: str = "0.0.0.0"
+    port: int = 9500
+    data_dir: str = "."
+
+    # SAFETY: every "real money" code path is gated on this. Default True.
+    dry_run: bool = True
+
+    # Deriv app registration (api.deriv.com/dashboard)
+    deriv_app_id: str = ""
+    deriv_oauth_redirect_uri: str = "http://localhost:9500/oauth/callback"
+    deriv_markup_percent: float = 2.0  # what you set on Deriv's side
+
+    # Deriv OAuth endpoints. Default = LEGACY flow (returns token1/acct1/cur1).
+    # To use the NEW platform's OAuth2 + PKCE, set deriv_oauth_token_url (and
+    # point authorize_url at the new endpoint) per your Deriv app registration.
+    # PKCE auto-activates when deriv_oauth_token_url is non-empty.
+    deriv_oauth_authorize_url: str = "https://oauth.deriv.com/oauth2/authorize"
+    deriv_oauth_token_url: str = ""           # set to enable OAuth2 PKCE
+    deriv_oauth_scope: str = "trade account_manage"  # new-platform scopes
+
+    # New-platform REST/WS base. Flow: access token → GET
+    # {base}/trading/v1/options/accounts/{loginid}/otp → wss …/ws/{real|demo}?otp=…
+    deriv_new_api_base: str = "https://api.derivws.com"
+
+    # Your Deriv referral/affiliate link — shown behind "Open a free account".
+    # Override via DERIV_REFERRAL_URL in .env if it ever changes.
+    deriv_referral_url: str = "https://track.deriv.com/_6uqV-95nzXtZl7VyVw174GNd7ZgqdRLk/1/"
+
+    # Token encryption (Fernet)
+    bot_encryption_key: str = ""
+
+    # Where to read decisions from
+    analyser_url: str = "http://127.0.0.1:9000"
+
+    # Default risk limits per user (each user can override)
+    default_max_stake_per_trade: float = 1.0
+    default_max_trades_per_day: int = 20
+    default_min_confidence: float = 0.65
+
+    # Trading loop interval
+    trade_poll_seconds: int = 120
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+def data_path(*parts: str) -> Path:
+    p = Path(*parts)
+    if p.is_absolute():
+        return p
+    return Path(get_settings().data_dir) / p
