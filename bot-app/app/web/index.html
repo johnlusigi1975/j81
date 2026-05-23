@@ -356,8 +356,20 @@ async function boot(){
   spawnMoney();
   try{ const h=await api("/health"); DRY=h.dry_run; if(!h.encryption_configured) showEncSetup();
        const rl=$("ref-link"); if(rl&&h.referral_url) rl.href=h.referral_url; }catch(_){}
+  // Handle the return trip from Deriv OAuth (/oauth/callback redirects here).
+  const qs=new URLSearchParams(location.search);
+  const justConnected=qs.has("connected"), authErr=qs.get("auth_error");
+  if(qs.has("connected")||authErr){ history.replaceState({},"",location.pathname); }
+  if(authErr){
+    showView("connect");
+    const res=$("pat-result"); if(res) res.innerHTML='<span style="color:var(--bad)">'+esc(authErr)+'</span>';
+    return;
+  }
   let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
-  if(accts && accts.length){ CUR=accts[0]; enterApp(); }
+  if(accts && accts.length){
+    CUR=accts[0];
+    if(justConnected){ runLoading(()=>enterApp()); } else { enterApp(); }
+  }
   else showView("connect");
 }
 function enterApp(){ updateNav(); showView("home"); }

@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote as urlquote, urlencode
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
@@ -137,10 +137,24 @@ def oauth_start() -> RedirectResponse:
     return RedirectResponse(f"{s.deriv_oauth_authorize_url}?{q}")
 
 
+def _auth_ok(n: int) -> RedirectResponse:
+    """Bounce the freshly-connected user back into the app UI (loading → home)."""
+    return RedirectResponse(f"/?connected={n}", status_code=303)
+
+
+def _auth_fail(msg: str) -> RedirectResponse:
+    """Bounce to the connect screen with a friendly message instead of a raw error."""
+    return RedirectResponse(f"/?auth_error={urlquote(msg)}", status_code=303)
+
+
 @app.get("/oauth/callback", include_in_schema=False)
-async def oauth_callback(request: Request) -> dict:
-    """Dual routing (like Twinmil's getInitialView):
-      * ?error=…                 → surface it
+async def oauth_callback(request: Request) -> RedirectResponse:
+    """After Deriv authorizes the user, save their account(s) and redirect them
+    back into the app (loading → home). Any failure redirects to the connect
+    screen with a readable message rather than dumping JSON or an error page.
+
+    Routing (like Twinmil's getInitialView):
+      * ?error=…                 → surface it on the connect screen
       * ?token1=…&acct1=…&cur1=… → LEGACY (tokens straight in the URL)
       * ?code=…&state=…          → NEW OAuth2 PKCE (exchange code for a token)
     """
@@ -148,30 +162,26 @@ async def oauth_callback(request: Request) -> dict:
     store = get_store()
 
     if params.get("error"):
-        raise HTTPException(
-            400, f"Deriv returned an error: {params.get('error_description') or params['error']}")
+        return _auth_fail(params.get("error_description") or params["error"])
 
     # ---- LEGACY: token1/acct1/cur1 triples ----
     if "token1" in params:
-        saved: list[dict] = []
+        saved = 0
         i = 1
         while f"token{i}" in params and f"acct{i}" in params:
             try:
-                internal_id = store.upsert_account(
+                store.upsert_account(
                     deriv_account_id=params[f"acct{i}"],
                     token=params[f"token{i}"],
                     currency=params.get(f"cur{i}"),
                 )
+                saved += 1
             except RuntimeError as exc:
-                raise HTTPException(500, f"cannot store token: {exc}")
-            saved.append({"internal_id": internal_id,
-                          "deriv_account_id": params[f"acct{i}"],
-                          "currency": params.get(f"cur{i}"), "enabled": False})
+                return _auth_fail(f"Could not store your token: {exc}")
             i += 1
         if not saved:
-            raise HTTPException(400, "no tokens in callback — auth may have been cancelled")
-        return {"saved": len(saved), "flow": "legacy", "accounts": saved,
-                "next": "Visit / to enable autotrading per-account."}
+            return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")
+        return _auth_ok(saved)
 
     # ---- NEW: OAuth2 PKCE code exchange ----
     if "code" in params:
@@ -179,9 +189,9 @@ async def oauth_callback(request: Request) -> dict:
         state = params.get("state")
         entry = _PKCE_STATES.pop(state, None) if state else None
         if not entry:
-            raise HTTPException(400, "OAuth state missing or expired — start the connection again.")
+            return _auth_fail("Your sign-in session expired — please connect again.")
         if not s.deriv_oauth_token_url:
-            raise HTTPException(500, "DERIV_OAUTH_TOKEN_URL is not set — cannot exchange the code.")
+            return _auth_fail("Server is missing DERIV_OAUTH_TOKEN_URL — cannot finish sign-in.")
         verifier = entry[0]
         import httpx
         try:
@@ -196,26 +206,23 @@ async def oauth_callback(request: Request) -> dict:
                 r.raise_for_status()
                 tok = r.json()
         except Exception as exc:
-            raise HTTPException(502, f"token exchange failed: {exc!r}")
+            return _auth_fail(f"Could not finish sign-in with Deriv: {exc}")
         access = tok.get("access_token")
         if not access:
-            raise HTTPException(502, "no access_token in Deriv's token response")
+            return _auth_fail("Deriv did not return an access token — please try again.")
         try:
             info = await authorize_account(access)
         except Exception as exc:
-            raise HTTPException(400, f"authorized but could not read the account: {exc}")
+            return _auth_fail(f"Signed in, but could not read your account: {exc}")
         loginid = info.get("loginid")
         if not loginid:
-            raise HTTPException(400, "token exchanged, but Deriv returned no account id")
-        internal_id = store.upsert_account(
+            return _auth_fail("Signed in, but Deriv returned no account id.")
+        store.upsert_account(
             deriv_account_id=loginid, token=access, currency=info.get("currency"),
             platform="new")
-        return {"saved": 1, "flow": "oauth2_pkce",
-                "accounts": [{"internal_id": internal_id, "deriv_account_id": loginid,
-                              "currency": info.get("currency"), "enabled": False}],
-                "next": "Visit / to enable autotrading on this account."}
+        return _auth_ok(1)
 
-    raise HTTPException(400, "no tokens or code in callback — auth flow may have been cancelled")
+    return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")
 
 
 # ---------------------------------------------------------------------------
