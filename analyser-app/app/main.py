@@ -30,7 +30,7 @@ from app.backtest import backtest_all
 from app.comms import grade_research_batch
 from app.config import APP_NAME, APP_VERSION, PRIORITY_TRADE_TYPES, get_settings
 from app.decisions import decide as run_decide, research_gaps
-from app.deriv import DerivError
+from app.deriv import DerivError, fetch_ticks
 from app.expressions import ExpressionError, evaluate_series
 from app.indicators import compute as compute_indicator
 from app.market_data import (
@@ -274,6 +274,62 @@ async def scan_even_odd_endpoint(count: int = 120) -> dict:
         return await scan_even_odd(count=count)
     except Exception as exc:
         raise HTTPException(502, f"scan failed: {exc!r}")
+
+
+@app.get("/even_odd/analyze")
+async def even_odd_analyze(
+    symbol: str = "R_100",
+    count: int = 200,
+    strategy: str = "reversion",
+    z_enter: float = 2.0,
+    streak_enter: int = 6,
+    min_samples: int = 60,
+) -> dict:
+    """Full Even/Odd analytics for ONE market: descriptive stats (even/odd %,
+    z-score, runs/randomness test, streaks, entropy) + a gated signal with
+    confidence. Honest: synthetics are an RNG, so this filters & disciplines
+    rather than predicts. Callable by the Bot (M Pro) and the Researcher."""
+    from app import even_odd
+    try:
+        data = await fetch_ticks(symbol, count=max(20, min(count, 2000)))
+    except DerivError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f"deriv ticks fetch failed: {exc!r}")
+    digits = even_odd.last_digits(data["prices"], data["pip_size"])
+    sig = even_odd.even_odd_signal(
+        digits, strategy=strategy, z_enter=z_enter,
+        streak_enter=streak_enter, min_samples=min_samples)
+    return {"symbol": symbol, "count": len(digits), "strategy": strategy, **sig}
+
+
+@app.get("/even_odd/backtest")
+async def even_odd_backtest(
+    symbol: str = "R_100",
+    count: int = 2000,
+    window: int = 120,
+    strategy: str = "reversion",
+    z_enter: float = 2.0,
+    streak_enter: int = 6,
+    min_samples: int = 60,
+    payout: float = 1.92,
+) -> dict:
+    """Honest walk-forward backtest of an Even/Odd config on real history, so
+    expected win-rate (~50% minus spread) is visible before risking money.
+    The Researcher uses this to tune thresholds and set realistic odds."""
+    from app import even_odd
+    try:
+        data = await fetch_ticks(symbol, count=max(window + 50, min(count, 5000)))
+    except DerivError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f"deriv ticks fetch failed: {exc!r}")
+    digits = even_odd.last_digits(data["prices"], data["pip_size"])
+    result = even_odd.backtest(
+        digits, payout=payout, window=window, strategy=strategy,
+        z_enter=z_enter, streak_enter=streak_enter, min_samples=min_samples)
+    return {"symbol": symbol, "ticks": len(digits), "window": window,
+            "strategy": strategy, **result}
 
 
 @app.get("/data/digit_stats")

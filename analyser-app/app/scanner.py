@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app import even_odd
 from app.deriv import DerivError, fetch_ticks
 
 # The 10 markets Twinmil-style engines watch: the five Volatility indices and
@@ -26,37 +27,36 @@ SCAN_SYMBOLS: list[tuple[str, str]] = [
 MIN_SAMPLES = 20   # need at least this many ticks before a market is "ready"
 
 
-def _digits(prices: list[float], pip_size: int) -> list[int]:
-    scale = 10 ** pip_size
-    return [int(round(p * scale)) % 10 for p in prices]
-
-
 def _score_one(code: str, name: str, prices: list[float], pip_size: int) -> dict[str, Any]:
     n = len(prices)
     if n < MIN_SAMPLES:
         return {"symbol": code, "name": name, "samples": n, "ready": False,
                 "collecting": f"{n}/{MIN_SAMPLES}"}
-    digits = _digits(prices, pip_size)
-    even = sum(1 for d in digits if d % 2 == 0)
-    even_pct = 100.0 * even / n
-    odd_pct = 100.0 - even_pct
-    gap = abs(even_pct - odd_pct)
+    digits = even_odd.last_digits(prices, pip_size)
+    st = even_odd.even_odd_stats(digits)
+    sig = even_odd.even_odd_signal(digits, min_samples=MIN_SAMPLES)
+    even_pct, odd_pct = st["even_pct"], st["odd_pct"]
+    gap = st["gap_pct"]
     # Stability: does the bias hold across the first vs second half?
     half = n // 2
     e1 = 100.0 * sum(1 for d in digits[:half] if d % 2 == 0) / max(half, 1)
     e2 = 100.0 * sum(1 for d in digits[half:] if d % 2 == 0) / max(n - half, 1)
     stability = max(0.0, 100.0 - 2.0 * abs(e1 - e2))
-    # Quality: blends edge (gap), consistency (stability) and sample fullness.
     sample_factor = min(1.0, n / 120.0)
     quality = round(min(100.0, 0.55 * min(gap * 2, 100) + 0.35 * stability + 0.10 * 100 * sample_factor))
-    # Per-digit frequency for the strength bars (0-9).
-    freq = {str(d): round(100.0 * sum(1 for x in digits if x == d) / n, 1) for d in range(10)}
     return {
         "symbol": code, "name": name, "samples": n, "ready": True,
         "even": round(even_pct, 1), "odd": round(odd_pct, 1),
         "gap": round(gap, 1), "stability": round(stability),
-        "quality": quality, "direction": "even" if even_pct >= odd_pct else "odd",
-        "digit_freq": freq,
+        "quality": quality,
+        "direction": "even" if even_pct >= odd_pct else "odd",
+        "digit_freq": st["digit_freq"],
+        # richer, honest stats from the shared even_odd core:
+        "z_even": st["z_even"], "p_value": st["p_value"],
+        "runs_p": st["runs_p"], "current_streak": st["current_streak"],
+        # gated signal the Bot can filter on (only fires on a strong condition):
+        "signal": sig["call"], "confidence": sig["confidence"],
+        "signal_reason": (sig["reasons"][0] if sig["reasons"] else ""),
     }
 
 
@@ -75,7 +75,9 @@ async def scan_even_odd(count: int = 120) -> dict[str, Any]:
             rows.append({"symbol": code, "name": name, "samples": 0, "ready": False,
                          "collecting": f"0/{MIN_SAMPLES}"})
     ready = [r for r in rows if r.get("ready")]
-    ready.sort(key=lambda r: (r["gap"], r["quality"]), reverse=True)
+    # Rank by gated signal strength first (confidence), then raw edge/quality —
+    # so the top pick is the market with the strongest, rarest condition now.
+    ready.sort(key=lambda r: (r.get("confidence", 0.0), r["gap"], r["quality"]), reverse=True)
     not_ready = [r for r in rows if not r.get("ready")]
     ordered = ready + not_ready
     for i, r in enumerate(ready, 1):
