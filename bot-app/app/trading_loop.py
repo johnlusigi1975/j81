@@ -158,14 +158,16 @@ class TradingLoop:
         DRY_RUN trades are never live so they're never in this set."""
         if get_settings().dry_run:
             return
-        from app.deriv import DerivBotError, check_contract
+        from app.deriv import DerivBotError
+        from app.executor import _live_check
         store = get_store()
         for t in store.list_pending_live_trades():
             token = store.decrypted_token_for(t["account_id"])
             if not token:
                 continue
+            acct = store.get_internal(t["account_id"]) or {}
             try:
-                info = await check_contract(token, t["deriv_contract_id"])
+                info = await _live_check(acct, token, t["deriv_contract_id"])
             except DerivBotError:
                 continue
             if info.get("is_sold"):

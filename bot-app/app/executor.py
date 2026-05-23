@@ -66,6 +66,31 @@ def goal_status(account: dict) -> tuple[bool, str | None]:
     return False, None
 
 
+# ---------- platform-aware execution (legacy WS vs new OTP-WS) -----------
+
+
+async def _live_buy(account: dict, token: str, **p) -> dict:
+    """Place ONE real contract on whichever Deriv platform the account is on:
+      * legacy → authorize + buy on the classic WS (place_contract)
+      * new    → request a one-time OTP socket, then buy on it (deriv_new)
+    Returns the `buy` dict (contract_id, payout, buy_price)."""
+    if (account.get("platform") or "legacy").lower() == "new":
+        from app import deriv_new
+        ws_url = await deriv_new.request_otp_ws(token, account["deriv_account_id"])
+        return await deriv_new.buy(ws_url, **p)
+    return await place_contract(deriv_token=token, **p)
+
+
+async def _live_check(account: dict, token: str, contract_id) -> dict:
+    """Follow a contract to settlement on the right platform."""
+    if (account.get("platform") or "legacy").lower() == "new":
+        from app import deriv_new
+        ws_url = await deriv_new.request_otp_ws(token, account["deriv_account_id"])
+        return await deriv_new.check_contract(ws_url, contract_id)
+    from app.deriv import check_contract
+    return await check_contract(token, contract_id)
+
+
 def _check_risk_limits(account: dict, decision: dict) -> tuple[bool, str]:
     """Returns (ok, reason). Each check is one short conditional so it's
     obvious which rule blocked a trade."""
@@ -179,8 +204,8 @@ async def execute_decision_for_account(account: dict, decision: dict) -> dict:
         return trade_intent
 
     try:
-        buy = await place_contract(
-            deriv_token=token,
+        buy = await _live_buy(
+            account, token,
             symbol=trade_intent["symbol"],
             trade_type=trade_intent["trade_type"],
             direction=trade_intent["direction"],
@@ -302,8 +327,8 @@ async def execute_manual_trade(
         store.record_trade(trade_intent)
         return trade_intent
     try:
-        buy = await place_contract(
-            deriv_token=token, symbol=symbol, trade_type=tt, direction=direction,
+        buy = await _live_buy(
+            account, token, symbol=symbol, trade_type=tt, direction=direction,
             prediction=prediction, duration=trade_intent["duration"],
             duration_unit=trade_intent["duration_unit"], stake=stake,
         )

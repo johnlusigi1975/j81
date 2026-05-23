@@ -128,6 +128,7 @@ class BotStore:
             ("accounts", "daily_loss_limit", "REAL"),  # stop after -$Y loss today
             ("accounts", "mpro_enabled", "INTEGER"),   # M Pro auto-cycle on/off
             ("accounts", "mpro_config", "TEXT"),       # JSON: mode, reverse, stake, step…
+            ("accounts", "platform", "TEXT"),          # 'legacy' (authorize+buy) | 'new' (OTP-WS)
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -143,9 +144,12 @@ class BotStore:
         token: str,
         currency: str | None = None,
         label: str | None = None,
+        platform: str = "legacy",
     ) -> str:
         """Encrypt+store. If the deriv_account_id is already present, the
-        token is rotated and the row's updated_at bumped. Returns our id."""
+        token is rotated and the row's updated_at bumped. Returns our id.
+        `platform` is 'legacy' (PAT/legacy-OAuth → authorize+buy) or 'new'
+        (OAuth2 PKCE → OTP-WS) and decides how the executor places trades."""
         f = _fernet()
         encrypted = f.encrypt(token.encode())
         now = _now_iso()
@@ -158,8 +162,8 @@ class BotStore:
             if row:
                 self._conn.execute(
                     "UPDATE accounts SET encrypted_token=?, currency=?, "
-                    "label=COALESCE(?, label), updated_at=? WHERE id=?",
-                    (encrypted, currency, label, now, row["id"]),
+                    "label=COALESCE(?, label), platform=?, updated_at=? WHERE id=?",
+                    (encrypted, currency, label, platform, now, row["id"]),
                 )
                 acct_id = row["id"]
             else:
@@ -168,8 +172,8 @@ class BotStore:
                     "INSERT INTO accounts("
                     "id, deriv_account_id, currency, encrypted_token, label, "
                     "enabled, max_stake_per_trade, max_trades_per_day, "
-                    "min_confidence, created_at, updated_at) "
-                    "VALUES (?,?,?,?,?,0,?,?,?,?,?)",
+                    "min_confidence, platform, created_at, updated_at) "
+                    "VALUES (?,?,?,?,?,0,?,?,?,?,?,?)",
                     (
                         acct_id,
                         deriv_account_id,
@@ -179,6 +183,7 @@ class BotStore:
                         settings.default_max_stake_per_trade,
                         settings.default_max_trades_per_day,
                         settings.default_min_confidence,
+                        platform,
                         now,
                         now,
                     ),
@@ -196,7 +201,7 @@ class BotStore:
             "SELECT id, deriv_account_id, currency, label, enabled, "
             "max_stake_per_trade, max_trades_per_day, min_confidence, "
             "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
-            "mpro_enabled, mpro_config, "
+            "mpro_enabled, mpro_config, platform, "
             "created_at, updated_at, last_trade_at FROM accounts ORDER BY created_at DESC"
         ).fetchall()
         out = []
@@ -211,6 +216,7 @@ class BotStore:
             d["profit_today"] = self.profit_today(d["id"])
             d["mpro_enabled"] = bool(d.get("mpro_enabled"))
             d["mpro_config"] = json.loads(d.get("mpro_config") or "null")
+            d["platform"] = d.get("platform") or "legacy"
             out.append(d)
         return out
 

@@ -208,7 +208,8 @@ async def oauth_callback(request: Request) -> dict:
         if not loginid:
             raise HTTPException(400, "token exchanged, but Deriv returned no account id")
         internal_id = store.upsert_account(
-            deriv_account_id=loginid, token=access, currency=info.get("currency"))
+            deriv_account_id=loginid, token=access, currency=info.get("currency"),
+            platform="new")
         return {"saved": 1, "flow": "oauth2_pkce",
                 "accounts": [{"internal_id": internal_id, "deriv_account_id": loginid,
                               "currency": info.get("currency"), "enabled": False}],
