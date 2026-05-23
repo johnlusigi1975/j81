@@ -96,6 +96,55 @@
   .orline{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px;margin:18px 0}
   .orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--bd)}
 
+  /* ===== landing page ===== */
+  .lhero{text-align:center;max-width:760px;margin:30px auto 10px}
+  .lhero .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--amber);border:1px solid var(--bd2);border-radius:999px;padding:6px 14px;margin-bottom:20px;background:var(--panel)}
+  .lhero h1{font-family:var(--serif);font-size:54px;line-height:1.05;letter-spacing:-.02em;margin:0 0 16px;background:linear-gradient(180deg,#fff,#e7dcc0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lhero h1 .g{background:linear-gradient(90deg,#f7e7b0,#d4af37 55%,#b3902a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lhero p{color:var(--dim);font-size:18px;max-width:580px;margin:0 auto 24px}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .cta-row .btn{width:auto;min-width:220px}
+  .trustline{margin-top:16px;font-size:12.5px;color:var(--faint);display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+  .trustline b{color:var(--dim);font-weight:700}
+  .lstats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:820px;margin:40px auto 0}
+  @media(max-width:680px){.lstats{grid-template-columns:1fr 1fr}}
+  .lstat{text-align:center;background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:18px 12px}
+  .lstat .n{font-family:var(--serif);font-size:26px;font-weight:800;color:var(--amber)}
+  .lstat .l{font-size:11.5px;color:var(--faint);margin-top:4px}
+  .lsection{max-width:920px;margin:64px auto 0}
+  .lsection h2{font-family:var(--serif);font-size:30px;text-align:center;margin:0 0 8px}
+  .lsection .sub{text-align:center;color:var(--dim);font-size:15px;margin:0 auto 28px;max-width:560px}
+  .steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:760px){.steps3{grid-template-columns:1fr}}
+  .step{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;padding:24px 20px}
+  .step .num{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#f7e7b0,#d4af37 55%,#8a6d1c);color:#0a0a0a;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;font-family:var(--serif);margin-bottom:14px;box-shadow:0 0 18px rgba(212,175,55,.35)}
+  .step h3{margin:0 0 6px;font-size:17px}
+  .step p{margin:0;color:var(--dim);font-size:13.5px}
+  .ttypes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.ttypes{grid-template-columns:1fr 1fr}}
+  @media(max-width:460px){.ttypes{grid-template-columns:1fr}}
+  .ttype{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:16px;display:flex;gap:12px;align-items:flex-start}
+  .ttype .ic{font-size:20px;font-weight:800;color:var(--amber);font-family:var(--serif);flex-shrink:0;min-width:34px}
+  .ttype h4{margin:0 0 3px;font-size:14.5px} .ttype p{margin:0;font-size:12px;color:var(--dim)}
+  .trustgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:780px;margin:0 auto}
+  @media(max-width:620px){.trustgrid{grid-template-columns:1fr}}
+  .trustcard{display:flex;gap:13px;align-items:flex-start;background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:16px}
+  .trustcard .ti{font-size:20px;flex-shrink:0}
+  .trustcard h4{margin:0 0 3px;font-size:14px} .trustcard p{margin:0;font-size:12.5px;color:var(--dim)}
+  .faq{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  .faqi{background:var(--panel);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+  .faqi summary{cursor:pointer;padding:15px 18px;font-weight:700;font-size:14.5px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .faqi summary::-webkit-details-marker{display:none}
+  .faqi summary::after{content:"+";color:var(--amber);font-size:20px;font-weight:800;transition:transform .2s}
+  .faqi[open] summary::after{transform:rotate(45deg)}
+  .faqi .ans{padding:0 18px 16px;color:var(--dim);font-size:13.5px;line-height:1.6}
+  .lcta{text-align:center;max-width:620px;margin:64px auto 0;background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.02));border:1px solid var(--bd2);border-radius:20px;padding:40px 28px}
+  .lcta h2{font-family:var(--serif);font-size:30px;margin:0 0 10px}
+  .lcta p{color:var(--dim);margin:0 0 22px}
+  .riskline{max-width:820px;margin:34px auto 0;font-size:11.5px;color:var(--faint);text-align:center;line-height:1.6;border-top:1px solid var(--bd);padding-top:18px}
+  .reassure{margin-top:14px;background:rgba(52,201,138,.07);border:1px solid rgba(52,201,138,.28);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--dim);display:flex;gap:10px;align-items:flex-start}
+  .reassure .ti{font-size:16px}
+
   /* loading */
   .loadwrap{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
   .ring{width:64px;height:64px;border-radius:50%;border:4px solid rgba(212,175,55,.18);border-top-color:var(--amber);animation:spin 1s linear infinite}
@@ -180,12 +229,97 @@
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
+  <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="showView('connect')">Connect</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Home</button>
   <button class="navbtn" id="nav-exit" hidden onclick="exitApp()">Exit</button>
 </div></nav>
 
+<!-- ============ VIEW: LANDING ============ -->
+<div class="view wrap" id="view-landing">
+  <div class="lhero">
+    <div class="eyebrow">● Private AI trade desk for Deriv</div>
+    <h1>Trade Deriv the <span class="g">simple</span> way.</h1>
+    <p>J81 studies the markets, suggests the call, and can trade on autopilot to your profit target — Rise/Fall and digits, on practice or real money. No charts to read, no code to write.</p>
+    <div class="cta-row">
+      <button class="btn big" type="button" onclick="showView('connect')">Connect with Deriv →</button>
+      <button class="btn ghost big" type="button" style="width:auto;min-width:180px" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
+    </div>
+    <div class="trustline">
+      <span>🔒 <b>Trade-only access</b> — we can never withdraw</span>
+      <span>🎮 <b>Practice mode</b> with virtual funds</span>
+      <span>⚡ <b>Powered by Deriv's</b> official API</span>
+    </div>
+  </div>
+
+  <div class="lstats">
+    <div class="lstat"><div class="n">10</div><div class="l">Volatility markets</div></div>
+    <div class="lstat"><div class="n">4+</div><div class="l">simple trade types</div></div>
+    <div class="lstat"><div class="n">Auto</div><div class="l">runs to take-profit</div></div>
+    <div class="lstat"><div class="n">Demo</div><div class="l">or real, your choice</div></div>
+  </div>
+
+  <!-- how it works -->
+  <div class="lsection" id="how">
+    <h2>How it works</h2>
+    <p class="sub">From sign-in to your first trade in under a minute.</p>
+    <div class="steps3">
+      <div class="step"><div class="num">1</div><h3>Connect with Deriv</h3><p>One tap signs you in on Deriv's own page and asks permission to trade. We never see your password and can never move your money.</p></div>
+      <div class="step"><div class="num">2</div><h3>Choose demo or real</h3><p>Pick your practice account to learn risk-free, or your real account when you're ready. Switch anytime.</p></div>
+      <div class="step"><div class="num">3</div><h3>Pick a trade & go</h3><p>Tap Rise/Fall or a digit trade — or let Auto trade for you until it hits your win target or stop-loss.</p></div>
+    </div>
+  </div>
+
+  <!-- trade types -->
+  <div class="lsection">
+    <h2>Simple trades, done for you</h2>
+    <p class="sub">The most popular Deriv trades — explained in plain language.</p>
+    <div class="ttypes">
+      <div class="ttype"><div class="ic">↗↘</div><div><h4>Rise / Fall</h4><p>Will the price tick up or down?</p></div></div>
+      <div class="ttype"><div class="ic">E·O</div><div><h4>Even / Odd</h4><p>Will the last digit be even or odd?</p></div></div>
+      <div class="ttype"><div class="ic">7▲</div><div><h4>Over / Under</h4><p>Will the last digit land over or under your pick?</p></div></div>
+      <div class="ttype"><div class="ic">=≠</div><div><h4>Matches / Differs</h4><p>Will the last digit match or differ from your pick?</p></div></div>
+      <div class="ttype"><div class="ic">★</div><div><h4>Auto scanner</h4><p>Scans 10 markets and auto-trades the best edge.</p></div></div>
+      <div class="ttype"><div class="ic">◷</div><div><h4>Auto take-profit</h4><p>Runs by itself and stops at your win or loss limit.</p></div></div>
+    </div>
+  </div>
+
+  <!-- trust / security -->
+  <div class="lsection">
+    <h2>Built to be safe</h2>
+    <p class="sub">Your money stays yours. J81 only ever places the trades you allow.</p>
+    <div class="trustgrid">
+      <div class="trustcard"><div class="ti">🔒</div><div><h4>Trade-only access</h4><p>J81 can place and close trades — it can never withdraw, transfer, or touch your balance.</p></div></div>
+      <div class="trustcard"><div class="ti">🛡️</div><div><h4>Encrypted &amp; private</h4><p>Your connection is stored encrypted on the server. Your token is never shown again or shared.</p></div></div>
+      <div class="trustcard"><div class="ti">↩️</div><div><h4>Revoke anytime</h4><p>Remove J81's access in your Deriv account settings whenever you like — instantly.</p></div></div>
+      <div class="trustcard"><div class="ti">🎮</div><div><h4>Practice first</h4><p>Start on a demo account with virtual funds. Go real only when you're confident.</p></div></div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="lsection">
+    <h2>Questions</h2>
+    <div class="faq">
+      <details class="faqi"><summary>Is my money safe?</summary><div class="ans">Yes. J81 connects through Deriv's official API with <b>trade-only</b> permission — it can open and close trades on your behalf, but it can never withdraw or move your funds. You can revoke access in your Deriv settings at any time.</div></details>
+      <details class="faqi"><summary>Do I need to know how to trade?</summary><div class="ans">No. J81 suggests calls for you and can trade automatically to a profit target. You can also start on a practice account with virtual money to learn first.</div></details>
+      <details class="faqi"><summary>What does it cost?</summary><div class="ans">J81 is free to use. A small markup of up to 3% of a winning contract's payout (Deriv's standard developer markup) may apply on trades — never more than that, and never on your stake.</div></details>
+      <details class="faqi"><summary>Can I lose money?</summary><div class="ans">Yes — trading carries risk and you can lose your stake. That's why J81 offers a practice mode, take-profit and stop-loss limits, and starts everyone in demo. Never trade money you can't afford to lose.</div></details>
+      <details class="faqi"><summary>Do I need a Deriv account?</summary><div class="ans">Yes. If you don't have one yet, you can open a free Deriv account in a couple of minutes — there's a button on the connect screen.</div></details>
+    </div>
+  </div>
+
+  <!-- final CTA -->
+  <div class="lcta">
+    <h2>Ready to trade smarter?</h2>
+    <p>Connect your Deriv account and start on practice money — no risk, no commitment.</p>
+    <div class="cta-row"><button class="btn big" type="button" style="width:auto;min-width:240px" onclick="showView('connect')">Connect with Deriv →</button></div>
+  </div>
+
+  <div class="riskline">Trading involves substantial risk and is not suitable for everyone — you can lose some or all of your invested capital. Synthetic indices and options are complex, high-risk products. J81 is an independent tool that trades on your own Deriv account via Deriv's API; it is not affiliated with or endorsed by Deriv. This is not investment advice.</div>
+</div>
+
 <!-- ============ VIEW: CONNECT ============ -->
-<div class="view wrap" id="view-connect">
+<div class="view wrap" id="view-connect" hidden>
+  <button class="backbtn" onclick="showView('landing')">← back</button>
   <div class="hero">
     <h1>Your private <span class="g">trade desk</span> for Deriv</h1>
     <p>J81 researches and analyses the markets for you, suggests a call, and can trade on Auto until your profit target — with limits that protect your money.</p>
@@ -198,6 +332,8 @@
     <!-- Primary: one-tap Deriv OAuth -->
     <a href="/oauth/start" style="text-decoration:none"><button class="btn big" type="button" style="width:100%">Connect with Deriv →</button></a>
     <div class="faint" style="font-size:12px;margin-top:7px">You approve the permissions on Deriv’s own page, then come straight back here to pick your account.</div>
+
+    <div class="reassure"><span class="ti">🔒</span><span><b>Trade-only access.</b> J81 can place and close trades but can <b>never withdraw or move your money</b>. Your connection is encrypted, and you can revoke access anytime in your Deriv settings.</span></div>
 
     <!-- Fallback: manual API token -->
     <div class="orline"><span>or use an API token</span></div>
@@ -333,11 +469,13 @@
 async function api(p,opts={}){ const r=await fetch(p,{headers:{"Content-Type":"application/json",...(opts.headers||{})},...opts}); let b=null;try{b=await r.json()}catch(_){ } if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status)); return b; }
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const VIEWS=["connect","loading","accounts","home","trade"];
+const VIEWS=["landing","connect","loading","accounts","home","trade"];
 function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
-  const on=(v!=="connect"&&v!=="loading"); ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!on;});
-  const na=$("nav-acct"); if(na) na.hidden=!(on&&CUR);
-  const mb=$("money-bg"); if(mb) mb.style.display=(v==="connect"||v==="loading")?"block":"none";
+  const inApp=(v==="accounts"||v==="home"||v==="trade");
+  ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
+  const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
+  const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
+  const mb=$("money-bg"); if(mb) mb.style.display=(v==="landing"||v==="connect"||v==="loading")?"block":"none";
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts(); }
 
 // floating REAL gold bars + REAL banknotes — premium wealth background (login)
@@ -393,12 +531,12 @@ async function boot(){
   }
   let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
   if(accts && accts.length){
-    // 2+ accounts (e.g. demo + real from one Deriv login) → let them choose.
-    // Exactly one → go straight in.
+    // Returning, connected user. 2+ accounts (demo + real from one Deriv
+    // login) → let them choose; exactly one → go straight in.
     const go = accts.length>1 ? ()=>showView("accounts") : ()=>{ CUR=accts[0]; enterApp(); };
     if(justConnected){ runLoading(go); } else { go(); }
   }
-  else showView("connect");
+  else showView("landing");   // brand-new visitor → explainer first, not the connect wall
 }
 function enterApp(){ updateNav(); showView("home"); }
 function exitApp(){ CUR=null; showView("connect"); }
