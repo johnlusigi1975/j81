@@ -184,22 +184,27 @@
   </div>
   <div class="glass connect-card">
     <div id="enc-setup"></div>
-    <h2 style="margin:0 0 12px;font-size:18px">Connect your Deriv account</h2>
+    <h2 style="margin:0 0 4px;font-size:18px">Connect your Deriv account</h2>
+    <p class="lede" style="margin:0 0 14px">Start on your <b>demo (practice)</b> account — same app, virtual money, zero risk.</p>
 
-    <!-- Option 1: OAuth -->
-    <a href="/oauth/start" style="text-decoration:none"><button class="btn big" type="button">Connect with Deriv (OAuth)</button></a>
-    <div class="faint" style="font-size:12px;margin-top:7px">One-tap sign-in on Deriv — handles both the legacy &amp; new platforms. Needs a public website, so on your own computer use the token option below.</div>
-
-    <div class="orline"><span>or</span></div>
-
-    <!-- Option 2: Manual API token -->
-    <div style="font-weight:800;font-size:14px;margin-bottom:4px">Manual API token</div>
-    <p class="lede" style="margin:0 0 10px">Create one at <b>app.deriv.com → Settings → API token</b> (tick <b>Read</b> + <b>Trade</b>), paste it here. Saved <b>encrypted on this machine only</b> — never shown again, never sent to chat. Use a <b>demo</b> token to practise first.</p>
+    <!-- Primary: API token (the working, demo-first path) -->
+    <div style="font-weight:800;font-size:14px;margin-bottom:6px">Paste your Deriv API token</div>
+    <ol class="lede" style="margin:0 0 10px;padding-left:18px;line-height:1.6">
+      <li>Open <a href="https://app.deriv.com/account/api-token" target="_blank" rel="noopener"><b>app.deriv.com → Settings → API token</b></a> (switch to your <b>demo</b> account first).</li>
+      <li>Tick <b>Read</b> and <b>Trade</b>, name it “J81”, and create it.</li>
+      <li>Copy the token and paste it below.</li>
+    </ol>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <input type="password" id="pat-input" placeholder="paste Deriv API token…" style="flex:1;min-width:220px;font-family:var(--mono);font-size:13px">
-      <button class="btn" id="pat-btn">Connect →</button>
+      <button class="btn big" id="pat-btn">Connect →</button>
     </div>
+    <div class="faint" style="font-size:11.5px;margin-top:7px">Stored <b>encrypted on the server only</b> — never shown again, never sent to chat.</div>
     <div id="pat-result" style="font-size:12.5px;margin-top:10px"></div>
+
+    <!-- One-tap OAuth: coming soon (new-platform trading API in progress) -->
+    <div class="orline"><span>or</span></div>
+    <button class="btn ghost" type="button" disabled style="opacity:.55;cursor:not-allowed">One-tap “Connect with Deriv” — coming soon</button>
+    <div class="faint" style="font-size:11.5px;margin-top:6px">One-tap sign-in is being wired to Deriv’s new trading API. For now the API token above is the way in.</div>
 
     <!-- No account yet → referral signup -->
     <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bd);text-align:center">
