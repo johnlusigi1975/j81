@@ -420,6 +420,15 @@
       <label class="field">Ticks<input id="t-duration" type="number" value="5" min="1" max="10" style="width:70px"></label>
     </div>
 
+    <!-- LIVE market: real-time last-digit strength (browser → Deriv public WS, no auth) -->
+    <div id="live-panel" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px">
+        <div class="lab" style="font-size:10px">Live last digits <span class="faint" id="live-count"></span></div>
+        <div class="faint" id="live-evenodd" style="font-size:11px;font-family:var(--mono)"></div>
+      </div>
+      <div class="dbar" id="live-digits"></div>
+    </div>
+
     <!-- digit picker (Over/Under, Matches/Differs only) -->
     <div id="digit-picker" hidden style="margin-bottom:12px">
       <div class="lab" style="margin-bottom:6px">Pick your digit <span class="faint" id="digit-hint"></span></div>
@@ -476,6 +485,7 @@ function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display=(v==="landing"||v==="connect"||v==="loading")?"block":"none";
+  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} }   // stop live ticks when leaving the trade view
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts(); }
 
 // floating REAL gold bars + REAL banknotes — premium wealth background (login)
@@ -636,6 +646,52 @@ async function loadHome(){
   }catch(_){}
 }
 
+// ---------- LIVE market (browser → Deriv public Options WS, no auth) ----------
+// Confirmed: wss://api.derivws.com/trading/v1/options/ws/public streams ticks +
+// active_symbols with no token. We use it to drive a live spot price + live
+// last-digit strength bars, like Deriv/twinmil — zero auth, zero backend load.
+const LiveWS=(function(){
+  const PUB="wss://api.derivws.com/trading/v1/options/ws/public";
+  let ws=null, sub=null, want=null, digits=[], pip=2, lastQ=null, rid=100;
+  function emptyMsg(){ const el=$("live-digits"); if(el) el.innerHTML='<div class="faint" style="font-size:11px;padding:8px 0">connecting to live market…</div>'; const c=$("live-count"); if(c)c.textContent=""; const eo=$("live-evenodd"); if(eo)eo.textContent=""; }
+  function open(){
+    if(ws&&(ws.readyState===0||ws.readyState===1)){ resub(); return; }
+    ws=new WebSocket(PUB);
+    ws.onopen=()=>resub();
+    ws.onmessage=ev=>{ let m; try{m=JSON.parse(ev.data)}catch(_){return} if(m.subscription&&m.subscription.id) sub=m.subscription.id; if(m.msg_type==="tick"&&m.tick) onTick(m.tick); };
+    ws.onclose=()=>{ ws=null; sub=null; if(want) setTimeout(()=>{ if(want) open(); },1500); };
+    ws.onerror=()=>{};
+  }
+  function resub(){
+    if(!ws||ws.readyState!==1||!want) return;
+    if(sub){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} sub=null; }
+    digits=[]; lastQ=null; emptyMsg();
+    ws.send(JSON.stringify({ticks:want,subscribe:1,req_id:++rid}));
+  }
+  function onTick(t){
+    if(t.symbol&&want&&t.symbol!==want) return;
+    if(typeof t.pip_size==="number") pip=t.pip_size;
+    const q=t.quote; if(q==null) return;
+    const s=Number(q).toFixed(pip), d=+s[s.length-1];
+    const sp=$("term-spot"); if(sp){ sp.innerHTML='<small>spot price</small>'+s; sp.classList.remove("up","down"); if(lastQ!=null&&q!==lastQ) sp.classList.add(q>lastQ?"up":"down"); }
+    lastQ=q; digits.push(d); if(digits.length>50) digits.shift(); render();
+  }
+  function render(){
+    const el=$("live-digits"); if(!el) return;
+    const n=digits.length, cnt=Array(10).fill(0); digits.forEach(x=>cnt[x]++);
+    const mx=Math.max(1,...cnt);
+    el.innerHTML=cnt.map((c,d)=>{ const h=Math.round(c/mx*46)+2, pc=n?Math.round(c/n*100):0;
+      return `<div class="col ${d%2?'odd':''}"><div class="bar" style="height:${h}px"></div><div class="d">${d}</div><div class="n">${pc}%</div></div>`; }).join("");
+    const ev=digits.filter(x=>x%2===0).length;
+    const c=$("live-count"); if(c)c.textContent=`(last ${n})`;
+    const eo=$("live-evenodd"); if(eo&&n)eo.textContent=`even ${Math.round(ev/n*100)}% · odd ${Math.round((n-ev)/n*100)}%`;
+  }
+  return {
+    start(sym){ want=sym; emptyMsg(); open(); resub(); },
+    stop(){ want=null; if(ws&&sub&&ws.readyState===1){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} } if(ws){ try{ws.close()}catch(_){} } ws=null; sub=null; }
+  };
+})();
+
 // ---------- trade view ----------
 const GAME_NAMES={m_pro:"M Pro · Auto Scanner",rise_fall:"Rise / Fall",even_odd:"Even / Odd",over_under:"Over / Under",matches_differs:"Matches / Differs"};
 let SELDIGIT=5;   // chosen digit for Over/Under + Matches/Differs
@@ -667,11 +723,17 @@ async function openTrade(game){
     $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="matches_differs" data-dir="matches"><span class="big">= MATCHES</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn odd" data-tt="matches_differs" data-dir="differs"><span class="big">≠ DIFFERS</span><span class="pay" id="pay-b">—</span></button>`;
   }
+  // for the scanner we keep its own digit panel; hide the generic live strip
+  $("live-panel").hidden = (game==="m_pro");
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
+  const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
+  if(game!=="m_pro") LiveWS.start(sym); else LiveWS.stop();
   loadAssistant(); loadAutoState();
   if(game==="m_pro") loadScan();
 }
+// live market follows the chosen symbol
+$("t-symbol").addEventListener("change",e=>{ $("term-market").textContent=e.target.selectedOptions[0]?.textContent||e.target.value; if(GAME!=="m_pro") LiveWS.start(e.target.value); });
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".tbtn"); if(b) placeTrade(b); });
 
 async function placeTrade(btn){
