@@ -251,37 +251,6 @@ def setup_encryption_key() -> dict:
     return {"ok": True, "note": "Encryption key generated and saved locally — you can now connect accounts."}
 
 
-def _ensure_enc_key() -> None:
-    """Generate + persist a Fernet key if none is set (quiet, non-erroring)."""
-    if get_settings().bot_encryption_key:
-        return
-    from cryptography.fernet import Fernet
-    key = Fernet.generate_key().decode()
-    existing = _BOT_ENV_FILE.read_text() if _BOT_ENV_FILE.exists() else ""
-    if "BOT_ENCRYPTION_KEY" not in existing:
-        _BOT_ENV_FILE.write_text((existing.rstrip() + "\n" if existing else "") + f"BOT_ENCRYPTION_KEY={key}\n")
-        try:
-            _os.chmod(_BOT_ENV_FILE, 0o600)
-        except OSError:
-            pass
-    get_settings.cache_clear()
-
-
-@app.post("/preview/enter")
-def preview_enter() -> dict:
-    """TESTING ONLY: create/return a local DEMO account so you can walk the full
-    client interface without a real Deriv connection. DRY_RUN keeps every trade
-    pretend; the token is a dummy and never touches Deriv. Remove once the app
-    is registered on Deriv."""
-    _ensure_enc_key()
-    store = get_store()
-    demo_id = "VRTC0000000"  # VRT prefix → treated as a demo account
-    internal = store.upsert_account(deriv_account_id=demo_id, token="preview-demo", currency="USD")
-    store.update_account_settings(internal, enabled=True)
-    acct = next((a for a in store.list_accounts_public() if a["id"] == internal), None)
-    return {"account": acct, "preview": True}
-
-
 class ConnectPATRequest(BaseModel):
     token: str
 

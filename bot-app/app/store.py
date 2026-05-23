@@ -294,6 +294,12 @@ class BotStore:
 
     def delete_account(self, account_id: str) -> bool:
         with self._lock:
+            # Drop dependent trades first — the trades.account_id FK (with
+            # foreign_keys=ON) would otherwise block the delete once the
+            # account has any trade history.
+            self._conn.execute(
+                "DELETE FROM trades WHERE account_id=?", (account_id,)
+            )
             cur = self._conn.execute(
                 "DELETE FROM accounts WHERE id=?", (account_id,)
             )

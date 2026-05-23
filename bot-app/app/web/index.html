@@ -206,11 +206,6 @@
       <div class="faint" style="font-size:13px;margin-bottom:9px">New to Deriv? You’ll need an account first.</div>
       <a id="ref-link" href="https://deriv.com/signup/" target="_blank" rel="noopener" style="text-decoration:none"><button class="btn ghost" type="button">Open a free Deriv account →</button></a>
     </div>
-
-    <!-- TESTING: preview the app without connecting -->
-    <div style="margin-top:14px;text-align:center">
-      <button id="preview-btn" type="button" style="background:none;border:none;color:var(--faint);font-family:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline">Just looking? Preview the app (demo) →</button>
-    </div>
   </div>
 </div>
 
@@ -391,12 +386,6 @@ $("pat-btn").addEventListener("click",async()=>{
   }catch(e){ res.innerHTML='<span style="color:var(--bad)">'+esc(e.message)+'</span>'; }
   finally{ $("pat-btn").disabled=false; }
 });
-// TESTING: preview the app with a local demo account (no Deriv connection)
-(function(){ const b=$("preview-btn"); if(b) b.addEventListener("click",async()=>{
-  b.disabled=true; b.textContent="opening preview…";
-  try{ const r=await api("/preview/enter",{method:"POST",body:"{}"}); CUR=r.account; runLoading(()=>enterApp()); }
-  catch(e){ $("pat-result").innerHTML='<span style="color:var(--bad)">'+esc(e.message)+'</span>'; b.disabled=false; b.textContent="Just looking? Preview the app (demo) →"; }
-}); })();
 
 function runLoading(done){
   showView("loading");
