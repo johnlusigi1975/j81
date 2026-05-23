@@ -171,7 +171,7 @@
 <nav class="nav"><div class="nav-in">
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
-  <span class="chip" id="nav-acct" hidden><span class="dot"></span><span id="nav-acct-txt">—</span></span>
+  <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Home</button>
   <button class="navbtn" id="nav-exit" hidden onclick="exitApp()">Exit</button>
 </div></nav>
@@ -185,26 +185,24 @@
   <div class="glass connect-card">
     <div id="enc-setup"></div>
     <h2 style="margin:0 0 4px;font-size:18px">Connect your Deriv account</h2>
-    <p class="lede" style="margin:0 0 14px">Start on your <b>demo (practice)</b> account — same app, virtual money, zero risk.</p>
+    <p class="lede" style="margin:0 0 14px">One tap signs you in on Deriv, then you choose <b>Real</b> or <b>Practice</b> — and J81 trades on that account.</p>
 
-    <!-- Primary: API token (the working, demo-first path) -->
-    <div style="font-weight:800;font-size:14px;margin-bottom:6px">Paste your Deriv API token</div>
-    <ol class="lede" style="margin:0 0 10px;padding-left:18px;line-height:1.6">
-      <li>Open <a href="https://app.deriv.com/account/api-token" target="_blank" rel="noopener"><b>app.deriv.com → Settings → API token</b></a> (switch to your <b>demo</b> account first).</li>
-      <li>Tick <b>Read</b> and <b>Trade</b>, name it “J81”, and create it.</li>
-      <li>Copy the token and paste it below.</li>
+    <!-- Primary: one-tap Deriv OAuth -->
+    <a href="/oauth/start" style="text-decoration:none"><button class="btn big" type="button" style="width:100%">Connect with Deriv →</button></a>
+    <div class="faint" style="font-size:12px;margin-top:7px">You approve the permissions on Deriv’s own page, then come straight back here to pick your account.</div>
+
+    <!-- Fallback: manual API token -->
+    <div class="orline"><span>or use an API token</span></div>
+    <ol class="lede" style="margin:0 0 10px;padding-left:18px;line-height:1.55;font-size:13px">
+      <li>Open <a href="https://app.deriv.com/account/api-token" target="_blank" rel="noopener"><b>app.deriv.com → Settings → API token</b></a> (Read + Trade).</li>
+      <li>Copy it and paste below.</li>
     </ol>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <input type="password" id="pat-input" placeholder="paste Deriv API token…" style="flex:1;min-width:220px;font-family:var(--mono);font-size:13px">
-      <button class="btn big" id="pat-btn">Connect →</button>
+      <button class="btn" id="pat-btn">Connect →</button>
     </div>
     <div class="faint" style="font-size:11.5px;margin-top:7px">Stored <b>encrypted on the server only</b> — never shown again, never sent to chat.</div>
     <div id="pat-result" style="font-size:12.5px;margin-top:10px"></div>
-
-    <!-- One-tap OAuth: coming soon (new-platform trading API in progress) -->
-    <div class="orline"><span>or</span></div>
-    <button class="btn ghost" type="button" disabled style="opacity:.55;cursor:not-allowed">One-tap “Connect with Deriv” — coming soon</button>
-    <div class="faint" style="font-size:11.5px;margin-top:6px">One-tap sign-in is being wired to Deriv’s new trading API. For now the API token above is the way in.</div>
 
     <!-- No account yet → referral signup -->
     <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bd);text-align:center">
@@ -226,6 +224,15 @@
       <div class="s" data-i="3">Ready</div>
     </div>
   </div>
+</div>
+
+<!-- ============ VIEW: ACCOUNTS (choose real / demo) ============ -->
+<div class="view wrap" id="view-accounts" hidden>
+  <div class="hero" style="text-align:center">
+    <h1>Choose your <span class="g">account</span></h1>
+    <p>Which Deriv account should J81 trade on? You can switch anytime from the badge at the top.</p>
+  </div>
+  <div class="grid" id="acct-grid"></div>
 </div>
 
 <!-- ============ VIEW: HOME (choose) ============ -->
@@ -313,11 +320,12 @@
 async function api(p,opts={}){ const r=await fetch(p,{headers:{"Content-Type":"application/json",...(opts.headers||{})},...opts}); let b=null;try{b=await r.json()}catch(_){ } if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status)); return b; }
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const VIEWS=["connect","loading","home","trade"];
+const VIEWS=["connect","loading","accounts","home","trade"];
 function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
-  const on=(v!=="connect"&&v!=="loading"); ["nav-acct","nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!on;});
+  const on=(v!=="connect"&&v!=="loading"); ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!on;});
+  const na=$("nav-acct"); if(na) na.hidden=!(on&&CUR);
   const mb=$("money-bg"); if(mb) mb.style.display=(v==="connect"||v==="loading")?"block":"none";
-  if(v==="home") loadHome(); }
+  if(v==="home") loadHome(); if(v==="accounts") loadAccounts(); }
 
 // floating REAL gold bars + REAL banknotes — premium wealth background (login)
 function spawnMoney(){
@@ -372,16 +380,42 @@ async function boot(){
   }
   let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
   if(accts && accts.length){
-    CUR=accts[0];
-    if(justConnected){ runLoading(()=>enterApp()); } else { enterApp(); }
+    // 2+ accounts (e.g. demo + real from one Deriv login) → let them choose.
+    // Exactly one → go straight in.
+    const go = accts.length>1 ? ()=>showView("accounts") : ()=>{ CUR=accts[0]; enterApp(); };
+    if(justConnected){ runLoading(go); } else { go(); }
   }
   else showView("connect");
 }
 function enterApp(){ updateNav(); showView("home"); }
 function exitApp(){ CUR=null; showView("connect"); }
+function openAccounts(){ showView("accounts"); }
 function updateNav(){
   if(!CUR) return;
   $("nav-acct").hidden=false; $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL");
+}
+
+// ---------- account picker (real / demo) ----------
+async function loadAccounts(){
+  let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
+  if(!accts.length){ showView("connect"); return; }
+  const grid=$("acct-grid");
+  grid.innerHTML=accts.map(a=>{
+    const demo=a.is_demo, col=demo?"var(--amber)":"#3fb950";
+    const cur=esc(a.currency||""), sub=demo?"virtual funds — no risk":"real funds — real profit &amp; loss";
+    const active=(CUR&&CUR.id===a.id)?'style="outline:2px solid var(--amber)"':'';
+    return `<div class="gcard" data-acct="${esc(a.id)}" ${active} style="cursor:pointer">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.6px;color:${col}">${demo?"PRACTICE":"REAL MONEY"}</div>
+      <div style="font-size:20px;font-weight:800;margin:6px 0">${esc(a.deriv_account_id)}</div>
+      <div class="faint" style="font-size:12.5px">${cur} · ${sub}</div>
+      <button class="btn" type="button" style="margin-top:12px;width:100%">Trade on this →</button>
+    </div>`;
+  }).join("");
+  grid.querySelectorAll("[data-acct]").forEach(el=>el.addEventListener("click",()=>pickAccount(el.dataset.acct)));
+}
+async function pickAccount(id){
+  try{ const a=(await api("/accounts")).find(x=>x.id===id); if(a){ CUR=a; enterApp(); } }
+  catch(_){ }
 }
 
 // ---------- encryption one-click ----------

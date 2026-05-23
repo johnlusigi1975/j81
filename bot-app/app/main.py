@@ -210,17 +210,25 @@ async def oauth_callback(request: Request) -> RedirectResponse:
         access = tok.get("access_token")
         if not access:
             return _auth_fail("Deriv did not return an access token — please try again.")
+        # New-platform token: read the user's accounts (demo + real) from the
+        # new Options API, NOT the legacy v3 authorize (which rejects this token).
+        from app import deriv_new
         try:
-            info = await authorize_account(access)
+            accounts = await deriv_new.list_accounts(access)
         except Exception as exc:
-            return _auth_fail(f"Signed in, but could not read your account: {exc}")
-        loginid = info.get("loginid")
-        if not loginid:
-            return _auth_fail("Signed in, but Deriv returned no account id.")
-        store.upsert_account(
-            deriv_account_id=loginid, token=access, currency=info.get("currency"),
-            platform="new")
-        return _auth_ok(1)
+            return _auth_fail(f"Signed in, but could not read your accounts: {exc}")
+        saved = 0
+        for a in accounts:
+            try:
+                store.upsert_account(
+                    deriv_account_id=a["loginid"], token=access,
+                    currency=a.get("currency"), platform="new")
+                saved += 1
+            except RuntimeError as exc:
+                return _auth_fail(f"Could not store your account: {exc}")
+        if not saved:
+            return _auth_fail("Signed in, but found no tradable accounts.")
+        return _auth_ok(saved)
 
     return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")
 

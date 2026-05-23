@@ -36,25 +36,80 @@ def _api_base() -> str:
     return get_settings().deriv_new_api_base.rstrip("/")
 
 
+def _headers(access_token: str) -> dict:
+    """Auth headers for the new Options REST API. Deriv-App-ID identifies the
+    app (the alphanumeric OAuth client_id); the Bearer is the user's token."""
+    return {
+        "Authorization": f"Bearer {access_token}",
+        "Deriv-App-ID": get_settings().deriv_app_id,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
+
+def _is_demo(loginid: str, acct_type: str | None = None) -> bool:
+    if acct_type:
+        return acct_type.lower() in ("demo", "virtual", "vrt")
+    return loginid.upper().startswith("VR")
+
+
+async def list_accounts(access_token: str, timeout: float = 20.0) -> list[dict]:
+    """List every Options trading account the token controls (demo + real), so
+    the client can choose which to trade on. Returns
+    [{loginid, currency, is_demo, type}]. The token is a Bearer header only."""
+    url = f"{_api_base()}/trading/v1/options/accounts"
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        r = await client.get(url, headers=_headers(access_token))
+    if r.status_code >= 400:
+        raise DerivBotError(f"account list failed: HTTP {r.status_code} {r.text[:200]}")
+    body = r.json()
+    # Be tolerant of the envelope: list may sit at top level, under "data",
+    # or under "accounts".
+    rows = body.get("data") if isinstance(body, dict) else body
+    if isinstance(rows, dict):
+        rows = rows.get("accounts") or rows.get("data") or []
+    if not isinstance(rows, list):
+        rows = body.get("accounts", []) if isinstance(body, dict) else []
+    out: list[dict] = []
+    for a in rows:
+        if not isinstance(a, dict):
+            continue
+        loginid = a.get("loginid") or a.get("account_id") or a.get("id")
+        if not loginid:
+            continue
+        acct_type = a.get("account_type") or a.get("type")
+        out.append({
+            "loginid": loginid,
+            "currency": a.get("currency"),
+            "is_demo": _is_demo(loginid, acct_type),
+            "type": acct_type or ("demo" if _is_demo(loginid) else "real"),
+        })
+    if not out:
+        raise DerivBotError(f"no accounts in response: {str(body)[:200]}")
+    return out
+
+
 async def request_otp_ws(access_token: str, loginid: str, timeout: float = 20.0) -> str:
     """Exchange the OAuth access token for a one-time OTP WebSocket URL bound to
     `loginid`. Returns the wss URL to connect to (it already encodes real/demo).
     The token is sent as a Bearer header — never in the URL/logs."""
     url = f"{_api_base()}/trading/v1/options/accounts/{loginid}/otp"
-    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
     async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.get(url, headers=headers)
+        r = await client.post(url, headers=_headers(access_token), json={})
         if r.status_code >= 400:
             raise DerivBotError(f"OTP request failed: HTTP {r.status_code} {r.text[:160]}")
         data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
-    # Deriv may return the full ws url, or an otp we assemble into one.
-    ws_url = data.get("ws_url") or data.get("url") or data.get("otp_url")
-    if not ws_url and data.get("otp"):
+    # Response envelope may nest under "data". Deriv returns the full ws url
+    # (preferred), or an otp we assemble into one.
+    inner = data.get("data") if isinstance(data.get("data"), dict) else data
+    ws_url = inner.get("url") or inner.get("ws_url") or inner.get("otp_url")
+    otp = inner.get("otp")
+    if not ws_url and otp:
         host = _api_base().split("://", 1)[-1]
-        acct_type = data.get("account_type") or ("demo" if loginid.upper().startswith("VR") else "real")
-        ws_url = f"wss://{host}/trading/v1/options/ws/{acct_type}?otp={data['otp']}"
+        acct_type = "demo" if _is_demo(loginid, inner.get("account_type")) else "real"
+        ws_url = f"wss://{host}/trading/v1/options/ws/{acct_type}?otp={otp}"
     if not ws_url:
-        raise DerivBotError(f"OTP response had no WebSocket url: {data}")
+        raise DerivBotError(f"OTP response had no WebSocket url: {str(data)[:200]}")
     return ws_url
 
 
@@ -79,16 +134,27 @@ async def balance(ws_url: str) -> dict:
             "loginid": b.get("loginid")}
 
 
+def _new_params(body: dict) -> dict:
+    """Convert the legacy buy `parameters` block to the new platform's shape:
+    the new proposal/buy uses `underlying_symbol` instead of `symbol`."""
+    params = dict(body["parameters"])
+    if "symbol" in params:
+        params["underlying_symbol"] = params.pop("symbol")
+    return params
+
+
 async def proposal(ws_url: str, *, symbol, trade_type, direction, prediction,
                    duration, duration_unit, stake, currency="USD") -> dict:
     body = _trade_payload(symbol, trade_type, direction, prediction,
                           duration, duration_unit, stake, currency)
+    p_params = _new_params(body)
     req = {"proposal": 1, "amount": stake, "basis": "stake",
-           "contract_type": body["parameters"]["contract_type"],
+           "contract_type": p_params["contract_type"],
            "currency": currency, "duration": int(duration),
-           "duration_unit": duration_unit or "t", "symbol": symbol}
-    if "barrier" in body["parameters"]:
-        req["barrier"] = body["parameters"]["barrier"]
+           "duration_unit": duration_unit or "t",
+           "underlying_symbol": p_params["underlying_symbol"]}
+    if "barrier" in p_params:
+        req["barrier"] = p_params["barrier"]
     msg = await _ws_request(ws_url, req, "proposal")
     p = msg.get("proposal") or {}
     return {"id": p.get("id"), "ask_price": _to_float(p.get("ask_price")),
@@ -98,9 +164,10 @@ async def proposal(ws_url: str, *, symbol, trade_type, direction, prediction,
 async def buy(ws_url: str, *, symbol, trade_type, direction, prediction,
               duration, duration_unit, stake, currency="USD") -> dict:
     """Place one contract via the OTP-authenticated socket (same buy payload as
-    legacy, including app_markup_percentage)."""
+    legacy, but `underlying_symbol` and including app_markup_percentage)."""
     body = _trade_payload(symbol, trade_type, direction, prediction,
                           duration, duration_unit, stake, currency)
+    body["parameters"] = _new_params(body)
     msg = await _ws_request(ws_url, body, "buy")
     return msg.get("buy") or {}
 
