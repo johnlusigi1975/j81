@@ -136,10 +136,16 @@ async def balance(ws_url: str) -> dict:
 
 def _new_params(body: dict) -> dict:
     """Convert the legacy buy `parameters` block to the new platform's shape:
-    the new proposal/buy uses `underlying_symbol` instead of `symbol`."""
+      * `symbol` → `underlying_symbol` (the new field name)
+      * drop `app_markup_percentage` — it's a documented LEGACY buy param only;
+        the new Options buy doesn't list it, and sending an unknown field risks
+        an "input validation failed" rejection. (Markup on the new platform is
+        unconfirmed; revenue there would come via affiliate/markup-statistics.)
+    """
     params = dict(body["parameters"])
     if "symbol" in params:
         params["underlying_symbol"] = params.pop("symbol")
+    params.pop("app_markup_percentage", None)
     return params
 
 

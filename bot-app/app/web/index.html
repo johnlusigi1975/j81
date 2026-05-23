@@ -545,6 +545,9 @@ async function placeTrade(btn){
   else if(tt==="even_odd"){ body.prediction=btn.dataset.pred; call=body.prediction.toUpperCase(); }
   else if(tt==="over_under"||tt==="matches_differs"){ body.direction=btn.dataset.dir; body.prediction=String(SELDIGIT); call=body.direction.toUpperCase()+" "+SELDIGIT; }
   else { call=(btn.dataset.dir||btn.dataset.pred||"").toUpperCase(); }
+  // Impossible digit bets: nothing is over 9, nothing is under 0.
+  if(tt==="over_under" && body.direction==="over" && SELDIGIT===9){ res.innerHTML='<div class="banner warn" style="margin:0">Pick a digit 0–8 for OVER (nothing is over 9).</div>'; return; }
+  if(tt==="over_under" && body.direction==="under" && SELDIGIT===0){ res.innerHTML='<div class="banner warn" style="margin:0">Pick a digit 1–9 for UNDER (nothing is under 0).</div>'; return; }
   res.innerHTML='<div class="banner warn" style="margin:0">placing '+esc(call)+'…</div>'; btn.disabled=true;
   try{
     const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body)});

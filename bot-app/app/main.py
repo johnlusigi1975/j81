@@ -422,12 +422,19 @@ async def quote(
 # ---------------------------------------------------------------------------
 
 # A short, friendly list of common synthetic indices (always open, 24/7).
+# Continuous Volatility indices — 24/7, uniform last digit, so they support
+# BOTH Rise/Fall and all digit trades. (2s tick = R_*, 1s tick = 1HZ*V.)
 TRADEABLE_SYMBOLS = [
     {"code": "R_10", "name": "Volatility 10"},
     {"code": "R_25", "name": "Volatility 25"},
     {"code": "R_50", "name": "Volatility 50"},
     {"code": "R_75", "name": "Volatility 75"},
     {"code": "R_100", "name": "Volatility 100"},
+    {"code": "1HZ10V", "name": "Volatility 10 (1s)"},
+    {"code": "1HZ25V", "name": "Volatility 25 (1s)"},
+    {"code": "1HZ50V", "name": "Volatility 50 (1s)"},
+    {"code": "1HZ75V", "name": "Volatility 75 (1s)"},
+    {"code": "1HZ100V", "name": "Volatility 100 (1s)"},
 ]
 
 

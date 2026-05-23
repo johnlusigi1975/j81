@@ -28,6 +28,11 @@ DERIV_WS_URL_TEMPLATE = "wss://ws.binaryws.com/websockets/v3?app_id={app_id}"
 # and quoting work under it; only markup (revenue) needs your own numeric app.
 PUBLIC_WS_APP_ID = "1089"
 
+# Deriv ENFORCES app_markup_percentage at max 3% (app_register schema: min 0,
+# max 3). Marketing says "up to 5% for a limited time" but the API rejects >3%,
+# so clamp here defensively.
+MAX_MARKUP_PCT = 3.0
+
 
 def _ws_app_id() -> str:
     """Return a NUMERIC app_id valid for the legacy v3 WebSocket.
@@ -83,10 +88,12 @@ def _trade_payload(
     # Apply our app's markup per-trade. Deriv adds this as a % of the
     # contract PAYOUT and credits it to the app developer on settlement.
     # Without this the buy still works but earns us nothing. Deriv caps it
-    # at 5%; we clamp defensively so a bad config can't exceed the cap.
+    # at 3% (MAX_MARKUP_PCT); clamp so a bad config can't get the buy rejected.
+    # NOTE: markup is confirmed on the LEGACY buy only; deriv_new strips this
+    # field for the new Options API where it isn't a documented buy param.
     markup_pct = get_settings().deriv_markup_percent or 0.0
     if markup_pct > 0:
-        body["parameters"]["app_markup_percentage"] = round(min(markup_pct, 5.0), 4)
+        body["parameters"]["app_markup_percentage"] = round(min(markup_pct, MAX_MARKUP_PCT), 4)
     # Only digit-target contracts take a barrier (the predicted digit).
     # even_odd is NOT one — its parity is encoded in DIGITEVEN/DIGITODD, so
     # sending a barrier there makes Deriv reject the contract.
@@ -342,5 +349,5 @@ def estimate_markup(payout: float) -> float:
     docs — e.g. 2% of a $50 payout = $1), credited to the app developer.
     Pass the contract's payout, NOT the stake. Live trades use the real
     payout from the buy response; DRY_RUN uses an estimated payout."""
-    pct = get_settings().deriv_markup_percent or 0.0
+    pct = min(get_settings().deriv_markup_percent or 0.0, MAX_MARKUP_PCT)
     return round(payout * (pct / 100.0), 6)

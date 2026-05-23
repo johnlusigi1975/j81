@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # works for connecting/authorizing/quoting but earns no markup).
     deriv_ws_app_id: str = ""
     deriv_oauth_redirect_uri: str = "http://localhost:9500/oauth/callback"
-    deriv_markup_percent: float = 2.0  # what you set on Deriv's side
+    deriv_markup_percent: float = 2.0  # % of payout; Deriv enforces max 3%
 
     # Deriv OAuth endpoints. Default = LEGACY flow (returns token1/acct1/cur1).
     # To use the NEW platform's OAuth2 + PKCE, set deriv_oauth_token_url (and
