@@ -332,6 +332,35 @@ async def even_odd_backtest(
             "strategy": strategy, **result}
 
 
+@app.get("/even_odd/payouts")
+async def even_odd_payouts(stake: float = 1.0, duration: int = 1) -> dict:
+    """Compare the LIVE Even/Odd payout across all 10 synthetic markets and
+    name the best one. This is the single genuine EV lever for Even/Odd: the
+    digits are an audited uniform RNG (no predictable bias — verified over
+    thousands of ticks), but Deriv quotes slightly different payouts per
+    market, so always trading the highest-payout market recovers real EV.
+    The Bot's M Pro / decision can call this to choose where to trade."""
+    from app.deriv import fetch_proposal_payout
+    from app.scanner import SCAN_SYMBOLS
+    rows = []
+    for code, name in SCAN_SYMBOLS:
+        try:
+            q = await fetch_proposal_payout(code, contract_type="DIGITEVEN",
+                                            duration=duration, stake=stake)
+            rows.append({"symbol": code, "name": name, **q})
+        except Exception as exc:
+            rows.append({"symbol": code, "name": name, "payout_pct": None,
+                         "error": str(exc)[:80]})
+    ranked = sorted([r for r in rows if r.get("payout_pct")],
+                    key=lambda r: r["payout_pct"], reverse=True)
+    best = ranked[0] if ranked else None
+    return {
+        "stake": stake, "duration": duration, "best": best, "ranked": ranked,
+        "note": "Higher payout% = lower house edge. Even/Odd is ~50/50 on an "
+                "audited RNG; payout selection is the only real EV edge.",
+    }
+
+
 @app.get("/data/digit_stats")
 async def data_digit_stats(symbol: str, count: int = 1000) -> dict:
     """Real-tick last-digit distribution — the honest basis for digit

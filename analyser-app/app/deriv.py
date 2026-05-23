@@ -164,6 +164,42 @@ async def fetch_ticks(
     }
 
 
+async def fetch_proposal_payout(
+    symbol: str,
+    *,
+    contract_type: str = "DIGITEVEN",
+    duration: int = 1,
+    stake: float = 1.0,
+    timeout: float = 15.0,
+) -> dict:
+    """Get the live PAYOUT for a digit contract via a no-auth `proposal`
+    (works on the public app_id). Used to compare Even/Odd payouts across
+    markets — the one genuine EV lever is trading the highest-payout market.
+    Returns {payout, ask_price, payout_pct} (payout_pct = payout/stake*100)."""
+    req = {
+        "proposal": 1, "amount": stake, "basis": "stake",
+        "contract_type": contract_type, "currency": "USD",
+        "duration": int(duration), "duration_unit": "t",
+        "symbol": symbol, "req_id": 1,
+    }
+    async with websockets.connect(DERIV_WS_URL, open_timeout=timeout) as ws:
+        await ws.send(json.dumps(req))
+        try:
+            raw = await asyncio.wait_for(ws.recv(), timeout=timeout)
+        except asyncio.TimeoutError as exc:
+            raise DerivError("timed out waiting for Deriv proposal") from exc
+    msg = json.loads(raw)
+    if "error" in msg:
+        raise DerivError(f"deriv api error: {msg['error'].get('message','unknown')}")
+    p = msg.get("proposal") or {}
+    payout = float(p.get("payout") or 0.0)
+    return {
+        "payout": round(payout, 4),
+        "ask_price": float(p.get("ask_price") or 0.0),
+        "payout_pct": round(100.0 * payout / stake, 2) if stake else 0.0,
+    }
+
+
 async def fetch_history_paginated(
     symbol: str,
     granularity: int,
