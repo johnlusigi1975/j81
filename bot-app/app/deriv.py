@@ -325,9 +325,11 @@ def _to_float(v) -> float | None:
 
 
 def is_demo_account(deriv_account_id: str) -> bool:
-    """Deriv virtual/demo accounts are prefixed VRT (e.g. VRTC1234). Real
-    money accounts use CR / MF / MX / MLT / etc."""
-    return (deriv_account_id or "").upper().startswith("VRT")
+    """Demo/virtual accounts by loginid prefix:
+      * legacy demo  → VRT / VRTC
+      * new Options demo → DOT  (real is ROT)
+    Real-money accounts use CR / MF / MX / MLT / ROT / etc."""
+    return (deriv_account_id or "").upper().startswith(("VRT", "DOT"))
 
 
 # Rough payout multiple for synthetic rise/fall when we don't yet have a

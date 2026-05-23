@@ -108,12 +108,20 @@
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
   @media(max-width:520px){.grid{grid-template-columns:1fr}}
+  /* account picker: centered cards, never squished into a fixed-column grid */
+  #acct-grid{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:740px;margin:0 auto}
+  #acct-grid .gcard{flex:1 1 300px;max-width:340px;min-height:auto;text-align:center;align-items:center}
   .gcard{position:relative;border-radius:16px;border:1px solid var(--bd);background:var(--panel);padding:18px;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;overflow:hidden;min-height:130px;display:flex;flex-direction:column;gap:6px}
   .gcard:hover{transform:translateY(-3px);border-color:var(--amber);box-shadow:0 18px 40px -20px rgba(212,175,55,.45)}
   .gcard.soon{opacity:.5;cursor:not-allowed} .gcard.soon:hover{transform:none;border-color:var(--bd);box-shadow:none}
   .gcard .ic{font-size:22px;font-weight:800;color:var(--amber);font-family:var(--serif);letter-spacing:1px}
   .gcard .t{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
   .gcard .d{font-size:12.5px;color:var(--dim)}
+  /* digit picker (Over/Under, Matches/Differs) */
+  .digrow{display:flex;flex-wrap:wrap;gap:7px}
+  .digbtn{width:40px;height:44px;border-radius:11px;border:1px solid var(--bd);background:var(--panel);color:var(--dim);font-family:var(--mono);font-size:17px;font-weight:800;cursor:pointer;transition:all .12s}
+  .digbtn:hover{border-color:var(--amber);color:#fff}
+  .digbtn.on{background:linear-gradient(180deg,#f1d488,#d4af37);border-color:var(--amber);color:#1a1407}
   .badge{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:999px}
   .badge.new{background:var(--good);color:#06210f} .badge.soon{background:rgba(255,255,255,.08);color:var(--faint)}
   .statstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
@@ -232,7 +240,7 @@
     <h1>Choose your <span class="g">account</span></h1>
     <p>Which Deriv account should J81 trade on? You can switch anytime from the badge at the top.</p>
   </div>
-  <div class="grid" id="acct-grid"></div>
+  <div id="acct-grid"></div>
 </div>
 
 <!-- ============ VIEW: HOME (choose) ============ -->
@@ -249,8 +257,7 @@
     <div class="stat"><div class="n" id="s-acct">—</div><div class="l">account</div></div>
   </div>
 
-  <div class="sec-title">Pick a game</div>
-  <div class="grid" id="choose-grid"></div>
+  <div id="choose-grid"></div>
 
   <div class="sec-title">Recent activity</div>
   <div class="glass" style="padding:14px"><div id="trades-mini"><div class="empty">no trades yet</div></div></div>
@@ -277,7 +284,13 @@
       <label class="field">Ticks<input id="t-duration" type="number" value="5" min="1" max="10" style="width:70px"></label>
     </div>
 
-    <!-- manual buttons (Rise/Fall or Even/Odd) -->
+    <!-- digit picker (Over/Under, Matches/Differs only) -->
+    <div id="digit-picker" hidden style="margin-bottom:12px">
+      <div class="lab" style="margin-bottom:6px">Pick your digit <span class="faint" id="digit-hint"></span></div>
+      <div class="digrow" id="digit-row"></div>
+    </div>
+
+    <!-- manual buttons (Rise/Fall, Even/Odd, Over/Under, Matches/Differs) -->
     <div class="tgrid" id="trade-buttons"></div>
 
     <!-- M Pro scanner (only for the scanner game) -->
@@ -446,18 +459,24 @@ function runLoading(done){
 
 // ---------- home ----------
 const GAMES=[
-  {id:"rise_fall",ic:"↗↘",name:"Rise / Fall",d:"Will the price go up or down?",status:"live"},
-  {id:"even_odd",ic:"E·O",name:"Even / Odd",d:"Will the last digit be even or odd?",status:"live"},
-  {id:"m_pro",ic:"★",name:"M Pro · Auto Scanner",d:"Scans 10 markets, auto-trades the best even/odd edge",status:"live"},
-  {id:"m_digit",ic:"№",name:"M Digit",d:"Adaptive single-digit predictor",status:"soon"},
-  {id:"sniper_x",ic:"◎",name:"Sniper X",d:"Best over/under pairs · 11-market",status:"soon"},
-  {id:"antiloss",ic:"↺",name:"AntiLoss",d:"Recovery engine",status:"soon"},
+  {id:"rise_fall",ic:"↗↘",name:"Rise / Fall",d:"Will the price tick up or down?",status:"live",grp:"Quick trades"},
+  {id:"even_odd",ic:"E·O",name:"Even / Odd",d:"Will the last digit be even or odd?",status:"live",grp:"Quick trades"},
+  {id:"over_under",ic:"7▲",name:"Over / Under",d:"Will the last digit land over or under your pick?",status:"live",grp:"Quick trades"},
+  {id:"matches_differs",ic:"=≠",name:"Matches / Differs",d:"Will the last digit match or differ from your pick?",status:"live",grp:"Quick trades"},
+  {id:"m_pro",ic:"★",name:"M Pro · Auto Scanner",d:"Scans 10 markets, auto-trades the best even/odd edge",status:"live",grp:"Auto & advanced"},
+  {id:"m_digit",ic:"№",name:"M Digit",d:"Adaptive single-digit predictor",status:"soon",grp:"Auto & advanced"},
+  {id:"sniper_x",ic:"◎",name:"Sniper X",d:"Best over/under pairs · 11-market",status:"soon",grp:"Auto & advanced"},
+  {id:"antiloss",ic:"↺",name:"AntiLoss",d:"Recovery engine",status:"soon",grp:"Auto & advanced"},
 ];
 function renderGames(){
-  $("choose-grid").innerHTML=GAMES.map(g=>`<div class="gcard ${g.status==='soon'?'soon':''}" data-game="${g.id}" data-live="${g.status}">
+  const groups=[...new Set(GAMES.map(g=>g.grp))];
+  const card=g=>`<div class="gcard ${g.status==='soon'?'soon':''}" data-game="${g.id}" data-live="${g.status}">
     <div class="ic">${g.ic}</div>
     <div class="t">${esc(g.name)} <span class="badge ${g.status==='live'?'new':'soon'}">${g.status==='live'?'live':'soon'}</span></div>
-    <div class="d">${esc(g.d)}</div></div>`).join("");
+    <div class="d">${esc(g.d)}</div></div>`;
+  $("choose-grid").innerHTML=groups.map(grp=>
+    `<div class="sec-title">${esc(grp)}</div><div class="grid">${GAMES.filter(g=>g.grp===grp).map(card).join("")}</div>`
+  ).join("");
   document.querySelectorAll(".gcard").forEach(c=>c.addEventListener("click",()=>{ if(c.dataset.live==="live") openTrade(c.dataset.game); }));
 }
 async function loadHome(){
@@ -480,11 +499,22 @@ async function loadHome(){
 }
 
 // ---------- trade view ----------
+const GAME_NAMES={m_pro:"M Pro · Auto Scanner",rise_fall:"Rise / Fall",even_odd:"Even / Odd",over_under:"Over / Under",matches_differs:"Matches / Differs"};
+let SELDIGIT=5;   // chosen digit for Over/Under + Matches/Differs
+function renderDigitPicker(game){
+  const row=$("digit-row"); if(!row) return;
+  row.innerHTML=[0,1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" class="digbtn ${n===SELDIGIT?'on':''}" data-dig="${n}">${n}</button>`).join("");
+  row.querySelectorAll(".digbtn").forEach(b=>b.addEventListener("click",()=>{ SELDIGIT=+b.dataset.dig; row.querySelectorAll(".digbtn").forEach(x=>x.classList.toggle("on",+x.dataset.dig===SELDIGIT)); }));
+  $("digit-hint").textContent = game==="over_under" ? "— win if the last digit lands over / under this" : "— win if the last digit matches / differs from this";
+}
 async function openTrade(game){
   GAME=game; showView("trade");
-  $("trade-kind").textContent = game==="m_pro"?"M Pro · Auto Scanner":(game==="rise_fall"?"Rise / Fall":"Even / Odd");
+  $("trade-kind").textContent = GAME_NAMES[game] || "Trade";
   $("mpro-extra").hidden = (game!=="m_pro");
   $("trade-buttons").hidden = (game==="m_pro");
+  const isDigit=(game==="over_under"||game==="matches_differs");
+  $("digit-picker").hidden = !isDigit;
+  if(isDigit) renderDigitPicker(game);
   // buttons
   if(game==="rise_fall"){
     $("trade-buttons").innerHTML=`<button class="tbtn up" data-tt="rise_fall" data-dir="up"><span class="big">▲ RISE</span><span class="pay" id="pay-a">—</span></button>
@@ -492,6 +522,12 @@ async function openTrade(game){
   } else if(game==="even_odd"){
     $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="even_odd" data-pred="even"><span class="big">EVEN</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn odd" data-tt="even_odd" data-pred="odd"><span class="big">ODD</span><span class="pay" id="pay-b">—</span></button>`;
+  } else if(game==="over_under"){
+    $("trade-buttons").innerHTML=`<button class="tbtn up" data-tt="over_under" data-dir="over"><span class="big">▲ OVER</span><span class="pay" id="pay-a">—</span></button>
+      <button class="tbtn down" data-tt="over_under" data-dir="under"><span class="big">▼ UNDER</span><span class="pay" id="pay-b">—</span></button>`;
+  } else if(game==="matches_differs"){
+    $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="matches_differs" data-dir="matches"><span class="big">= MATCHES</span><span class="pay" id="pay-a">—</span></button>
+      <button class="tbtn odd" data-tt="matches_differs" data-dir="differs"><span class="big">≠ DIFFERS</span><span class="pay" id="pay-b">—</span></button>`;
   }
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
@@ -504,8 +540,11 @@ async function placeTrade(btn){
   if(!CUR){ showView("connect"); return; }
   const tt=btn.dataset.tt, res=$("t-result");
   const body={account_id:CUR.id,trade_type:tt,symbol:$("t-symbol").value,stake:parseFloat($("t-stake").value||"1"),duration:parseInt($("t-duration").value||"5",10),duration_unit:"t"};
-  if(tt==="rise_fall") body.direction=btn.dataset.dir; if(tt==="even_odd") body.prediction=btn.dataset.pred;
-  const call=tt==="rise_fall"?body.direction.toUpperCase():body.prediction.toUpperCase();
+  let call;
+  if(tt==="rise_fall"){ body.direction=btn.dataset.dir; call=body.direction.toUpperCase(); }
+  else if(tt==="even_odd"){ body.prediction=btn.dataset.pred; call=body.prediction.toUpperCase(); }
+  else if(tt==="over_under"||tt==="matches_differs"){ body.direction=btn.dataset.dir; body.prediction=String(SELDIGIT); call=body.direction.toUpperCase()+" "+SELDIGIT; }
+  else { call=(btn.dataset.dir||btn.dataset.pred||"").toUpperCase(); }
   res.innerHTML='<div class="banner warn" style="margin:0">placing '+esc(call)+'…</div>'; btn.disabled=true;
   try{
     const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body)});

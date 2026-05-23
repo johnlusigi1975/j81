@@ -211,7 +211,9 @@ class BotStore:
             d["has_token"] = True
             d["allowed_trade_types"] = json.loads(d["allowed_trade_types"] or "null")
             d["allowed_symbols"] = json.loads(d["allowed_symbols"] or "null")
-            d["is_demo"] = (d["deriv_account_id"] or "").upper().startswith("VRT")
+            # Demo prefixes: VRT/VRTC (legacy) and DOT (new Options); real
+            # new accounts are ROT.
+            d["is_demo"] = (d["deriv_account_id"] or "").upper().startswith(("VRT", "DOT"))
             d["kind"] = "demo" if d["is_demo"] else "REAL MONEY"
             d["profit_today"] = self.profit_today(d["id"])
             d["mpro_enabled"] = bool(d.get("mpro_enabled"))

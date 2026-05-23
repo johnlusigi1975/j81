@@ -242,7 +242,7 @@ async def execute_decision_for_account(account: dict, decision: dict) -> dict:
 # ---------- manual trade (the simple grandma "Trade" panel) -------------
 
 # The two simple sections we support first. Everything else is future work.
-MANUAL_TRADE_TYPES = ("rise_fall", "even_odd")
+MANUAL_TRADE_TYPES = ("rise_fall", "even_odd", "over_under", "matches_differs")
 
 
 async def execute_manual_trade(
@@ -265,7 +265,7 @@ async def execute_manual_trade(
 
     tt = (trade_type or "").lower()
     if tt not in MANUAL_TRADE_TYPES:
-        return {"outcome": "error", "error": f"trade_type {trade_type!r} not supported yet (Rise/Fall + Even/Odd only)"}
+        return {"outcome": "error", "error": f"trade_type {trade_type!r} not supported (Rise/Fall, Even/Odd, Over/Under, Matches/Differs)"}
     if not account.get("enabled"):
         return {"outcome": "skipped", "reason": "account is disabled — enable it first"}
 
