@@ -230,8 +230,8 @@
   <div class="nav-sp"></div>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="showView('connect')">Connect</button>
-  <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Home</button>
-  <button class="navbtn" id="nav-exit" hidden onclick="exitApp()">Exit</button>
+  <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
+  <button class="navbtn" id="nav-exit" hidden onclick="exitApp()">Exit ↩</button>
 </div></nav>
 
 <!-- ============ VIEW: LANDING ============ -->
@@ -241,7 +241,7 @@
     <h1>Trade Deriv the <span class="g">simple</span> way.</h1>
     <p>J81 studies the markets, suggests the call, and can trade on autopilot to your profit target — Rise/Fall and digits, on practice or real money. No charts to read, no code to write.</p>
     <div class="cta-row">
-      <button class="btn big" type="button" onclick="showView('connect')">Connect with Deriv →</button>
+      <button class="btn big land-cta" type="button" onclick="enterOrConnect()">Connect with Deriv →</button>
       <button class="btn ghost big" type="button" style="width:auto;min-width:180px" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
     </div>
     <div class="trustline">
@@ -311,7 +311,7 @@
   <div class="lcta">
     <h2>Ready to trade smarter?</h2>
     <p>Connect your Deriv account and start on practice money — no risk, no commitment.</p>
-    <div class="cta-row"><button class="btn big" type="button" style="width:auto;min-width:240px" onclick="showView('connect')">Connect with Deriv →</button></div>
+    <div class="cta-row"><button class="btn big land-cta" type="button" style="width:auto;min-width:240px" onclick="enterOrConnect()">Connect with Deriv →</button></div>
   </div>
 
   <div class="riskline">Trading involves substantial risk and is not suitable for everyone — you can lose some or all of your invested capital. Synthetic indices and options are complex, high-risk products. J81 is an independent tool that trades on your own Deriv account via Deriv's API; it is not affiliated with or endorsed by Deriv. This is not investment advice.</div>
@@ -372,6 +372,7 @@
 
 <!-- ============ VIEW: ACCOUNTS (choose real / demo) ============ -->
 <div class="view wrap" id="view-accounts" hidden>
+  <button class="backbtn" onclick="showView('landing')">← back to home page</button>
   <div class="hero" style="text-align:center">
     <h1>Choose your <span class="g">account</span></h1>
     <p>Which Deriv account should J81 trade on? You can switch anytime from the badge at the top.</p>
@@ -381,6 +382,7 @@
 
 <!-- ============ VIEW: HOME (choose) ============ -->
 <div class="view wrap" id="view-home" hidden>
+  <button class="backbtn" onclick="showView('landing')">← home page</button>
   <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
     <div><div class="term-title">Welcome</div><div style="font-size:24px;font-weight:800" id="home-hello">Choose how you want to trade</div></div>
     <div id="home-mode"></div>
@@ -486,6 +488,7 @@ function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display=(v==="landing"||v==="connect"||v==="loading")?"block":"none";
   if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} }   // stop live ticks when leaving the trade view
+  if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts(); }
 
 // floating REAL gold bars + REAL banknotes — premium wealth background (login)
@@ -523,6 +526,7 @@ function spawnMoney(){
 let CUR=null;          // current account (public dict)
 let GAME=null;         // current trade view game: rise_fall | even_odd | m_pro
 let DRY=true;
+let HAS_ACCOUNTS=false; // is any Deriv account connected? (drives the landing CTA)
 let _prevSpot=null, _lastRead=null;
 
 // ---------- boot ----------
@@ -540,16 +544,30 @@ async function boot(){
     return;
   }
   let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
-  if(accts && accts.length){
-    // Returning, connected user. 2+ accounts (demo + real from one Deriv
-    // login) → let them choose; exactly one → go straight in.
+  HAS_ACCOUNTS = !!(accts && accts.length);
+  if(justConnected && HAS_ACCOUNTS){
+    // Just came back from Deriv OAuth → play the loading screen then go in.
     const go = accts.length>1 ? ()=>showView("accounts") : ()=>{ CUR=accts[0]; enterApp(); };
-    if(justConnected){ runLoading(go); } else { go(); }
+    runLoading(go);
+  } else {
+    // Everyone else (new visitor OR returning) starts on the front page —
+    // a consistent front door instead of silently dropping you in the bot.
+    showView("landing");
   }
-  else showView("landing");   // brand-new visitor → explainer first, not the connect wall
+}
+// Landing CTA: enter the desk if already connected, else go to connect.
+async function enterOrConnect(){
+  if(!HAS_ACCOUNTS){ showView("connect"); return; }
+  let accts=[]; try{ accts=await api("/accounts"); }catch(_){}
+  HAS_ACCOUNTS = !!accts.length;
+  if(!accts.length){ showView("connect"); return; }
+  if(accts.length>1){ showView("accounts"); } else { CUR=accts[0]; enterApp(); }
+}
+function setupLanding(){
+  document.querySelectorAll(".land-cta").forEach(b=>{ b.textContent = HAS_ACCOUNTS ? "Enter your desk →" : "Connect with Deriv →"; });
 }
 function enterApp(){ updateNav(); showView("home"); }
-function exitApp(){ CUR=null; showView("connect"); }
+function exitApp(){ showView("landing"); }   // ↩ back to the front page, NOT the auth screen (you stay connected)
 function openAccounts(){ showView("accounts"); }
 function updateNav(){
   if(!CUR) return;
