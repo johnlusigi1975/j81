@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(analyser-app/.venv/bin/python -c \"import os;os.chdir\\('analyser-app'\\); from app import store,self_study,monitor,main; s=store.get_store\\(\\); assert hasattr\\(s,'add_study'\\) and hasattr\\(s,'prune_comms'\\); assert hasattr\\(self_study,'study_once'\\); assert hasattr\\(monitor.Monitor,'_self_study'\\); print\\('✓ analyser OK'\\)\")",
+      "Bash(research-app/.venv/bin/python -c \"import os;os.chdir\\('research-app'\\); from app import comms_client,self_study,scheduler; assert hasattr\\(comms_client,'log_study'\\); assert hasattr\\(self_study,'study_once'\\); print\\('✓ researcher OK'\\)\")",
+      "Bash(bot-app/.venv/bin/python -c \"import os;os.chdir\\('bot-app'\\); from app import comms_client,self_study,trading_loop; assert hasattr\\(comms_client,'log_study'\\); assert hasattr\\(self_study,'study_once'\\); print\\('✓ bot OK'\\)\")"
+    ]
+  }
+}
