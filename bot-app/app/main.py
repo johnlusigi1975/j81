@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote as urlquote, urlencode
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
@@ -53,10 +53,28 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan)
 _HOMEPAGE = Path(__file__).parent / "web" / "index.html"
 
+# ---- per-visitor session: each browser sees only the account(s) IT connected,
+# so a client opening the link gets their own Connect→Deriv flow instead of
+# landing on whoever connected first. ----
+SESSION_COOKIE = "j81_sid"
+_SESSION_MAX_AGE = 60 * 60 * 24 * 180  # 180 days
+
+
+def _new_sid() -> str:
+    return _secrets.token_urlsafe(24)
+
+
+def _set_session_cookie(resp: Response, sid: str) -> None:
+    resp.set_cookie(SESSION_COOKIE, sid, max_age=_SESSION_MAX_AGE,
+                    httponly=True, samesite="lax", secure=True, path="/")
+
 
 @app.get("/", include_in_schema=False)
-def home() -> FileResponse:
-    return FileResponse(_HOMEPAGE, media_type="text/html")
+def home(request: Request) -> FileResponse:
+    resp = FileResponse(_HOMEPAGE, media_type="text/html")
+    if not request.cookies.get(SESSION_COOKIE):
+        _set_session_cookie(resp, _new_sid())  # give every visitor a session up front
+    return resp
 
 
 @app.get("/health")
@@ -160,6 +178,11 @@ async def oauth_callback(request: Request) -> RedirectResponse:
     """
     params = dict(request.query_params)
     store = get_store()
+    # Bind the connected account(s) to THIS browser session.
+    sid = request.cookies.get(SESSION_COOKIE) or _new_sid()
+
+    def _ok(n: int) -> RedirectResponse:
+        resp = _auth_ok(n); _set_session_cookie(resp, sid); return resp
 
     if params.get("error"):
         return _auth_fail(params.get("error_description") or params["error"])
@@ -174,6 +197,7 @@ async def oauth_callback(request: Request) -> RedirectResponse:
                     deriv_account_id=params[f"acct{i}"],
                     token=params[f"token{i}"],
                     currency=params.get(f"cur{i}"),
+                    session_id=sid,
                 )
                 saved += 1
             except RuntimeError as exc:
@@ -181,7 +205,7 @@ async def oauth_callback(request: Request) -> RedirectResponse:
             i += 1
         if not saved:
             return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")
-        return _auth_ok(saved)
+        return _ok(saved)
 
     # ---- NEW: OAuth2 PKCE code exchange ----
     if "code" in params:
@@ -222,13 +246,13 @@ async def oauth_callback(request: Request) -> RedirectResponse:
             try:
                 store.upsert_account(
                     deriv_account_id=a["loginid"], token=access,
-                    currency=a.get("currency"), platform="new")
+                    currency=a.get("currency"), platform="new", session_id=sid)
                 saved += 1
             except RuntimeError as exc:
                 return _auth_fail(f"Could not store your account: {exc}")
         if not saved:
             return _auth_fail("Signed in, but found no tradable accounts.")
-        return _auth_ok(saved)
+        return _ok(saved)
 
     return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")
 
@@ -271,12 +295,14 @@ class ConnectPATRequest(BaseModel):
 
 
 @app.post("/connect/pat")
-async def connect_pat(body: ConnectPATRequest) -> dict:
+async def connect_pat(body: ConnectPATRequest, request: Request, response: Response) -> dict:
     """Connect a Deriv account by pasting a Personal Access Token (Read+Trade).
     Simpler than OAuth for local/desktop use — no app registration or redirect
     URLs. The token is authorized, then stored ENCRYPTED; it never returns in
     any response and never goes through chat. Also tells us if the account is
     on the legacy API (if this succeeds, it is)."""
+    sid = request.cookies.get(SESSION_COOKIE) or _new_sid()
+    _set_session_cookie(response, sid)
     token = body.token.strip()
     if not token:
         raise HTTPException(400, "paste your Deriv API token first")
@@ -298,7 +324,8 @@ async def connect_pat(body: ConnectPATRequest) -> dict:
     if not loginid:
         raise HTTPException(400, "authorized, but Deriv returned no account id")
     internal_id = get_store().upsert_account(
-        deriv_account_id=loginid, token=token, currency=info.get("currency"))
+        deriv_account_id=loginid, token=token, currency=info.get("currency"),
+        session_id=sid)
     return {
         "connected": loginid,
         "is_demo": is_demo_account(loginid),
@@ -318,8 +345,12 @@ async def connect_pat(body: ConnectPATRequest) -> dict:
 
 
 @app.get("/accounts")
-def accounts_list() -> list[dict]:
-    return get_store().list_accounts_public()
+def accounts_list(request: Request) -> list[dict]:
+    # Only this browser session's accounts (privacy). No cookie → nothing yet.
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not sid:
+        return []
+    return get_store().list_accounts_public(session_id=sid)
 
 
 class AccountPatch(BaseModel):
@@ -336,8 +367,16 @@ class AccountPatch(BaseModel):
     mpro_config: dict | None = None
 
 
+def _require_own(request: Request, account_id: str) -> None:
+    """403/404 unless this account belongs to the caller's session."""
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not get_store().account_owned_by(account_id, sid):
+        raise HTTPException(404, "account not found")
+
+
 @app.patch("/accounts/{account_id}")
-def account_patch(account_id: str, body: AccountPatch) -> dict:
+def account_patch(account_id: str, body: AccountPatch, request: Request) -> dict:
+    _require_own(request, account_id)
     if not get_store().update_account_settings(
         account_id,
         enabled=body.enabled,
@@ -357,16 +396,18 @@ def account_patch(account_id: str, body: AccountPatch) -> dict:
 
 
 @app.delete("/accounts/{account_id}")
-def account_delete(account_id: str) -> dict:
+def account_delete(account_id: str, request: Request) -> dict:
+    _require_own(request, account_id)
     if not get_store().delete_account(account_id):
         raise HTTPException(404, "account not found")
     return {"deleted": account_id}
 
 
 @app.post("/accounts/{account_id}/trade")
-async def account_trade_now(account_id: str, symbol: str = "R_100") -> dict:
+async def account_trade_now(account_id: str, request: Request, symbol: str = "R_100") -> dict:
     """One-shot: ask analyser for a decision and execute through the
     risk gates. Useful for testing without waiting for the autonomous loop."""
+    _require_own(request, account_id)
     acct = get_store().get_internal(account_id)
     if acct is None:
         raise HTTPException(404, "account not found")
@@ -582,9 +623,10 @@ class ManualTradeRequest(BaseModel):
 
 
 @app.post("/trade/manual")
-async def trade_manual(req: ManualTradeRequest) -> dict:
+async def trade_manual(req: ManualTradeRequest, request: Request) -> dict:
     """Place a trade the user picked themselves (Rise/Fall or Even/Odd).
     Honours DRY_RUN + the account's stake/daily caps."""
+    _require_own(request, req.account_id)
     acct = get_store().get_internal(req.account_id)
     if acct is None:
         raise HTTPException(404, "account not found")

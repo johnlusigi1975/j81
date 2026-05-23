@@ -129,6 +129,7 @@ class BotStore:
             ("accounts", "mpro_enabled", "INTEGER"),   # M Pro auto-cycle on/off
             ("accounts", "mpro_config", "TEXT"),       # JSON: mode, reverse, stake, step…
             ("accounts", "platform", "TEXT"),          # 'legacy' (authorize+buy) | 'new' (OTP-WS)
+            ("accounts", "session_id", "TEXT"),        # browser session that connected this account
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -145,6 +146,7 @@ class BotStore:
         currency: str | None = None,
         label: str | None = None,
         platform: str = "legacy",
+        session_id: str | None = None,
     ) -> str:
         """Encrypt+store. If the deriv_account_id is already present, the
         token is rotated and the row's updated_at bumped. Returns our id.
@@ -162,8 +164,9 @@ class BotStore:
             if row:
                 self._conn.execute(
                     "UPDATE accounts SET encrypted_token=?, currency=?, "
-                    "label=COALESCE(?, label), platform=?, updated_at=? WHERE id=?",
-                    (encrypted, currency, label, platform, now, row["id"]),
+                    "label=COALESCE(?, label), platform=?, "
+                    "session_id=COALESCE(?, session_id), updated_at=? WHERE id=?",
+                    (encrypted, currency, label, platform, session_id, now, row["id"]),
                 )
                 acct_id = row["id"]
             else:
@@ -172,8 +175,8 @@ class BotStore:
                     "INSERT INTO accounts("
                     "id, deriv_account_id, currency, encrypted_token, label, "
                     "enabled, max_stake_per_trade, max_trades_per_day, "
-                    "min_confidence, platform, created_at, updated_at) "
-                    "VALUES (?,?,?,?,?,0,?,?,?,?,?,?)",
+                    "min_confidence, platform, session_id, created_at, updated_at) "
+                    "VALUES (?,?,?,?,?,0,?,?,?,?,?,?,?)",
                     (
                         acct_id,
                         deriv_account_id,
@@ -184,6 +187,7 @@ class BotStore:
                         settings.default_max_trades_per_day,
                         settings.default_min_confidence,
                         platform,
+                        session_id,
                         now,
                         now,
                     ),
@@ -195,15 +199,35 @@ class BotStore:
             self._conn.commit()
         return acct_id
 
-    def list_accounts_public(self) -> list[dict[str, Any]]:
-        """Public view — token is NEVER returned, only `has_token: True`."""
-        rows = self._conn.execute(
+    def account_owned_by(self, account_id: str, session_id: str | None) -> bool:
+        """True if this account belongs to the given browser session. Used to
+        stop one visitor acting on another visitor's connected account."""
+        if not session_id:
+            return False
+        row = self._conn.execute(
+            "SELECT 1 FROM accounts WHERE id=? AND session_id=?",
+            (account_id, session_id),
+        ).fetchone()
+        return row is not None
+
+    def list_accounts_public(self, session_id: str | None = None) -> list[dict[str, Any]]:
+        """Public view — token is NEVER returned, only `has_token: True`.
+        When `session_id` is given, only that browser session's accounts are
+        returned (client-facing privacy). Called with no arg internally (e.g.
+        the autotrade loop) to see every account."""
+        cols = (
             "SELECT id, deriv_account_id, currency, label, enabled, "
             "max_stake_per_trade, max_trades_per_day, min_confidence, "
             "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
             "mpro_enabled, mpro_config, platform, "
-            "created_at, updated_at, last_trade_at FROM accounts ORDER BY created_at DESC"
-        ).fetchall()
+            "created_at, updated_at, last_trade_at FROM accounts "
+        )
+        if session_id is not None:
+            rows = self._conn.execute(
+                cols + "WHERE session_id=? ORDER BY created_at DESC", (session_id,)
+            ).fetchall()
+        else:
+            rows = self._conn.execute(cols + "ORDER BY created_at DESC").fetchall()
         out = []
         for r in rows:
             d = dict(r)
