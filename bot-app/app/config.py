@@ -17,8 +17,17 @@ class Settings(BaseSettings):
     # SAFETY: every "real money" code path is gated on this. Default True.
     dry_run: bool = True
 
-    # Deriv app registration (api.deriv.com/dashboard)
+    # Deriv app registration (api.deriv.com/dashboard).
+    # deriv_app_id is the OAuth client_id — on the NEW platform this is
+    # ALPHANUMERIC (e.g. 33lAFHp17w0VN2MmLCbOp) and is ONLY valid for the OAuth
+    # login flow. It is NOT accepted by the legacy v3 WebSocket (it 401s the
+    # handshake), so v3 calls use deriv_ws_app_id below instead.
     deriv_app_id: str = ""
+    # NUMERIC app_id for the v3 WebSocket (authorize/quote/buy/settle). Set this
+    # to your own numeric legacy app_id to earn markup; blank falls back to a
+    # numeric deriv_app_id if you have one, else Deriv's public "1089" (which
+    # works for connecting/authorizing/quoting but earns no markup).
+    deriv_ws_app_id: str = ""
     deriv_oauth_redirect_uri: str = "http://localhost:9500/oauth/callback"
     deriv_markup_percent: float = 2.0  # what you set on Deriv's side
 

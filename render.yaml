@@ -44,7 +44,14 @@ services:
       - key: BOT_ENCRYPTION_KEY
         sync: false
       # Your Deriv app + OAuth (after registering at api.deriv.com/dashboard).
+      # DERIV_APP_ID is the OAuth client_id (alphanumeric on the new platform).
       - key: DERIV_APP_ID
+        sync: false
+      # NUMERIC app_id for the v3 WebSocket (authorize/quote/buy). The new
+      # alphanumeric client_id 401s the v3 socket, so this is separate. Leave
+      # blank to use Deriv's public "1089" (works, no markup); set your own
+      # numeric legacy app_id here to earn markup.
+      - key: DERIV_WS_APP_ID
         sync: false
       - key: DERIV_OAUTH_REDIRECT_URI
         value: https://j81-trade-desk.onrender.com/oauth/callback

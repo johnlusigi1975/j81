@@ -24,6 +24,27 @@ from app.config import get_settings
 # Use the user's registered app_id for WSS — markup is keyed off this.
 DERIV_WS_URL_TEMPLATE = "wss://ws.binaryws.com/websockets/v3?app_id={app_id}"
 
+# Deriv's public app_id — always valid on the v3 socket. Connecting, authorizing
+# and quoting work under it; only markup (revenue) needs your own numeric app.
+PUBLIC_WS_APP_ID = "1089"
+
+
+def _ws_app_id() -> str:
+    """Return a NUMERIC app_id valid for the legacy v3 WebSocket.
+
+    The new-platform OAuth client_id (deriv_app_id) is alphanumeric and 401s the
+    v3 handshake, so it must never be used here. Preference order:
+      1. deriv_ws_app_id  — your own numeric legacy app (earns markup)
+      2. deriv_app_id      — only if it happens to be numeric (legacy app)
+      3. "1089"            — Deriv's public app (works, but no markup)
+    """
+    s = get_settings()
+    if s.deriv_ws_app_id and s.deriv_ws_app_id.isdigit():
+        return s.deriv_ws_app_id
+    if s.deriv_app_id and s.deriv_app_id.isdigit():
+        return s.deriv_app_id
+    return PUBLIC_WS_APP_ID
+
 
 class DerivBotError(Exception):
     pass
@@ -112,13 +133,7 @@ async def place_contract(
     DRY_RUN — that gating happens in the executor; this function only
     runs when we genuinely want to talk to Deriv.
     """
-    settings = get_settings()
-    if not settings.deriv_app_id:
-        raise DerivBotError(
-            "DERIV_APP_ID is not set — register your app at "
-            "api.deriv.com/dashboard first"
-        )
-    url = DERIV_WS_URL_TEMPLATE.format(app_id=settings.deriv_app_id)
+    url = DERIV_WS_URL_TEMPLATE.format(app_id=_ws_app_id())
 
     async with websockets.connect(url, open_timeout=timeout) as ws:
         # 1. authorize
@@ -154,12 +169,7 @@ async def authorize_account(deriv_token: str, timeout: float = 20.0) -> dict:
     check — if this succeeds, the account speaks the legacy API the Bot uses.
     Returns {loginid, currency, is_virtual, balance, account_list}. The token
     is never returned or logged."""
-    settings = get_settings()
-    # 1089 is Deriv's public app_id — fine for an authorize probe even if the
-    # user hasn't registered their own app yet (markup needs the real app_id,
-    # but connecting/authorizing does not).
-    app_id = settings.deriv_app_id or "1089"
-    url = DERIV_WS_URL_TEMPLATE.format(app_id=app_id)
+    url = DERIV_WS_URL_TEMPLATE.format(app_id=_ws_app_id())
     async with websockets.connect(url, open_timeout=timeout) as ws:
         await ws.send(json.dumps({"authorize": deriv_token, "req_id": 1}))
         msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
@@ -185,8 +195,7 @@ async def check_contract(
     `app_markup_amount` is the REAL commission Deriv credited us for this
     contract (a string in Deriv's payload) — we coerce it to float so the
     settler can store the true earned markup instead of the buy-time estimate."""
-    settings = get_settings()
-    url = DERIV_WS_URL_TEMPLATE.format(app_id=settings.deriv_app_id)
+    url = DERIV_WS_URL_TEMPLATE.format(app_id=_ws_app_id())
     async with websockets.connect(url, open_timeout=timeout) as ws:
         await ws.send(json.dumps({"authorize": deriv_token, "req_id": 1}))
         auth = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
@@ -236,12 +245,9 @@ async def get_proposal(
 
     Returns {ask_price, payout, spot, app_markup_amount} (floats; missing
     fields come back as None). Caller decides what to do with it."""
-    settings = get_settings()
-    # A proposal is a no-auth quote (no markup involved), so the public app_id
-    # 1089 is fine when the user hasn't registered their own app yet. The real
-    # buy (place_contract) still requires a registered app_id for markup.
-    app_id = settings.deriv_app_id or "1089"
-    url = DERIV_WS_URL_TEMPLATE.format(app_id=app_id)
+    # A proposal is a no-auth quote (no markup involved); _ws_app_id() gives a
+    # numeric app_id valid on v3 (your own, or the public 1089).
+    url = DERIV_WS_URL_TEMPLATE.format(app_id=_ws_app_id())
     contract_type = _contract_type(trade_type, direction, prediction)
     req: dict = {
         "proposal": 1,
@@ -285,8 +291,7 @@ async def sell_contract(
     """Sell an open contract before expiry (risk control / early exit).
     `price` is the MINIMUM acceptable sale price; 0 means 'sell at market'.
     Returns {sold_for, balance_after, transaction_id}."""
-    settings = get_settings()
-    url = DERIV_WS_URL_TEMPLATE.format(app_id=settings.deriv_app_id)
+    url = DERIV_WS_URL_TEMPLATE.format(app_id=_ws_app_id())
     async with websockets.connect(url, open_timeout=timeout) as ws:
         await ws.send(json.dumps({"authorize": deriv_token, "req_id": 1}))
         auth = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
