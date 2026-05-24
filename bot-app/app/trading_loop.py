@@ -90,6 +90,9 @@ class TradingLoop:
             acct = store.get_internal(acct_public["id"])
             if acct is None:
                 continue
+            # Server-side confidence-gated Rise/Fall runner (the "VPS" mode).
+            if await self._run_rf_account(acct, summary):
+                continue
             # Decide which symbol(s) to ask about.
             allowed_symbols = (
                 json.loads(acct.get("allowed_symbols") or "null") or ["R_100"]
@@ -132,6 +135,55 @@ class TradingLoop:
         self.status["last_summary"] = summary
         await self._grade_the_brain(summary)
         await self._peer_watch()
+
+    async def _run_rf_account(self, acct: dict, summary: list) -> bool:
+        """Server-side Rise/Fall confidence-gated auto (runs 24/7 on the host —
+        the client can close their screen). Asks the Analyser to scan all 10
+        markets, and only trades the top one when its confidence >= the user's
+        threshold. Honours rounds (max_trades_per_day), take-profit & loss-limit
+        via execute_manual_trade. Returns True if it handled this account."""
+        raw = acct.get("rf_config")
+        try:
+            cfg = json.loads(raw) if isinstance(raw, str) else (raw or None)
+        except Exception:
+            cfg = None
+        if not cfg or not cfg.get("enabled"):
+            return False
+        from app.executor import get_rise_fall_scan, execute_manual_trade, goal_status
+        store = get_store()
+        blocked, why = goal_status(acct)
+        if blocked:  # take-profit or loss-limit hit → switch the runner off
+            store.update_account_settings(acct["id"], rf_config={**cfg, "enabled": False}, enabled=False)
+            summary.append({"account": acct["deriv_account_id"], "outcome": "stopped", "reason": why})
+            return True
+        try:
+            scan = await get_rise_fall_scan()
+        except Exception:
+            scan = {}
+        top = (scan or {}).get("top")
+        if not top:
+            summary.append({"account": acct["deriv_account_id"], "outcome": "waiting", "reason": "scan warming up"})
+            return True
+        min_conf = float(cfg.get("min_conf") or 70)
+        conf = float(top.get("confidence") or 0)
+        if conf < min_conf:
+            summary.append({"account": acct["deriv_account_id"], "outcome": "waiting",
+                            "reason": f"confidence {conf:.0f}% < {min_conf:.0f}%"})
+            return True
+        try:
+            res = await execute_manual_trade(
+                acct, trade_type="rise_fall", symbol=top["symbol"], direction=top["direction"],
+                stake=float(cfg.get("stake") or 0.35), duration=int(cfg.get("duration") or 5),
+                duration_unit="t")
+        except Exception as exc:
+            summary.append({"account": acct["deriv_account_id"], "outcome": "error", "reason": repr(exc)})
+            return True
+        if res.get("outcome") == "skipped":  # rounds cap / goal reached → stop
+            store.update_account_settings(acct["id"], rf_config={**cfg, "enabled": False}, enabled=False)
+        summary.append({"account": acct["deriv_account_id"], "symbol": top["symbol"],
+                        "outcome": res.get("outcome"), "reason": res.get("reason") or res.get("error"),
+                        "confidence": conf, "direction": top["direction"]})
+        return True
 
     async def _peer_watch(self) -> None:
         """~5% of effort: self-report productivity every cycle (keeps the

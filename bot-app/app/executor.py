@@ -49,6 +49,22 @@ async def get_decision(symbol: str, trade_type: str | None = None) -> dict:
         return {}
 
 
+async def get_rise_fall_scan() -> dict:
+    """Ask the Analyser to scan all markets for Rise/Fall and return the ranked
+    list + top {symbol, direction, confidence}. {} on failure."""
+    settings = get_settings()
+    if not settings.analyser_url:
+        return {}
+    url = settings.analyser_url.rstrip("/") + "/scan/rise_fall"
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception:
+        return {}
+
+
 # ---------- risk gates --------------------------------------------------
 
 

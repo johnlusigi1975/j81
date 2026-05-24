@@ -332,6 +332,17 @@ async def even_odd_backtest(
             "strategy": strategy, **result}
 
 
+@app.get("/scan/rise_fall")
+async def scan_rise_fall_endpoint(count: int = 120) -> dict:
+    """Rank all synthetic markets for Rise/Fall by live confidence (z-score of
+    the recent up/down split). Powers the Bot's server-side gated auto-runner."""
+    from app.scanner import scan_rise_fall
+    try:
+        return await scan_rise_fall(count=count)
+    except Exception as exc:
+        raise HTTPException(502, f"scan failed: {exc!r}")
+
+
 @app.get("/even_odd/payouts")
 async def even_odd_payouts(stake: float = 1.0, duration: int = 1) -> dict:
     """Compare the LIVE Even/Odd payout across all 10 synthetic markets and

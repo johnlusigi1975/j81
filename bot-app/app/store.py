@@ -130,6 +130,7 @@ class BotStore:
             ("accounts", "mpro_config", "TEXT"),       # JSON: mode, reverse, stake, step…
             ("accounts", "platform", "TEXT"),          # 'legacy' (authorize+buy) | 'new' (OTP-WS)
             ("accounts", "session_id", "TEXT"),        # browser session that connected this account
+            ("accounts", "rf_config", "TEXT"),         # JSON: server-side Rise/Fall gated auto {enabled,min_conf,stake,duration}
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -219,7 +220,7 @@ class BotStore:
             "SELECT id, deriv_account_id, currency, label, enabled, "
             "max_stake_per_trade, max_trades_per_day, min_confidence, "
             "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
-            "mpro_enabled, mpro_config, platform, "
+            "mpro_enabled, mpro_config, rf_config, platform, "
             "created_at, updated_at, last_trade_at FROM accounts "
         )
         if session_id is not None:
@@ -242,6 +243,7 @@ class BotStore:
             d["profit_today"] = self.profit_today(d["id"])
             d["mpro_enabled"] = bool(d.get("mpro_enabled"))
             d["mpro_config"] = json.loads(d.get("mpro_config") or "null")
+            d["rf_config"] = json.loads(d.get("rf_config") or "null")
             d["platform"] = d.get("platform") or "legacy"
             out.append(d)
         return out
@@ -279,6 +281,7 @@ class BotStore:
         daily_loss_limit: float | None = None,
         mpro_enabled: bool | None = None,
         mpro_config: dict | None = None,
+        rf_config: dict | None = None,
     ) -> bool:
         sets: list[str] = []
         params: list[Any] = []
@@ -299,6 +302,9 @@ class BotStore:
         if mpro_config is not None:
             sets.append("mpro_config=?")
             params.append(json.dumps(mpro_config))
+        if rf_config is not None:
+            sets.append("rf_config=?")
+            params.append(json.dumps(rf_config))
         if allowed_trade_types is not None:
             sets.append("allowed_trade_types=?")
             params.append(json.dumps(allowed_trade_types))

@@ -60,6 +60,44 @@ def _score_one(code: str, name: str, prices: list[float], pip_size: int) -> dict
     }
 
 
+def _rf_score(code: str, name: str, prices: list[float]) -> dict[str, Any]:
+    """Rise/Fall view of a market: up% of recent moves + a z-score confidence
+    (how far the up/down split sits from 50/50). Honest: descriptive, not a
+    prediction — ticks are independent ~50/50."""
+    n = len(prices)
+    if n < MIN_SAMPLES:
+        return {"symbol": code, "name": name, "ready": False, "collecting": f"{n}/{MIN_SAMPLES}"}
+    moves = [1 if prices[i] > prices[i-1] else (0 if prices[i] < prices[i-1] else -1) for i in range(1, n)]
+    moves = [m for m in moves if m >= 0]
+    mv = len(moves) or 1
+    ups = sum(moves)
+    up_pct = 100.0 * ups / mv
+    z = abs(2*ups - mv) / (mv ** 0.5) if mv else 0.0
+    conf = max(0, min(99, round(z / 3.0 * 100)))
+    return {"symbol": code, "name": name, "ready": True, "samples": n,
+            "up_pct": round(up_pct, 1), "down_pct": round(100.0 - up_pct, 1),
+            "confidence": conf, "direction": "up" if up_pct >= 50 else "down"}
+
+
+async def scan_rise_fall(count: int = 120) -> dict[str, Any]:
+    """Scan all synthetic markets for Rise/Fall and rank by confidence. Used by
+    the Bot's server-side (VPS) confidence-gated auto-runner."""
+    rows: list[dict[str, Any]] = []
+    for code, name in SCAN_SYMBOLS:
+        try:
+            data = await fetch_ticks(code, count=count)
+            rows.append(_rf_score(code, name, data["prices"]))
+        except Exception:
+            rows.append({"symbol": code, "name": name, "ready": False, "collecting": f"0/{MIN_SAMPLES}"})
+    ready = [r for r in rows if r.get("ready")]
+    ready.sort(key=lambda r: r["confidence"], reverse=True)
+    for i, r in enumerate(ready, 1):
+        r["rank"] = i
+    return {"ranked": ready + [r for r in rows if not r.get("ready")],
+            "top": ready[0] if ready else None,
+            "markets_ready": len(ready), "markets_total": len(rows)}
+
+
 async def scan_even_odd(count: int = 120) -> dict[str, Any]:
     """Scan every market, score + rank by edge (gap, then quality). Returns the
     ranked list plus the current top pick (best ready market)."""

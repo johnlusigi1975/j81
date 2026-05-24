@@ -373,6 +373,7 @@ class AccountPatch(BaseModel):
     daily_loss_limit: float | None = None
     mpro_enabled: bool | None = None
     mpro_config: dict | None = None
+    rf_config: dict | None = None
 
 
 def _require_own(request: Request, account_id: str) -> None:
@@ -398,6 +399,7 @@ def account_patch(account_id: str, body: AccountPatch, request: Request) -> dict
         daily_loss_limit=body.daily_loss_limit,
         mpro_enabled=body.mpro_enabled,
         mpro_config=body.mpro_config,
+        rf_config=body.rf_config,
     ):
         raise HTTPException(404, "account not found or no changes")
     return {"updated": account_id}

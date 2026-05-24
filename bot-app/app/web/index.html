@@ -467,7 +467,7 @@
     <div id="rf-scan-panel" hidden style="margin-bottom:14px">
       <div class="confwrap">
         <div class="confhead"><span id="rf-conf-label" class="lab" style="font-size:10.5px">Analysing markets…</span><span id="rf-conf-val" style="font-family:var(--mono);font-weight:800;color:var(--dim)">—</span></div>
-        <div class="confbar"><i id="rf-conf-bar"></i><span class="mark"></span></div>
+        <div class="confbar"><i id="rf-conf-bar"></i><span class="mark" id="rf-conf-mark"></span></div>
         <div class="faint" style="font-size:10px;margin-top:5px">Confidence = strength of the recent move across markets. Synthetics are random, so this is not a win chance — only trade at 70%+ with your stop-loss set.</div>
       </div>
       <div class="scanhead"><span class="spin"></span> J81 scanning all 10 volatility markets — live</div>
@@ -519,6 +519,12 @@
         <label class="field">Rounds<input id="auto-rounds" type="number" min="1" max="1000" value="50" style="width:80px"></label>
         <button class="btn" id="auto-btn" style="margin-left:auto">Start Auto</button>
       </div>
+      <div class="row" style="margin:0 0 12px;align-items:center">
+        <label class="field">Trade at confidence ≥ %<input id="auto-conf" type="number" min="50" max="95" value="70" style="width:80px"></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:7px;text-transform:none;font-size:12px"><input type="checkbox" id="auto-bg" checked style="width:auto"> Run in the background (keeps trading on our server even if you close the app)</label>
+        <button class="btn ghost" id="focus-btn" type="button" style="margin-left:auto">🎯 Focus J81 on this</button>
+      </div>
+      <div id="auto-results" class="faint" style="font-size:12px;margin:0 0 8px"></div>
       <div class="read" style="margin:0"><div class="eq"><span></span><span></span><span></span><span></span><span></span></div><div style="flex:1"><div class="lab">Auto status</div><div class="val" id="auto-status">off — set a target and press Start Auto</div></div></div>
       <div class="faint" style="font-size:11.5px;margin-top:8px">Set <b>Rounds</b> (up to 1000) and a <b>stake</b> (min $0.35). Press Start and J81 scans the markets and auto-trades up to that many rounds, stopping early if it hits your win or loss target. Martingale raises stake after a loss (capped) — higher risk. Auto trades for real only when DRY_RUN is off; otherwise it practises.</div>
     </div>
@@ -872,13 +878,15 @@ const RFScan=(function(){
     // confidence = z-score of the top market's recent up/down split, scaled
     const mv=top.s.n-1, ups=top.s.upPct/100*mv, z=mv? Math.abs(2*ups-mv)/Math.sqrt(mv):0;
     const conf=Math.max(0, Math.min(99, Math.round(z/3*100)));
-    const ready = conf>=70 && top.s.n>=25;
+    const thr = window.RF_THRESHOLD || 70;
+    const ready = conf>=thr && top.s.n>=25;
     window._rfReady=ready; window._rfConf=conf;
+    const mk=$("rf-conf-mark"); if(mk) mk.style.left=thr+"%";
     const bar=$("rf-conf-bar"); if(bar){ bar.style.width=conf+"%"; bar.style.background=col; }
     const val=$("rf-conf-val"); if(val){ val.textContent=conf+"%"; val.style.color=conf>=70?col:"var(--dim)"; }
     const lab=$("rf-conf-label"); if(lab){ lab.innerHTML = ready
       ? `✓ Signal ready — <b style="color:${col}">${up?'RISE':'FALL'}</b> on <b>${esc(top.name)}</b>`
-      : (top.s.n<25 ? 'Analysing… collecting ticks' : 'Analysing 10 markets… (waiting for 70%+)'); }
+      : (top.s.n<25 ? 'Analysing… collecting ticks' : `Analysing 10 markets… (waiting for ${thr}%+)`); }
     const tp=$("rf-top"); if(tp) tp.innerHTML = ready
       ? `<a href="#" onclick="RFScan.useTop();return false">Trade ${up?'RISE':'FALL'} on ${esc(top.name)} →</a> &nbsp;<span class="faint">— signal strength, not a guaranteed win</span>`
       : `Top so far: ${up?'RISE':'FALL'} on <b>${esc(top.name)}</b> (${top.s.upPct}% up) · <a href="#" onclick="RFScan.useTop();return false">open it →</a>`;
@@ -1013,29 +1021,61 @@ async function loadAutoState(){
   $("auto-tp").value=(tp!=null&&tp>0)?tp:''; $("auto-ll").value=(ll!=null&&ll>0)?ll:'';
   $("auto-steps").value=cfg.max_steps!=null?cfg.max_steps:0;
   const rd=CUR.max_trades_per_day; if(rd && +rd>0) $("auto-rounds").value=rd;
-  const running = GAME==="m_pro" ? CUR.mpro_enabled : GAME==="rise_fall" ? RFAUTO.on : (CUR.enabled && !CUR.mpro_enabled);
+  const rf=CUR.rf_config||{}; if(rf.min_conf){ $("auto-conf").value=rf.min_conf; } window.RF_THRESHOLD=parseInt($("auto-conf").value||"70",10)||70;
+  const serverRF = GAME==="rise_fall" && !!rf.enabled;
+  const running = GAME==="m_pro" ? CUR.mpro_enabled : GAME==="rise_fall" ? (RFAUTO.on||serverRF) : (CUR.enabled && !CUR.mpro_enabled);
   const btn=$("auto-btn"); btn.dataset.on=running?'1':'0'; btn.textContent=running?'Stop Auto':'Start Auto'; btn.style.background=running?'var(--bad)':'';
+  if(serverRF && !RFAUTO.on) rfAutoStatus(`✓ running in the background — trading at ${rf.min_conf}%+ confidence on our server.`);
   updateAutoStatus();
 }
 async function updateAutoStatus(){
   const p = Number((CUR&&CUR.profit_today)||0), pe=$("auto-pnl");
   pe.innerHTML=`<small>session P/L</small>${p>=0?'+':''}${p.toFixed(2)}`; pe.className='spot '+(p>0?'up':p<0?'down':'');
+  // session results (wins / win-rate / net) — the performance record
+  try{ const s=await api("/assistant/summary"); const w=s.wins||0, set=s.settled||0, wr=set?Math.round(w/set*100):0; const el=$("auto-results");
+    if(el) el.innerHTML=`Performance: <b>${w}/${set}</b> wins · <b>${wr}%</b> win-rate · ${s.trades_total||0} trades · net <b style="color:${p>=0?'var(--good)':'var(--bad)'}">${p>=0?'+':''}$${Math.abs(p).toFixed(2)}</b>`;
+  }catch(_){}
   if(GAME==="m_pro"){ try{ const s=await api("/mpro/status"); const mine=(s.accounts||[]).find(x=>x.account_id===(CUR&&CUR.id)); if(mine) $("auto-status").textContent=mine.status; }catch(_){ } }
 }
+(function(){ const f=$("focus-btn"); if(f) f.addEventListener("click",async()=>{ f.disabled=true; const old=f.textContent; try{ await api("/priority",{method:"POST",body:JSON.stringify({enabled:true})}); f.textContent="✓ J81 focused"; }catch(_){ f.textContent="failed"; } setTimeout(()=>{ f.disabled=false; f.textContent=old; },2500); });
+  const c=$("auto-conf"); if(c) c.addEventListener("input",()=>{ try{ rfReadThreshold(); }catch(_){} }); })();
 // ---- Rise/Fall confidence-gated auto-runner (client-driven; fires only at >=70%) ----
+window.RF_THRESHOLD=70;
 let RFAUTO={on:false,target:50,rounds:0,stake:0.35,busy:false,timer:null};
 function rfAutoStatus(t){ const s=$("auto-status"); if(s) s.textContent=t; }
-async function rfAutoStart(){
+function rfReadThreshold(){ window.RF_THRESHOLD=Math.max(50,Math.min(95,parseInt($("auto-conf").value||"70",10)||70)); const mk=$("rf-conf-mark"); if(mk) mk.style.left=window.RF_THRESHOLD+"%"; return window.RF_THRESHOLD; }
+// dispatcher: background (server, keeps trading if you close the app) or this-tab
+async function rfStart(){ const thr=rfReadThreshold(); if($("auto-bg").checked) await rfStartServer(thr); else rfAutoStart(thr); }
+async function rfStop(){
+  if(RFAUTO.on) rfAutoStop("stopped");
+  try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify({rf_config:{enabled:false},enabled:false})}); }catch(_){}
+  const b=$("auto-btn"); if(b){ b.dataset.on='0'; b.textContent='Start Auto'; b.style.background=''; } rfAutoStatus("stopped");
+}
+// SERVER-SIDE (VPS): J81 runs it on our host 24/7
+async function rfStartServer(thr){
   const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value);
   const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35); $("t-stake").value=stake;
+  const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50)), dur=parseInt($("t-duration").value||"5",10);
+  const body={enabled:true, mpro_enabled:false, allowed_trade_types:["rise_fall"], max_stake_per_trade:stake, max_trades_per_day:rounds, rf_config:{enabled:true,min_conf:thr,stake,duration:dur}};
+  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  const b=$("auto-btn"); b.disabled=true; rfAutoStatus("starting background runner…");
+  try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); }
+  catch(e){ rfAutoStatus("couldn't start: "+e.message); b.disabled=false; return; }
+  b.disabled=false; b.dataset.on='1'; b.textContent='Stop Auto'; b.style.background='var(--bad)';
+  rfAutoStatus(`✓ running in the background — J81 scans all 10 markets on our server and trades at ${thr}%+ confidence, up to ${rounds} rounds, even if you close this. Stops at your win/loss target.`);
+}
+// FOREGROUND: this browser tab only
+function rfAutoStart(thr){
+  thr=thr||window.RF_THRESHOLD;
+  const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35); $("t-stake").value=stake;
   const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50));
+  const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value);
   const body={enabled:false, mpro_enabled:false, max_stake_per_trade:stake, max_trades_per_day:rounds, allowed_trade_types:["rise_fall"]};
   if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
-  try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); }
-  catch(e){ rfAutoStatus("couldn't start: "+e.message); return; }
+  api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}).catch(()=>{});
   RFAUTO={on:true,target:rounds,rounds:0,stake,busy:false,timer:null};
   const b=$("auto-btn"); b.dataset.on='1'; b.textContent='Stop Auto'; b.style.background='var(--bad)';
-  rfAutoStatus(`armed — scanning, will trade only at 70%+ confidence (0/${rounds})`);
+  rfAutoStatus(`armed (this tab) — will trade only at ${thr}%+ confidence (0/${rounds})`);
   RFAUTO.timer=setInterval(rfAutoTick,2000);
 }
 function rfAutoStop(reason){
@@ -1049,7 +1089,7 @@ async function rfAutoTick(){
   if(RFAUTO.rounds>=RFAUTO.target){ rfAutoStop(`✓ done — ${RFAUTO.target} rounds complete`); return; }
   if(RFAUTO.busy) return;
   const top=window._rfTop, ready=window._rfReady, conf=window._rfConf||0;
-  if(!ready||!top){ rfAutoStatus(`armed — waiting for 70%+ confidence (now ${conf}%) · ${RFAUTO.rounds}/${RFAUTO.target}`); return; }
+  if(!ready||!top){ rfAutoStatus(`armed — waiting for ${window.RF_THRESHOLD}%+ confidence (now ${conf}%) · ${RFAUTO.rounds}/${RFAUTO.target}`); return; }
   RFAUTO.busy=true;
   const dir=top.s.upPct>=50?"up":"down", dur=parseInt($("t-duration").value||"5",10);
   rfAutoStatus(`${conf}% — placing ${dir==="up"?"RISE":"FALL"} on ${top.name} · ${RFAUTO.rounds+1}/${RFAUTO.target}`);
@@ -1065,7 +1105,7 @@ async function rfAutoTick(){
 
 $("auto-btn").addEventListener("click",async()=>{
   if(!CUR){ showView("connect"); return; }
-  if(GAME==="rise_fall"){ if($("auto-btn").dataset.on==='1') rfAutoStop("stopped"); else rfAutoStart(); return; }
+  if(GAME==="rise_fall"){ if($("auto-btn").dataset.on==='1') rfStop(); else rfStart(); return; }
   const on=$("auto-btn").dataset.on==='1', start=!on, st=$("auto-status");
   const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value), steps=parseInt($("auto-steps").value||"0",10);
   const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35);   // Deriv min stake
