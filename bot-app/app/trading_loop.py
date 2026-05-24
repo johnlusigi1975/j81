@@ -27,6 +27,25 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _proven_to_params(s: dict) -> tuple[str, str | None, str | None]:
+    """Map a proven strategy's Deriv contract_type back to execute_manual_trade
+    params: (trade_type, direction, prediction). Mirrors the lab's variant set."""
+    ct = (s.get("contract_type") or "").upper()
+    b = s.get("barrier")
+    bs = str(b) if b is not None else None
+    table = {
+        "CALL":       ("rise_fall", "up", None),
+        "PUT":        ("rise_fall", "down", None),
+        "DIGITEVEN":  ("even_odd", None, "even"),
+        "DIGITODD":   ("even_odd", None, "odd"),
+        "DIGITOVER":  ("over_under", "over", bs or "4"),
+        "DIGITUNDER": ("over_under", "under", bs or "5"),
+        "DIGITMATCH": ("matches_differs", "matches", bs or "0"),
+        "DIGITDIFF":  ("matches_differs", "differs", bs or "0"),
+    }
+    return table.get(ct, (s.get("trade_type") or "rise_fall", "up", None))
+
+
 class TradingLoop:
     def __init__(self) -> None:
         self._task: asyncio.Task | None = None
@@ -90,6 +109,9 @@ class TradingLoop:
             acct = store.get_internal(acct_public["id"])
             if acct is None:
                 continue
+            # Primary auto mode: trade the strategies the Analyser PROVED.
+            if await self._run_proven_account(acct, summary):
+                continue
             # Server-side confidence-gated Rise/Fall runner (the "VPS" mode).
             if await self._run_rf_account(acct, summary):
                 continue
@@ -135,6 +157,46 @@ class TradingLoop:
         self.status["last_summary"] = summary
         await self._grade_the_brain(summary)
         await self._peer_watch()
+
+    async def _run_proven_account(self, acct: dict, summary: list) -> bool:
+        """Trade the strategies the Analyser PROVED (≥70% win ×100 ×5 + net P/L>0)
+        and pushed to our strategy store. Picks the best-EV proven strategy and
+        places one trade per cycle, honouring stake/daily-cap/goal/DRY_RUN. If the
+        store is empty (the honest norm on RNG markets), it just waits. Returns
+        True if it handled this account."""
+        if not acct.get("proven_auto"):
+            return False
+        from app.executor import execute_manual_trade, goal_status
+        store = get_store()
+        blocked, why = goal_status(acct)
+        if blocked:  # win target or loss limit reached → switch off
+            store.update_account_settings(acct["id"], proven_auto=False, enabled=False)
+            summary.append({"account": acct["deriv_account_id"], "outcome": "stopped", "reason": why})
+            return True
+        proven = store.list_proven_strategies(limit=50)
+        if not proven:
+            summary.append({"account": acct["deriv_account_id"], "outcome": "waiting",
+                            "reason": "no proven strategies yet — the cycle hasn't found an edge"})
+            return True
+        # Best expected value first (net P/L), then win-rate.
+        proven.sort(key=lambda s: ((s.get("net_pnl") or 0), (s.get("win_rate") or 0)), reverse=True)
+        best = proven[0]
+        tt, direction, prediction = _proven_to_params(best)
+        stake = float(acct.get("max_stake_per_trade") or 0.35) or 0.35
+        try:
+            res = await execute_manual_trade(
+                acct, trade_type=tt, symbol=best.get("symbol") or "R_100",
+                direction=direction, prediction=prediction, stake=stake,
+                duration=int(best.get("duration") or 5), duration_unit="t")
+        except Exception as exc:
+            summary.append({"account": acct["deriv_account_id"], "outcome": "error", "reason": repr(exc)})
+            return True
+        if res.get("outcome") == "skipped":  # cap / goal reached → stop
+            store.update_account_settings(acct["id"], proven_auto=False, enabled=False)
+        summary.append({"account": acct["deriv_account_id"], "symbol": best.get("symbol"),
+                        "outcome": res.get("outcome"), "reason": res.get("reason") or res.get("error"),
+                        "strategy": best.get("label"), "win_rate": best.get("win_rate")})
+        return True
 
     async def _run_rf_account(self, acct: dict, summary: list) -> bool:
         """Server-side Rise/Fall confidence-gated auto (runs 24/7 on the host —

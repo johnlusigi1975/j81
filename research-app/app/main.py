@@ -50,6 +50,12 @@ from app.trade_store import get_trade_store
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Self-heal a near-full disk on boot: out/_archive is pure dead weight.
+    try:
+        from app import maintenance
+        maintenance.cleanup(deep=False)
+    except Exception:
+        pass
     scheduler.ensure_running()  # self-gates on config.autonomous.enabled
     yield
 
@@ -62,6 +68,16 @@ _HOMEPAGE = Path(__file__).parent / "web" / "index.html"
 @app.get("/", include_in_schema=False)
 def homepage() -> FileResponse:
     return FileResponse(_HOMEPAGE, media_type="text/html")
+
+
+@app.post("/maintenance/cleanup")
+def maintenance_cleanup(deep: bool = False) -> dict:
+    """Reclaim disk: always clear out/_archive; with deep=true also clear the
+    live out/strategies + out/insights. The analyser's 30-min cycle calls this
+    (deep) so the researcher auto-clears each loop — its winners are already in
+    the bot. Run it manually to reclaim a full disk now."""
+    from app import maintenance
+    return maintenance.cleanup(deep=deep)
 
 
 @app.get("/health")

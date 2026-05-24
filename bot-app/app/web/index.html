@@ -205,6 +205,8 @@
   .tbtn.even{background:linear-gradient(135deg,#fff0c2,#f0c64a 60%,#cf9e2a);color:#241d05;box-shadow:0 16px 36px -16px rgba(240,200,90,.7)}
   .tbtn.odd{background:linear-gradient(135deg,#eef0f5,#aab0bd 60%,#7c8290);color:#15151c;box-shadow:0 16px 36px -16px rgba(170,176,189,.6)}
   .tbtn.sug{outline:2px solid rgba(255,255,255,.9);outline-offset:3px;animation:sug 1.5s ease-in-out infinite}
+  .tbtn.firing{animation:fire .4s ease-out}
+  @keyframes fire{0%{transform:scale(.93);filter:brightness(1.5)}100%{transform:scale(1);filter:brightness(1)}}
   /* compact, bank-style buttons (Rise/Fall) — small + decent, not a game */
   .tgrid.compact{grid-template-columns:1fr 1fr;gap:10px;max-width:380px}
   .tgrid.compact .tbtn{flex-direction:row;justify-content:center;gap:8px;padding:11px 12px;border-radius:10px;box-shadow:none;border:1px solid rgba(255,255,255,.12)}
@@ -421,6 +423,17 @@
     <div class="stat"><div class="n" id="s-acct">—</div><div class="l">balance</div></div>
   </div>
 
+  <!-- Strategy cycle + proven store, visible without opening a trade -->
+  <div class="sec-title" style="margin-top:22px">J81 strategy engine <span class="faint" id="home-cycle-next" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
+  <div class="glass" style="padding:14px">
+    <div class="statstrip" style="margin:0 0 12px">
+      <div class="stat"><div class="n" id="home-cy-tested">—</div><div class="l">candidates tested</div></div>
+      <div class="stat good"><div class="n" id="home-cy-proven">—</div><div class="l">proven strategies</div></div>
+      <div class="stat"><div class="n" id="home-cy-state" style="font-size:15px">—</div><div class="l">cycle</div></div>
+    </div>
+    <div id="home-proven"><div class="empty">no proven strategies yet — the analyser cycle runs every 30 min and only keeps 70%×100×5 winners with positive P/L (rare on RNG markets, by design)</div></div>
+  </div>
+
   <div id="choose-grid"></div>
 
   <div class="sec-title">Recent activity</div>
@@ -434,6 +447,12 @@
     <div class="term-head">
       <div><div class="term-title" id="trade-kind">Trade</div><div class="term-market" id="term-market">—</div></div>
       <div class="spot" id="term-spot"><small>spot price</small>—</div>
+    </div>
+
+    <!-- live Deriv balance, right where you trade -->
+    <div id="balbar" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:11px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(54,214,200,.14),rgba(240,200,90,.05));border:1px solid var(--bd)">
+      <span class="lab" style="font-size:11px;letter-spacing:.08em">Your Deriv balance <span class="faint" id="trade-bal-kind" style="letter-spacing:0"></span></span>
+      <b id="trade-bal-top" style="font-family:var(--mono);font-size:21px;font-weight:800">—</b>
     </div>
 
     <div class="read">
@@ -495,6 +514,8 @@
 
     <!-- manual buttons (Rise/Fall, Even/Odd, Over/Under, Matches/Differs) -->
     <div class="tgrid" id="trade-buttons"></div>
+    <!-- result shows RIGHT under the buttons so a tap visibly does something -->
+    <div id="t-result" style="margin-top:12px"></div>
 
     <!-- M Pro scanner (only for the scanner game) -->
     <div id="mpro-extra" hidden>
@@ -528,11 +549,21 @@
         <button class="btn ghost" id="focus-btn" type="button" style="margin-left:auto">🎯 Focus J81 on this</button>
       </div>
       <div id="auto-results" class="faint" style="font-size:12px;margin:0 0 8px"></div>
-      <div class="read" style="margin:0"><div class="eq"><span></span><span></span><span></span><span></span><span></span></div><div style="flex:1"><div class="lab">Auto status</div><div class="val" id="auto-status">off — set a target and press Start Auto</div></div></div>
+
+      <!-- PROVEN-strategy auto: trade what the analyser's 30-min cycle proved -->
+      <div style="border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:4px 0 12px;background:linear-gradient(135deg,rgba(54,214,200,.08),rgba(240,200,90,.03))">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:800;font-size:14px">🤖 Trade proven strategies <span class="faint" style="font-weight:400;font-size:11.5px">hands-off · uses what the analyser proved</span></div>
+          <button class="btn ghost" id="proven-btn" type="button" style="margin-left:auto">Turn on</button>
+        </div>
+        <div class="faint" id="proven-status" style="font-size:12px;margin-top:7px">The analyser cycle (every 30 min) only saves strategies that win 70%+ over 100 trades, 5 times, with positive P/L. When it finds one, J81 trades it here automatically — at your stake, with your win/loss targets.</div>
+        <div id="proven-list" style="font-size:12px;margin-top:8px"></div>
+      </div>
+
+      <div class="read" style="margin:0"><div class="eq"><span></span><span></span><span></span><span></span><span></span></div><div style="flex:1"><div class="lab">Auto status</div><div class="val" id="auto-status">off — set a target and press Start Auto</div><div class="faint" id="auto-beat" style="font-size:11px;margin-top:4px"></div></div></div>
       <div class="faint" style="font-size:11.5px;margin-top:8px">Set <b>Rounds</b> (up to 1000) and a <b>stake</b> (min $0.35). Press Start and J81 scans the markets and auto-trades up to that many rounds, stopping early if it hits your win or loss target. Martingale raises stake after a loss (capped) — higher risk. Auto trades for real only when DRY_RUN is off; otherwise it practises.</div>
     </div>
 
-    <div id="t-result" style="margin-top:12px"></div>
     <div class="sec-title" style="margin:18px 0 8px">Live results <span class="faint" id="trade-bal" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
     <div id="trade-recent"><div class="empty">no trades yet</div></div>
   </div>
@@ -542,7 +573,16 @@
 
 <script>
 // ---------- helpers ----------
-async function api(p,opts={}){ const r=await fetch(p,{headers:{"Content-Type":"application/json",...(opts.headers||{})},...opts}); let b=null;try{b=await r.json()}catch(_){ } if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status)); return b; }
+async function api(p,opts={}){
+  // Hard timeout so a slow/cold backend never freezes the UI (polls just retry next tick).
+  const ctrl=new AbortController(), ms=opts.timeout||9000, to=setTimeout(()=>ctrl.abort(),ms);
+  try{
+    const r=await fetch(p,{signal:ctrl.signal,headers:{"Content-Type":"application/json",...(opts.headers||{})},...opts});
+    let b=null;try{b=await r.json()}catch(_){ }
+    if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status));
+    return b;
+  } finally { clearTimeout(to); }
+}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtMoney=(v,c)=>(v==null||isNaN(v))?"—":(((c||"USD")==="USD")?"$":(esc(c)+" "))+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -745,6 +785,25 @@ async function loadHome(){
         <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
         <span style="margin-left:auto" class="${x.outcome==='won'?'':''}">${esc(x.outcome||'')}</span>
         ${x.profit!=null?`<span style="color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:''}</div>`).join("");
+  }catch(_){}
+  loadHomeCycle();
+}
+function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
+async function loadHomeCycle(){
+  // 30-min strategy cycle status (proxied from the analyser)
+  try{ const c=await api("/cycle/status");
+    const t=$("home-cy-tested"); if(t) t.textContent=c.tested||0;
+    const p=$("home-cy-proven"); if(p) p.textContent=c.proven_count||0;
+    const st=$("home-cy-state"); if(st) st.textContent=(c.reachable===false)?"offline":((c.proven_count>0)?"live":"scanning");
+    const nx=$("home-cycle-next"); if(nx) nx.textContent=(c.next_in_seconds!=null)?("next cycle in "+mmss(c.next_in_seconds)):"";
+  }catch(_){}
+  // proven strategies stored in the bot
+  try{ const list=await api("/strategies/proven?limit=12"); const el=$("home-proven"); if(!el) return;
+    if(list.length) el.innerHTML = list.map(s=>{ const c=Number(s.net_pnl)>=0?'var(--good)':'var(--bad)';
+      return `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
+        <span class="pill">PROVEN</span> <b>${esc(s.label||'')}</b> <span class="faint">${esc(s.market||s.symbol||'')}</span>
+        <span style="margin-left:auto">${Number(s.win_rate||0).toFixed(0)}% win</span>
+        <span style="font-family:var(--mono);color:${c}">${Number(s.net_pnl)>=0?'+':''}${Number(s.net_pnl||0).toFixed(2)}</span></div>`; }).join("");
   }catch(_){}
 }
 
@@ -957,7 +1016,7 @@ async function openTrade(game){
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
   if(game!=="m_pro") LiveWS.start(sym); else LiveWS.stop();
-  loadAssistant(); loadAutoState(); refreshLive();
+  loadAssistant(); loadAutoState(); refreshLive(); loadProven();
   if(game==="m_pro") loadScan();
 }
 // live market follows the chosen symbol
@@ -965,29 +1024,40 @@ $("t-symbol").addEventListener("change",e=>{ $("term-market").textContent=e.targ
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".tbtn"); if(b) placeTrade(b); });
 
 // Reflect Deriv on our site: refresh the live balance + recent results.
+function renderRecent(t){
+  const el=$("trade-recent"); if(!el) return;
+  el.innerHTML = (!t.length) ? '<div class="empty">no trades yet</div>'
+    : t.map(x=>{ const o=x.outcome;
+        const tag = o==="won"?'<span style="color:var(--good);font-weight:800">WON</span>'
+                  : o==="lost"?'<span style="color:var(--bad);font-weight:800">LOST</span>'
+                  : o==="pending"?'<span class="faint">settling…</span>'
+                  : o==="dry_run"?'<span class="faint">practice</span>' : esc(o||'');
+        const pl = x.profit!=null?` <span style="font-family:var(--mono);color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:'';
+        return `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
+          <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
+          <span style="margin-left:auto">${tag}</span>${pl}</div>`; }).join("");
+}
+function showBalance(b){
+  if(!(b&&b.balance!=null)) return;
+  const m=fmtMoney(b.balance,b.currency);
+  const top=$("trade-bal-top"); if(top) top.textContent=m;
+  const k=$("trade-bal-kind"); if(k) k.textContent="· "+(CUR.is_demo?"demo":"REAL");
+  const tb=$("trade-bal"); if(tb) tb.textContent="Balance: "+m;
+  const nv=$("nav-acct-txt"); if(nv) nv.textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL")+" · "+m;
+}
 async function refreshLive(){
   if(!CUR) return;
-  // Settle any just-expired contracts first so a win/loss shows within seconds
-  // (don't wait for the 2-min trading loop). Best-effort, never blocks the UI.
-  try{ await api("/accounts/"+encodeURIComponent(CUR.id)+"/settle",{method:"POST"}); }catch(_){}
-  loadBalance(CUR.id).then(b=>{
-    if(!(b&&b.balance!=null)) return;
-    const m=fmtMoney(b.balance,b.currency);
-    const tb=$("trade-bal"); if(tb) tb.textContent="Balance: "+m;
-    const nv=$("nav-acct-txt"); if(nv) nv.textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL")+" · "+m;
-  });
+  loadBalance(CUR.id).then(showBalance);
   try{
-    const t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=8");
-    const el=$("trade-recent"); if(!el) return;
-    el.innerHTML = (!t.length) ? '<div class="empty">no trades yet</div>'
-      : t.map(x=>{ const o=x.outcome;
-          const tag = o==="won"?'<span style="color:var(--good);font-weight:800">WON</span>'
-                    : o==="lost"?'<span style="color:var(--bad);font-weight:800">LOST</span>'
-                    : o==="pending"?'<span class="faint">settling…</span>' : esc(o||'');
-          const pl = x.profit!=null?` <span style="font-family:var(--mono);color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:'';
-          return `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
-            <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
-            <span style="margin-left:auto">${tag}</span>${pl}</div>`; }).join("");
+    let t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=8");
+    // Only ask the server to settle (heavy) when a REAL contract is still open,
+    // then re-read once — so a win/loss shows in seconds without polling Deriv every tick.
+    if(t.some(x=>x.outcome==="pending" && !x.is_dry_run)){
+      try{ await api("/accounts/"+encodeURIComponent(CUR.id)+"/settle",{method:"POST"});
+           t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=8"); }catch(_){}
+      loadBalance(CUR.id).then(showBalance);   // balance moves once it settles
+    }
+    renderRecent(t);
   }catch(_){}
 }
 // after a trade, poll a few times so the WON/LOST + new balance show as it settles
@@ -995,6 +1065,7 @@ function pollSettle(){ [800,3000,6000,10000,14000].forEach(ms=>setTimeout(()=>{ 
 
 async function placeTrade(btn){
   if(!CUR){ showView("connect"); return; }
+  btn.classList.add("firing"); setTimeout(()=>btn.classList.remove("firing"),400);   // instant tap feedback
   const tt=btn.dataset.tt, res=$("t-result");
   const body={account_id:CUR.id,trade_type:tt,symbol:$("t-symbol").value,stake:parseFloat($("t-stake").value||"1"),duration:parseInt($("t-duration").value||"5",10),duration_unit:"t"};
   let call;
@@ -1060,6 +1131,39 @@ function setMpMode(m){ document.querySelectorAll('#mpro-mode .segbtn').forEach(b
 function curMpMode(){ const b=document.querySelector('#mpro-mode .segbtn.on'); return b?b.dataset.mode:'auto'; }
 (function(){ document.querySelectorAll('#mpro-mode .segbtn').forEach(b=>b.addEventListener('click',()=>setMpMode(b.dataset.mode))); })();
 
+// ---------- PROVEN-strategy auto (trades what the analyser cycle proved) ----------
+async function loadProven(){
+  if(!CUR) return;
+  const on=!!CUR.proven_auto, btn=$("proven-btn");
+  if(btn){ btn.textContent=on?'Turn off':'Turn on'; btn.style.background=on?'var(--bad)':''; btn.style.color=on?'#fff':''; }
+  try{
+    const list=await api("/strategies/proven?limit=20"), el=$("proven-list");
+    if(!el) return;
+    el.innerHTML = (!list.length)
+      ? '<div class="faint">No proven strategies yet — on random-walk markets the 70%×5 + profit bar is rarely met. The cycle keeps trying every 30 min.</div>'
+      : list.map(s=>{ const c=Number(s.net_pnl)>=0?'var(--good)':'var(--bad)';
+          return `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--bd)"><b>${esc(s.label)}</b> <span class="faint">${esc(s.market||s.symbol||'')}</span> <span style="margin-left:auto">${Number(s.win_rate||0).toFixed(0)}% win</span> <span style="font-family:var(--mono);color:${c}">${Number(s.net_pnl)>=0?'+':''}${Number(s.net_pnl||0).toFixed(2)}</span></div>`;
+        }).join("");
+  }catch(_){}
+}
+(function(){ const b=$("proven-btn"); if(!b) return; b.addEventListener("click",async()=>{
+  if(!CUR){ showView("connect"); return; }
+  const turningOn=!CUR.proven_auto;
+  const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35);
+  const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50));
+  const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value);
+  const body={proven_auto:turningOn, enabled:turningOn, max_stake_per_trade:stake, max_trades_per_day:rounds};
+  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  b.disabled=true;
+  try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); CUR.proven_auto=turningOn; CUR.enabled=turningOn; }
+  catch(e){ if($("proven-status")) $("proven-status").textContent="couldn't update: "+e.message; }
+  finally{ b.disabled=false; }
+  if($("proven-status")) $("proven-status").textContent = turningOn
+    ? `✓ ON — J81 auto-trades the best proven strategy each cycle at $${stake.toFixed(2)}, up to ${rounds} rounds, stopping at your win/loss target. Runs on our server even if you close the app.${DRY?' (practice mode — DRY_RUN is on)':''}`
+    : 'off';
+  loadProven();
+}); })();
+
 // ---------- AUTO (runs to take-profit) ----------
 async function loadAutoState(){
   if(!CUR) return;
@@ -1083,6 +1187,22 @@ async function updateAutoStatus(){
     if(el) el.innerHTML=`Performance: <b>${w}/${set}</b> wins · <b>${wr}%</b> win-rate · ${s.trades_total||0} trades · net <b style="color:${p>=0?'var(--good)':'var(--bad)'}">${p>=0?'+':''}$${Math.abs(p).toFixed(2)}</b>`;
   }catch(_){}
   if(GAME==="m_pro"){ try{ const s=await api("/mpro/status"); const mine=(s.accounts||[]).find(x=>x.account_id===(CUR&&CUR.id)); if(mine) $("auto-status").textContent=mine.status; }catch(_){ } }
+  // Heartbeat: show that J81 is alive + what the server loop last did for this account.
+  const beat=$("auto-beat");
+  if(beat){
+    const t=new Date().toLocaleTimeString();
+    try{
+      const ls=await api("/loop/status");
+      const mine=(ls.last_summary||[]).filter(s=>s.account===(CUR&&CUR.deriv_account_id));
+      const last=mine[mine.length-1];
+      if(last){
+        const bits=[last.outcome, last.symbol, last.direction, (last.confidence!=null?Math.round(last.confidence)+'%':null), last.reason].filter(Boolean);
+        beat.textContent='● server: '+bits.join(' · ')+'  ·  checked '+t;
+      } else {
+        beat.textContent='● J81 online · '+(ls.cycles||0)+' cycles · checked '+t;
+      }
+    }catch(_){ beat.textContent='● checked '+t; }
+  }
 }
 (function(){ const f=$("focus-btn"); if(f) f.addEventListener("click",async()=>{ f.disabled=true; const old=f.textContent; try{ await api("/priority",{method:"POST",body:JSON.stringify({enabled:true})}); f.textContent="✓ J81 focused"; }catch(_){ f.textContent="failed"; } setTimeout(()=>{ f.disabled=false; f.textContent=old; },2500); });
   const c=$("auto-conf"); if(c) c.addEventListener("input",()=>{ try{ rfReadThreshold(); }catch(_){} });
@@ -1178,7 +1298,11 @@ $("auto-btn").addEventListener("click",async()=>{
 });
 
 // ---------- polls ----------
-setInterval(()=>{ if(!$("view-trade").hidden){ loadAssistant(); updateAutoStatus(); refreshLive(); if(GAME==="m_pro")loadScan(); } },10000);
+let _pollBusy=false;
+setInterval(async ()=>{ if($("view-trade").hidden||_pollBusy) return; _pollBusy=true;
+  try{ await Promise.allSettled([loadAssistant(), updateAutoStatus(), refreshLive(), loadProven(), (GAME==="m_pro"?loadScan():Promise.resolve())]); }
+  finally{ _pollBusy=false; }
+},10000);
 setInterval(()=>{ if(!$("view-home").hidden) loadHome(); }, 20000);
 boot();
 </script>

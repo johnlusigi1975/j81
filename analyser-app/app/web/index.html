@@ -198,6 +198,53 @@
 
 <main class="grid">
 
+  <!-- LIVE TESTING LAB --------------------------------------------------- -->
+  <section class="card" id="lab-card" style="grid-column:1/-1">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg></span> Live Testing Lab <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">paper-trades $1 on every trade type · live ticks · no money</span></h2>
+    <p class="lede">Press start and watch the analyser place a $1 paper trade on <b>every trade type at once</b>, scored on real Deriv ticks. It writes nothing to disk. Honest note: synthetics are an audited RNG with a house edge, so over many trades each type drifts to a small loss — and win-rate alone lies (DIFFERS wins ~90% but only pays ~1.05×). <b>Net P/L is the truth.</b></p>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <label style="font-size:13px;color:var(--text-faint)">Market
+        <select id="lab-symbol" style="margin-left:6px;padding:7px 10px;border-radius:8px;background:rgba(0,0,0,.35);color:inherit;border:1px solid rgba(255,255,255,.14)"></select>
+      </label>
+      <button id="lab-start" style="padding:8px 16px;border-radius:9px;border:0;background:#a78bfa;color:#10071f;font-weight:700;cursor:pointer">▶ Start testing</button>
+      <button id="lab-reset" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:transparent;color:inherit;cursor:pointer">Reset</button>
+      <span id="lab-state" style="font-size:12.5px;color:var(--text-faint)">idle</span>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+      <div class="stat"><div class="n" id="lab-rounds">0</div><div class="l">rounds</div></div>
+      <div class="stat"><div class="n" id="lab-trades">0</div><div class="l">paper trades</div></div>
+      <div class="stat cyan"><div class="n" id="lab-wr">0%</div><div class="l">overall win-rate</div></div>
+      <div class="stat"><div class="n" id="lab-net" style="color:var(--text-faint)">$0.00</div><div class="l">net P/L (the truth)</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.1fr;gap:18px;align-items:start">
+      <div><div style="font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">By trade type</div><div id="lab-types"><div class="faint" style="color:var(--text-faint)">press Start</div></div></div>
+      <div><div style="font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Live feed</div><div id="lab-feed" style="max-height:300px;overflow:auto"><div class="faint" style="color:var(--text-faint)">no trades yet</div></div></div>
+    </div>
+  </section>
+
+  <!-- STRATEGY CYCLE ----------------------------------------------------- -->
+  <section class="card" id="cycle-card" style="grid-column:1/-1">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></span> Strategy Cycle <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">backtest → prove → push to bot → auto-clear · every 30 min</span></h2>
+    <p class="lede">Acceptance bar: <b>70% win in each of 5×100-trade samples AND positive net P/L</b>. On RNG synthetics almost nothing passes — that's the honest result, not a bug. Survivors are pushed to the <b>bot's strategy store</b> and persist through the auto-clear.</p>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <button id="cycle-run" style="padding:8px 16px;border-radius:9px;border:0;background:#76e4ff;color:#04222b;font-weight:700;cursor:pointer">⟳ Run cycle now</button>
+      <span id="cycle-state" style="font-size:12.5px;color:var(--text-faint)">—</span>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+      <div class="stat"><div class="n" id="cy-tested">—</div><div class="l">candidates tested</div></div>
+      <div class="stat"><div class="n" id="cy-proven" style="color:var(--good)">—</div><div class="l">proven → pushed to bot</div></div>
+      <div class="stat cyan"><div class="n" id="cy-next">—</div><div class="l">next cycle</div></div>
+    </div>
+
+    <div style="font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Closest candidates this run</div>
+    <div id="cy-top"><div class="faint" style="color:var(--text-faint)">no cycle has run yet</div></div>
+  </section>
+
   <!-- TOTALS ------------------------------------------------------------- -->
   <section class="card span-4">
     <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><rect x="6" y="11" width="3" height="8"/><rect x="11" y="6" width="3" height="13"/><rect x="16" y="14" width="3" height="5"/></svg></span> Stats</h2>
@@ -957,6 +1004,79 @@ setInterval(refresh, 30000);
   const spacer = navInner && navInner.querySelector(".nav-spacer");
   if (navInner && spacer) navInner.insertBefore(wrap, spacer);
   else if (navInner) navInner.appendChild(wrap);
+})();
+</script>
+<script>
+/* Live Testing Lab — polls /lab/tick and streams the paper trades. */
+(function(){
+  var SYMS=[["R_10","Vol 10"],["R_25","Vol 25"],["R_50","Vol 50"],["R_75","Vol 75"],["R_100","Vol 100"],
+            ["1HZ10V","Vol 10 (1s)"],["1HZ25V","Vol 25 (1s)"],["1HZ50V","Vol 50 (1s)"],["1HZ75V","Vol 75 (1s)"],["1HZ100V","Vol 100 (1s)"]];
+  var $=function(id){return document.getElementById(id);};
+  var esc=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]);});};
+  var sel=$("lab-symbol");
+  if(sel) sel.innerHTML=SYMS.map(function(s){return '<option value="'+s[0]+'">'+s[1]+'</option>';}).join("");
+  if(sel) sel.value="R_100";
+  var timer=null, running=false, busy=false;
+  function money(v){ v=Number(v||0); return (v<0?'-$':'$')+Math.abs(v).toFixed(2); }
+  function render(d){
+    if(!d) return;
+    if($("lab-rounds")) $("lab-rounds").textContent=d.rounds||0;
+    if($("lab-trades")) $("lab-trades").textContent=d.trades_total||0;
+    if($("lab-wr")) $("lab-wr").textContent=(d.win_rate||0)+"%";
+    var net=$("lab-net"); if(net){ net.textContent=money(d.net_pnl); net.style.color=(Number(d.net_pnl||0)>=0?'var(--good)':'var(--bad)'); }
+    var pt=d.per_type||[];
+    if($("lab-types")) $("lab-types").innerHTML = pt.length ?
+      '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--text-faint);text-align:left"><th style="padding:4px 6px">Type</th><th>Trades</th><th>Win%</th><th style="text-align:right">Net P/L</th></tr></thead><tbody>'+
+      pt.map(function(s){var c=Number(s.pnl)>=0?'var(--good)':'var(--bad)';return '<tr style="border-top:1px solid rgba(255,255,255,.06)"><td style="padding:5px 6px;font-weight:600">'+esc(s.label)+'</td><td>'+s.trades+'</td><td>'+s.win_rate+'%</td><td style="text-align:right;color:'+c+';font-family:monospace">'+(Number(s.pnl)>=0?'+':'')+Number(s.pnl).toFixed(2)+'</td></tr>';}).join("")+
+      '</tbody></table>' : '<div class="faint" style="color:var(--text-faint)">press Start</div>';
+    var f=d.feed||[];
+    if($("lab-feed")) $("lab-feed").innerHTML = f.length ? f.map(function(x){
+        var tag=x.won?'<b style="color:var(--good)">WON</b>':'<b style="color:var(--bad)">LOST</b>';
+        var c=Number(x.pnl)>=0?'var(--good)':'var(--bad)';
+        return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px"><span style="color:var(--text-faint);font-family:monospace">'+esc(x.t)+'</span> <b>'+esc(x.label)+'</b> <span style="color:var(--text-faint)">'+esc(x.symbol)+'</span> '+tag+'<span style="margin-left:auto;color:'+c+';font-family:monospace">'+(Number(x.pnl)>=0?'+':'')+Number(x.pnl).toFixed(2)+'</span></div>';
+      }).join("") : '<div class="faint" style="color:var(--text-faint)">no trades yet</div>';
+  }
+  async function tick(){
+    if(busy) return; busy=true;
+    var sym=sel?sel.value:"R_100";
+    try{ var d=await fetch("/lab/tick?symbol="+encodeURIComponent(sym),{method:"POST"}).then(function(r){return r.json();}); render(d); if($("lab-state")&&running) $("lab-state").textContent="● testing live · "+sym; }
+    catch(e){ if($("lab-state")) $("lab-state").textContent="error — retrying"; }
+    finally{ busy=false; }
+  }
+  function start(){ if(running)return; running=true; if($("lab-start"))$("lab-start").textContent="⏸ Stop"; tick(); timer=setInterval(tick,2500); }
+  function stop(){ running=false; if(timer)clearInterval(timer); timer=null; if($("lab-start"))$("lab-start").textContent="▶ Start testing"; if($("lab-state"))$("lab-state").textContent="paused"; }
+  if($("lab-start")) $("lab-start").addEventListener("click",function(){ running?stop():start(); });
+  if($("lab-reset")) $("lab-reset").addEventListener("click",async function(){ try{ var d=await fetch("/lab/reset",{method:"POST"}).then(function(r){return r.json();}); render(d);}catch(e){} });
+  fetch("/lab/stats").then(function(r){return r.json();}).then(render).catch(function(){});
+})();
+</script>
+<script>
+/* Strategy Cycle — poll /cycle/status; trigger /cycle/run. */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var esc=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]);});};
+  function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); var m=(s/60)|0; var r=s%60; return m+"m "+(r<10?"0":"")+r+"s"; }
+  function render(d){
+    if(!d) return;
+    if($("cy-tested")) $("cy-tested").textContent=d.tested||0;
+    if($("cy-proven")) $("cy-proven").textContent=d.proven_count||0;
+    if($("cy-next")) $("cy-next").textContent=mmss(d.next_in_seconds);
+    var top=d.top||[];
+    if($("cy-top")) $("cy-top").innerHTML = top.length ?
+      '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--text-faint);text-align:left"><th style="padding:4px 6px">Type</th><th>Market</th><th>Avg win%</th><th>Net P/L</th><th>Verdict</th></tr></thead><tbody>'+
+      top.map(function(r){var c=Number(r.net_pnl)>=0?'var(--good)':'var(--bad)'; var v=r.proven?'<b style="color:var(--good)">PROVEN</b>':(r.passed_winrate?'<span style="color:var(--bad)">EV fail</span>':'<span style="color:var(--text-faint)">win% fail</span>');
+        return '<tr style="border-top:1px solid rgba(255,255,255,.06)"><td style="padding:5px 6px;font-weight:600">'+esc(r.label)+'</td><td>'+esc(r.market)+'</td><td>'+r.avg_win_rate+'%</td><td style="color:'+c+';font-family:monospace">'+(Number(r.net_pnl)>=0?'+':'')+Number(r.net_pnl).toFixed(2)+'</td><td>'+v+'</td></tr>';}).join("")+
+      '</tbody></table>' : '<div class="faint" style="color:var(--text-faint)">'+esc(d.note||"no cycle has run yet")+'</div>';
+  }
+  async function poll(){ try{ var d=await fetch("/cycle/status").then(function(r){return r.json();}); render(d); }catch(e){} }
+  var rb=$("cycle-run");
+  if(rb) rb.addEventListener("click",async function(){
+    rb.disabled=true; var o=rb.textContent; rb.textContent="running… (backtesting all markets)"; if($("cycle-state"))$("cycle-state").textContent="this can take ~1–2 min";
+    try{ var d=await fetch("/cycle/run",{method:"POST"}).then(function(r){return r.json();}); render(d); if($("cycle-state"))$("cycle-state").textContent="done · pushed "+(d.pushed_to_bot||0)+" to bot"; }
+    catch(e){ if($("cycle-state"))$("cycle-state").textContent="error: "+e.message; }
+    finally{ rb.disabled=false; rb.textContent=o; }
+  });
+  poll(); setInterval(poll, 15000);
 })();
 </script>
 </body>

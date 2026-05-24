@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     researcher_url: str = "http://127.0.0.1:8000"
     researcher_api_key: str = ""
 
+    # Where the 30-min cycle pushes PROVEN strategies (the Bot's strategy store).
+    # Set BOT_URL in the dashboard; the deployed default is the public bot.
+    bot_url: str = "https://j81-trade-desk.onrender.com"
+
 
 @lru_cache
 def get_settings() -> Settings:

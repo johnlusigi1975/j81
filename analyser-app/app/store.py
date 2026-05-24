@@ -864,6 +864,53 @@ class AnalyserStore:
             self._conn.commit()
         return cur.rowcount
 
+    def db_size_bytes(self) -> int:
+        """On-disk size of the SQLite file (+ WAL) — for the cleanup report."""
+        total = 0
+        for suffix in ("", "-wal", "-shm"):
+            p = Path(str(self._path) + suffix)
+            if p.exists():
+                total += p.stat().st_size
+        return total
+
+    def reset_working_data(self) -> dict:
+        """The 30-min cycle's AUTO-CLEAR: wipe the analyser's working data so the
+        disk never fills. Proven strategies don't live here — they're pushed to
+        the BOT's strategy store — so it's safe to clear everything that grows:
+        cached candles, raw decisions, backtest results, received strategies &
+        insights, finished study items, and acked comms. Returns rows cleared
+        per table. Always followed by VACUUM to actually return space to the OS."""
+        wiped: dict[str, int] = {}
+        with self._lock:
+            for table, where in (
+                ("candles", ""),                       # re-fetched on demand
+                ("decisions", ""),                     # transient picks
+                ("backtest_results", ""),              # re-run each cycle
+                ("strategies", ""),                    # re-gathered each cycle
+                ("insights", ""),                      # re-gathered each cycle
+                ("study", "WHERE status='done'"),
+                ("comms", "WHERE acked=1"),
+            ):
+                try:
+                    cur = self._conn.execute(f"DELETE FROM {table} {where}")
+                    wiped[table] = cur.rowcount
+                except sqlite3.Error as exc:
+                    wiped[table] = -1
+                    wiped[f"{table}_error"] = str(exc)
+            self._conn.commit()
+        return wiped
+
+    def vacuum(self) -> None:
+        """Compact the DB file, returning freed pages to the filesystem. Needs a
+        little free space to run; best-effort (silently ignored if it can't)."""
+        try:
+            with self._lock:
+                self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                self._conn.execute("VACUUM")
+                self._conn.commit()
+        except sqlite3.Error:
+            pass
+
     # ----------------------------------------------------------------- helpers
 
     @staticmethod

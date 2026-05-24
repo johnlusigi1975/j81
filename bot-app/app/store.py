@@ -111,6 +111,28 @@ class BotStore:
                     detail      TEXT,
                     created_at  TEXT NOT NULL
                 );
+
+                -- Strategies the Analyser PROVED (70% win ×100 ×5 + net P/L>0)
+                -- and pushed here. This is the durable winners' store: the
+                -- analyser/researcher get auto-cleared each cycle, these stay.
+                CREATE TABLE IF NOT EXISTS proven_strategies (
+                    id            TEXT PRIMARY KEY,   -- natural key: symbol|label
+                    trade_type    TEXT,
+                    symbol        TEXT,
+                    market        TEXT,
+                    label         TEXT,
+                    contract_type TEXT,
+                    barrier       TEXT,
+                    duration      INTEGER,
+                    win_rate      REAL,
+                    net_pnl       REAL,
+                    samples       INTEGER,
+                    trades        INTEGER,
+                    payload       TEXT,               -- full JSON snapshot
+                    created_at    TEXT NOT NULL,
+                    updated_at    TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_proven_tt ON proven_strategies(trade_type);
                 """
             )
             self._migrate()
@@ -131,6 +153,7 @@ class BotStore:
             ("accounts", "platform", "TEXT"),          # 'legacy' (authorize+buy) | 'new' (OTP-WS)
             ("accounts", "session_id", "TEXT"),        # browser session that connected this account
             ("accounts", "rf_config", "TEXT"),         # JSON: server-side Rise/Fall gated auto {enabled,min_conf,stake,duration}
+            ("accounts", "proven_auto", "INTEGER"),    # 1 = auto-trade the analyser's PROVEN strategies
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -228,7 +251,7 @@ class BotStore:
             "SELECT id, deriv_account_id, currency, label, enabled, "
             "max_stake_per_trade, max_trades_per_day, min_confidence, "
             "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
-            "mpro_enabled, mpro_config, rf_config, platform, "
+            "mpro_enabled, mpro_config, rf_config, proven_auto, platform, "
             "created_at, updated_at, last_trade_at FROM accounts "
         )
         if session_id is not None:
@@ -259,6 +282,7 @@ class BotStore:
             d["mpro_enabled"] = bool(d.get("mpro_enabled"))
             d["mpro_config"] = json.loads(d.get("mpro_config") or "null")
             d["rf_config"] = json.loads(d.get("rf_config") or "null")
+            d["proven_auto"] = bool(d.get("proven_auto"))
             d["platform"] = d.get("platform") or "legacy"
             out.append(d)
         return out
@@ -297,6 +321,7 @@ class BotStore:
         mpro_enabled: bool | None = None,
         mpro_config: dict | None = None,
         rf_config: dict | None = None,
+        proven_auto: bool | None = None,
     ) -> bool:
         sets: list[str] = []
         params: list[Any] = []
@@ -314,6 +339,7 @@ class BotStore:
         _add("take_profit", take_profit)
         _add("daily_loss_limit", daily_loss_limit)
         _add("mpro_enabled", 1 if mpro_enabled else 0 if mpro_enabled is not None else None)
+        _add("proven_auto", 1 if proven_auto else 0 if proven_auto is not None else None)
         if mpro_config is not None:
             sets.append("mpro_config=?")
             params.append(json.dumps(mpro_config))
@@ -418,6 +444,38 @@ class BotStore:
             d["decision_payload"] = json.loads(d.get("decision_payload") or "{}")
             out.append(d)
         return out
+
+    # ----------------------------------------------------- proven strategies
+    def save_proven_strategy(self, s: dict[str, Any]) -> str:
+        """Upsert one proven strategy from the Analyser cycle. Natural key is
+        symbol|label so re-proving the same one refreshes its stats, not dupes."""
+        sid = f"{s.get('symbol','')}|{s.get('label','')}"
+        now = _now_iso()
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO proven_strategies
+                   (id, trade_type, symbol, market, label, contract_type, barrier,
+                    duration, win_rate, net_pnl, samples, trades, payload,
+                    created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                     win_rate=excluded.win_rate, net_pnl=excluded.net_pnl,
+                     samples=excluded.samples, trades=excluded.trades,
+                     payload=excluded.payload, updated_at=excluded.updated_at""",
+                (sid, s.get("trade_type"), s.get("symbol"), s.get("market"),
+                 s.get("label"), s.get("contract_type"), s.get("barrier"),
+                 s.get("duration"), s.get("win_rate"), s.get("net_pnl"),
+                 s.get("samples"), s.get("trades"), json.dumps(s), now, now),
+            )
+            self._conn.commit()
+        return sid
+
+    def list_proven_strategies(self, *, limit: int = 200) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM proven_strategies ORDER BY updated_at DESC LIMIT ?",
+            (max(1, min(limit, 1000)),),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def list_pending_live_trades(self) -> list[dict[str, Any]]:
         """Live trades whose contract hasn't settled yet — the settler

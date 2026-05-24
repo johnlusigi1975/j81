@@ -53,7 +53,23 @@ from app.store import get_store
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Self-heal a near-full disk on boot: trim cached candles + acked comms and
+    # compact. Best-effort so a bad cleanup never blocks startup.
+    try:
+        store = get_store()
+        store.prune_comms()
+        with store._lock:  # candles are pure cache — safe to drop, re-fetched
+            store._conn.execute("DELETE FROM candles")
+            store._conn.commit()
+        store.vacuum()
+    except Exception:
+        pass
     monitor.ensure_running()  # 24/7 self-report + peer-watch
+    try:
+        from app.cycle import runner as cycle_runner
+        cycle_runner.ensure_running()  # 30-min backtest→prove→push→auto-clear cycle
+    except Exception:
+        pass
     yield
 
 
@@ -341,6 +357,56 @@ async def scan_rise_fall_endpoint(count: int = 120) -> dict:
         return await scan_rise_fall(count=count)
     except Exception as exc:
         raise HTTPException(502, f"scan failed: {exc!r}")
+
+
+# ---------------------------------------------------------------------------
+# Live Testing Lab — paper-trade $1 across ALL trade types on live ticks so you
+# can WATCH the analyser try everything. In-memory only (never touches disk).
+# ---------------------------------------------------------------------------
+
+
+@app.post("/lab/tick")
+async def lab_tick(symbol: str = "R_100") -> dict:
+    """Run one round: a $1 paper trade for every trade type on `symbol`'s latest
+    ticks, scored with real payouts. The UI polls this to stream the action."""
+    from app import lab
+    try:
+        return await lab.run_round(symbol)
+    except Exception as exc:
+        raise HTTPException(502, f"lab round failed: {exc!r}")
+
+
+@app.get("/lab/stats")
+def lab_stats() -> dict:
+    from app import lab
+    return lab.snapshot()
+
+
+@app.post("/lab/reset")
+def lab_reset() -> dict:
+    from app import lab
+    return lab.reset()
+
+
+# ---------------------------------------------------------------------------
+# Strategy cycle — backtest→prove(70%×100×5 + EV)→push to bot→auto-clear (30 min)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/cycle/status")
+def cycle_status() -> dict:
+    from app import cycle
+    return cycle.status()
+
+
+@app.post("/cycle/run")
+async def cycle_run(push: bool = True) -> dict:
+    """Run one cycle now (instead of waiting for the 30-min timer)."""
+    from app import cycle
+    try:
+        return await cycle.run_cycle(push=push)
+    except Exception as exc:
+        raise HTTPException(502, f"cycle failed: {exc!r}")
 
 
 @app.get("/even_odd/payouts")
@@ -712,6 +778,22 @@ class MaintenanceResolve(BaseModel):
 @app.post("/maintenance/resolve")
 def maintenance_resolve(body: MaintenanceResolve) -> dict:
     return {"resolved": get_store().resolve_maintenance(body.ids)}
+
+
+@app.post("/maintenance/cleanup")
+def maintenance_cleanup() -> dict:
+    """AUTO-CLEAR: wipe the analyser's working data (candles, decisions,
+    backtests, gathered strategies/insights, finished study, acked comms) and
+    compact the DB. Proven strategies live in the BOT, so this is safe — it's
+    what keeps the 1GB disk from filling. Run it now to reclaim a full disk, and
+    it's the same call the 30-minute cycle makes each loop."""
+    store = get_store()
+    before = store.db_size_bytes()
+    wiped = store.reset_working_data()
+    store.vacuum()
+    after = store.db_size_bytes()
+    return {"wiped": wiped, "bytes_before": before, "bytes_after": after,
+            "reclaimed_mb": round((before - after) / 1e6, 2)}
 
 
 # ---------------------------------------------------------------------------

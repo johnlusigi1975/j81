@@ -403,6 +403,7 @@ class AccountPatch(BaseModel):
     mpro_enabled: bool | None = None
     mpro_config: dict | None = None
     rf_config: dict | None = None
+    proven_auto: bool | None = None
 
 
 def _require_own(request: Request, account_id: str) -> None:
@@ -429,6 +430,7 @@ def account_patch(account_id: str, body: AccountPatch, request: Request) -> dict
         mpro_enabled=body.mpro_enabled,
         mpro_config=body.mpro_config,
         rf_config=body.rf_config,
+        proven_auto=body.proven_auto,
     ):
         raise HTTPException(404, "account not found or no changes")
     return {"updated": account_id}
@@ -713,9 +715,43 @@ async def priority_set(body: PriorityToggle) -> dict:
         raise HTTPException(502, f"could not reach the hub to set priority: {exc!r}")
 
 
+@app.get("/cycle/status")
+async def cycle_status_proxy() -> dict:
+    """Proxy the Analyser's 30-min strategy-cycle status so the Bot dashboard can
+    show it without the client needing the analyser URL. Soft-fails if unreachable."""
+    import httpx
+    url = get_settings().analyser_url.rstrip("/") + "/cycle/status"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            return r.json()
+    except Exception:
+        return {"reachable": False, "tested": 0, "proven_count": 0,
+                "next_in_seconds": None, "note": "analyser unreachable"}
+
+
 @app.get("/trades")
 def trades_list(account_id: str | None = None, limit: int = 100) -> list[dict]:
     return get_store().list_trades(account_id=account_id, limit=limit)
+
+
+class ProvenStrategies(BaseModel):
+    strategies: list[dict]
+
+
+@app.post("/strategies/proven")
+def strategies_proven_save(body: ProvenStrategies) -> dict:
+    """The Analyser's 30-min cycle pushes its PROVEN strategies here. They
+    persist in the bot even when the analyser/researcher auto-clear."""
+    store = get_store()
+    saved = [store.save_proven_strategy(s) for s in (body.strategies or [])]
+    return {"saved": len(saved), "ids": saved}
+
+
+@app.get("/strategies/proven")
+def strategies_proven_list(limit: int = 200) -> list[dict]:
+    return get_store().list_proven_strategies(limit=limit)
 
 
 @app.get("/stats")
