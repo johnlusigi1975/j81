@@ -430,6 +430,15 @@
       <label class="field">Ticks<input id="t-duration" type="number" value="5" min="1" max="10" style="width:70px"></label>
     </div>
 
+    <!-- LIVE price chart (Rise/Fall) — browser → Deriv public WS, no auth -->
+    <div id="rf-panel" hidden style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px">
+        <div class="lab" style="font-size:10px">Live price <span class="faint" id="rf-sym"></span></div>
+        <div class="faint" id="rf-stats" style="font-size:11px;font-family:var(--mono)"></div>
+      </div>
+      <svg id="rf-chart" viewBox="0 0 600 120" preserveAspectRatio="none" style="width:100%;height:120px;display:block;background:rgba(255,255,255,.02);border:1px solid var(--bd);border-radius:12px"></svg>
+    </div>
+
     <!-- LIVE market: real-time last-digit strength (browser → Deriv public WS, no auth) -->
     <div id="live-panel" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px">
@@ -690,7 +699,7 @@ async function loadHome(){
 // last-digit strength bars, like Deriv/twinmil — zero auth, zero backend load.
 const LiveWS=(function(){
   const PUB="wss://api.derivws.com/trading/v1/options/ws/public";
-  let ws=null, sub=null, want=null, digits=[], pip=2, lastQ=null, rid=100;
+  let ws=null, sub=null, want=null, digits=[], prices=[], pip=2, lastQ=null, rid=100;
   function emptyMsg(){ const el=$("live-digits"); if(el) el.innerHTML='<div class="faint" style="font-size:11px;padding:8px 0">connecting to live market…</div>'; const c=$("live-count"); if(c)c.textContent=""; const eo=$("live-evenodd"); if(eo)eo.textContent=""; }
   function open(){
     if(ws&&(ws.readyState===0||ws.readyState===1)){ resub(); return; }
@@ -703,7 +712,7 @@ const LiveWS=(function(){
   function resub(){
     if(!ws||ws.readyState!==1||!want) return;
     if(sub){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} sub=null; }
-    digits=[]; lastQ=null; emptyMsg();
+    digits=[]; prices=[]; lastQ=null; emptyMsg();
     ws.send(JSON.stringify({ticks:want,subscribe:1,req_id:++rid}));
   }
   function onTick(t){
@@ -712,9 +721,12 @@ const LiveWS=(function(){
     const q=t.quote; if(q==null) return;
     const s=Number(q).toFixed(pip), d=+s[s.length-1];
     const sp=$("term-spot"); if(sp){ sp.innerHTML='<small>spot price</small>'+s; sp.classList.remove("up","down"); if(lastQ!=null&&q!==lastQ) sp.classList.add(q>lastQ?"up":"down"); }
-    lastQ=q; digits.push(d); if(digits.length>50) digits.shift(); render();
+    lastQ=q; digits.push(d); if(digits.length>50) digits.shift();
+    prices.push(q); if(prices.length>140) prices.shift();
+    render();
   }
   function render(){
+    if(GAME==="rise_fall"){ renderChart(); return; }   // price chart instead of digit bars
     const el=$("live-digits"); if(!el) return;
     const n=digits.length, cnt=Array(10).fill(0); digits.forEach(x=>cnt[x]++);
     const mx=Math.max(1,...cnt);
@@ -754,6 +766,25 @@ const LiveWS=(function(){
     const tb=document.querySelector(sel); if(tb) tb.classList.add("sug");
     const ub=$("assist-use"); if(ub){ ub.style.display=""; ub.textContent="Use this call"; }
   }
+  // Rise/Fall: live price line chart + honest up/down stats (no prediction —
+  // ticks are independent ~50/50; this is for watching price + risk discipline).
+  function renderChart(){
+    const svg=$("rf-chart"); if(!svg) return;
+    const n=prices.length; if(n<2){ svg.innerHTML=''; return; }
+    const W=600,H=120, mn=Math.min(...prices), mx=Math.max(...prices), rng=(mx-mn)||1;
+    const y=p=>(H-8-((p-mn)/rng)*(H-16));
+    const pts=prices.map((p,i)=>`${(i/(n-1)*W).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
+    const up=prices[n-1]>=prices[0], col=up?"#3ddc84":"#ff6b81";
+    svg.innerHTML=
+      `<polygon points="0,${H} ${pts} ${W},${H}" fill="${up?'rgba(61,220,132,.10)':'rgba(255,107,129,.10)'}" stroke="none"/>`+
+      `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/>`+
+      `<circle cx="${W}" cy="${y(prices[n-1]).toFixed(1)}" r="3.5" fill="${col}"/>`;
+    let ups=0; for(let i=1;i<n;i++){ if(prices[i]>prices[i-1]) ups++; }
+    const mv=n-1;
+    let sl=0, sd=null; for(let i=n-1;i>0;i--){ const dd=prices[i]>prices[i-1]?1:prices[i]<prices[i-1]?-1:0; if(dd===0) continue; if(sd===null){sd=dd;sl=1;} else if(dd===sd) sl++; else break; }
+    const rf=$("rf-stats"); if(rf&&mv) rf.textContent=`up ${Math.round(ups/mv*100)}% · down ${Math.round((mv-ups)/mv*100)}% · run ${sl}${sd===1?'▲':sd===-1?'▼':''} · last ${n}`;
+    const sy=$("rf-sym"); if(sy) sy.textContent=want||"";
+  }
   return {
     start(sym){ want=sym; emptyMsg(); open(); resub(); },
     stop(){ want=null; if(ws&&sub&&ws.readyState===1){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} } if(ws){ try{ws.close()}catch(_){} } ws=null; sub=null; }
@@ -791,8 +822,9 @@ async function openTrade(game){
     $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="matches_differs" data-dir="matches"><span class="big">= MATCHES</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn odd" data-tt="matches_differs" data-dir="differs"><span class="big">≠ DIFFERS</span><span class="pay" id="pay-b">—</span></button>`;
   }
-  // digit strength panel is for the digit games; Rise/Fall & the scanner skip it
+  // digit strength panel = digit games; price chart = Rise/Fall; scanner has its own
   $("live-panel").hidden = (game==="m_pro" || game==="rise_fall");
+  $("rf-panel").hidden = (game!=="rise_fall");
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
