@@ -239,15 +239,15 @@
 <!-- ============ VIEW: LANDING ============ -->
 <div class="view wrap" id="view-landing">
   <div class="lhero">
-    <div class="eyebrow">● Private AI trade desk for Deriv</div>
+    <div class="eyebrow" id="hero-eyebrow">● Private AI trade desk for Deriv</div>
     <h1>Trade Deriv the <span class="g">simple</span> way.</h1>
-    <p>J81 studies the markets, suggests the call, and can trade on autopilot to your profit target — Rise/Fall and digits, on practice or real money. No charts to read, no code to write.</p>
+    <p id="hero-sub">J81 studies the markets, suggests the call, and can trade on autopilot to your profit target — Rise/Fall and digits, on practice or real money. No charts to read, no code to write.</p>
     <div class="cta-row">
-      <button class="btn big" type="button" onclick="startDeriv()">Connect with Deriv →</button>
+      <button class="btn big enter-cta" type="button" hidden onclick="enterOrConnect()">Enter your desk →</button>
+      <button class="btn big connect-cta" type="button" onclick="startDeriv()">Connect with Deriv →</button>
       <button class="btn ghost big" type="button" style="width:auto;min-width:180px" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
     </div>
-    <div style="margin-top:10px;font-size:12.5px"><a href="#" onclick="showView('connect');return false">Prefer an API token? Connect that way →</a></div>
-    <div class="enter-cta" hidden style="margin-top:12px"><button class="btn ghost" type="button" onclick="enterOrConnect()" style="width:auto">Already connected? Enter your desk →</button></div>
+    <div class="cta-sub" style="margin-top:11px;font-size:12.5px"></div>
     <div class="trustline">
       <span>🔒 <b>Trade-only access</b> — we can never withdraw</span>
       <span>🎮 <b>Practice mode</b> with virtual funds</span>
@@ -313,10 +313,13 @@
 
   <!-- final CTA -->
   <div class="lcta">
-    <h2>Ready to trade smarter?</h2>
-    <p>Connect your Deriv account and start on practice money — no risk, no commitment.</p>
-    <div class="cta-row"><button class="btn big" type="button" style="width:auto;min-width:240px" onclick="startDeriv()">Connect with Deriv →</button></div>
-    <div class="enter-cta" hidden style="margin-top:12px"><button class="btn ghost" type="button" onclick="enterOrConnect()" style="width:auto">Already connected? Enter your desk →</button></div>
+    <h2 id="lcta-title">Ready to trade smarter?</h2>
+    <p id="lcta-sub">Connect your Deriv account and start on practice money — no risk, no commitment.</p>
+    <div class="cta-row">
+      <button class="btn big enter-cta" type="button" hidden style="width:auto;min-width:240px" onclick="enterOrConnect()">Enter your desk →</button>
+      <button class="btn big connect-cta" type="button" style="width:auto;min-width:240px" onclick="startDeriv()">Connect with Deriv →</button>
+    </div>
+    <div class="cta-sub" style="margin-top:11px;font-size:12.5px"></div>
   </div>
 
   <div class="riskline">Trading involves substantial risk and is not suitable for everyone — you can lose some or all of your invested capital. Synthetic indices and options are complex, high-risk products. J81 is an independent tool that trades on your own Deriv account via Deriv's API; it is not affiliated with or endorsed by Deriv. This is not investment advice.</div>
@@ -571,9 +574,27 @@ async function enterOrConnect(){
   if(accts.length>1){ showView("accounts"); } else { CUR=accts[0]; enterApp(); }
 }
 function setupLanding(){
-  // "Connect with Deriv" is always shown (the auth path). The "Enter your
-  // desk" shortcut appears only when THIS browser already has a connection.
-  document.querySelectorAll(".enter-cta").forEach(b=>{ b.hidden = !HAS_ACCOUNTS; });
+  // Adaptive front door. Already connected on THIS browser → "Enter your desk"
+  // is the primary action (one tap back in, no re-auth); "Connect" drops to a
+  // small secondary. New visitor → "Connect with Deriv" is primary.
+  const conn = HAS_ACCOUNTS;
+  document.querySelectorAll(".enter-cta").forEach(b=>{ b.hidden = !conn; });
+  document.querySelectorAll(".connect-cta").forEach(b=>{ b.hidden = conn; });
+  document.querySelectorAll(".cta-sub").forEach(el=>{
+    el.innerHTML = conn
+      ? '<a href="#" onclick="startDeriv();return false">Connect another account</a> &nbsp;·&nbsp; <a href="#" onclick="showView(\'connect\');return false">Use an API token</a>'
+      : '<a href="#" onclick="showView(\'connect\');return false">Prefer an API token? Connect that way →</a>';
+  });
+  // Welcome-back copy when connected.
+  const eb=$("hero-eyebrow"), hs=$("hero-sub"), lt=$("lcta-title"), ls=$("lcta-sub");
+  if(eb) eb.textContent = conn ? "● Welcome back to your trade desk" : "● Private AI trade desk for Deriv";
+  if(hs) hs.textContent = conn
+    ? "Your Deriv account is connected. Tap Enter your desk to pick your account and trade — or connect another."
+    : "J81 studies the markets, suggests the call, and can trade on autopilot to your profit target — Rise/Fall and digits, on practice or real money. No charts to read, no code to write.";
+  if(lt) lt.textContent = conn ? "Your desk is ready" : "Ready to trade smarter?";
+  if(ls) ls.textContent = conn ? "Jump back in and pick your account." : "Connect your Deriv account and start on practice money — no risk, no commitment.";
+  // Nav button mirrors the state.
+  const nc=$("nav-connect"); if(nc){ nc.textContent = conn ? "Enter your desk →" : "Connect with Deriv"; nc.onclick = conn ? enterOrConnect : startDeriv; }
 }
 function enterApp(){ updateNav(); showView("home"); }
 function exitApp(){ showView("landing"); }   // ↩ back to the front page, NOT the auth screen (you stay connected)
