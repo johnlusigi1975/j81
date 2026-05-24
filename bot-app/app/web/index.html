@@ -231,7 +231,7 @@
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
-  <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="showView('connect')">Connect with Deriv</button>
+  <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="startDeriv()">Connect with Deriv</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
   <button class="navbtn" id="nav-exit" hidden onclick="exitApp()">Exit ↩</button>
 </div></nav>
@@ -243,9 +243,10 @@
     <h1>Trade Deriv the <span class="g">simple</span> way.</h1>
     <p>J81 studies the markets, suggests the call, and can trade on autopilot to your profit target — Rise/Fall and digits, on practice or real money. No charts to read, no code to write.</p>
     <div class="cta-row">
-      <button class="btn big" type="button" onclick="showView('connect')">Connect with Deriv →</button>
+      <button class="btn big" type="button" onclick="startDeriv()">Connect with Deriv →</button>
       <button class="btn ghost big" type="button" style="width:auto;min-width:180px" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
     </div>
+    <div style="margin-top:10px;font-size:12.5px"><a href="#" onclick="showView('connect');return false">Prefer an API token? Connect that way →</a></div>
     <div class="enter-cta" hidden style="margin-top:12px"><button class="btn ghost" type="button" onclick="enterOrConnect()" style="width:auto">Already connected? Enter your desk →</button></div>
     <div class="trustline">
       <span>🔒 <b>Trade-only access</b> — we can never withdraw</span>
@@ -314,7 +315,7 @@
   <div class="lcta">
     <h2>Ready to trade smarter?</h2>
     <p>Connect your Deriv account and start on practice money — no risk, no commitment.</p>
-    <div class="cta-row"><button class="btn big" type="button" style="width:auto;min-width:240px" onclick="showView('connect')">Connect with Deriv →</button></div>
+    <div class="cta-row"><button class="btn big" type="button" style="width:auto;min-width:240px" onclick="startDeriv()">Connect with Deriv →</button></div>
     <div class="enter-cta" hidden style="margin-top:12px"><button class="btn ghost" type="button" onclick="enterOrConnect()" style="width:auto">Already connected? Enter your desk →</button></div>
   </div>
 
@@ -559,6 +560,8 @@ async function boot(){
     showView("landing");
   }
 }
+// One-tap: go straight to Deriv's sign-in/consent (no intermediate screen).
+function startDeriv(){ location.href = "/oauth/start"; }
 // Landing CTA: enter the desk if already connected, else go to connect.
 async function enterOrConnect(){
   if(!HAS_ACCOUNTS){ showView("connect"); return; }
