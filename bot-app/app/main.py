@@ -353,6 +353,14 @@ def accounts_list(request: Request) -> list[dict]:
     return get_store().list_accounts_public(session_id=sid)
 
 
+@app.post("/logout")
+def logout(response: Response) -> dict:
+    """Disconnect THIS browser: clear its session cookie so it no longer sees
+    any account. The stored account is untouched (a fresh sign-in re-binds it)."""
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return {"ok": True}
+
+
 class AccountPatch(BaseModel):
     enabled: bool | None = None
     max_stake_per_trade: float | None = None
