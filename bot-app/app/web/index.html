@@ -873,7 +873,7 @@ const RFScan=(function(){
     const mv=top.s.n-1, ups=top.s.upPct/100*mv, z=mv? Math.abs(2*ups-mv)/Math.sqrt(mv):0;
     const conf=Math.max(0, Math.min(99, Math.round(z/3*100)));
     const ready = conf>=70 && top.s.n>=25;
-    window._rfReady=ready;
+    window._rfReady=ready; window._rfConf=conf;
     const bar=$("rf-conf-bar"); if(bar){ bar.style.width=conf+"%"; bar.style.background=col; }
     const val=$("rf-conf-val"); if(val){ val.textContent=conf+"%"; val.style.color=conf>=70?col:"var(--dim)"; }
     const lab=$("rf-conf-label"); if(lab){ lab.innerHTML = ready
@@ -1013,7 +1013,7 @@ async function loadAutoState(){
   $("auto-tp").value=(tp!=null&&tp>0)?tp:''; $("auto-ll").value=(ll!=null&&ll>0)?ll:'';
   $("auto-steps").value=cfg.max_steps!=null?cfg.max_steps:0;
   const rd=CUR.max_trades_per_day; if(rd && +rd>0) $("auto-rounds").value=rd;
-  const running = GAME==="m_pro" ? CUR.mpro_enabled : (CUR.enabled && !CUR.mpro_enabled);
+  const running = GAME==="m_pro" ? CUR.mpro_enabled : GAME==="rise_fall" ? RFAUTO.on : (CUR.enabled && !CUR.mpro_enabled);
   const btn=$("auto-btn"); btn.dataset.on=running?'1':'0'; btn.textContent=running?'Stop Auto':'Start Auto'; btn.style.background=running?'var(--bad)':'';
   updateAutoStatus();
 }
@@ -1022,8 +1022,50 @@ async function updateAutoStatus(){
   pe.innerHTML=`<small>session P/L</small>${p>=0?'+':''}${p.toFixed(2)}`; pe.className='spot '+(p>0?'up':p<0?'down':'');
   if(GAME==="m_pro"){ try{ const s=await api("/mpro/status"); const mine=(s.accounts||[]).find(x=>x.account_id===(CUR&&CUR.id)); if(mine) $("auto-status").textContent=mine.status; }catch(_){ } }
 }
+// ---- Rise/Fall confidence-gated auto-runner (client-driven; fires only at >=70%) ----
+let RFAUTO={on:false,target:50,rounds:0,stake:0.35,busy:false,timer:null};
+function rfAutoStatus(t){ const s=$("auto-status"); if(s) s.textContent=t; }
+async function rfAutoStart(){
+  const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value);
+  const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35); $("t-stake").value=stake;
+  const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50));
+  const body={enabled:false, mpro_enabled:false, max_stake_per_trade:stake, max_trades_per_day:rounds, allowed_trade_types:["rise_fall"]};
+  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); }
+  catch(e){ rfAutoStatus("couldn't start: "+e.message); return; }
+  RFAUTO={on:true,target:rounds,rounds:0,stake,busy:false,timer:null};
+  const b=$("auto-btn"); b.dataset.on='1'; b.textContent='Stop Auto'; b.style.background='var(--bad)';
+  rfAutoStatus(`armed — scanning, will trade only at 70%+ confidence (0/${rounds})`);
+  RFAUTO.timer=setInterval(rfAutoTick,2000);
+}
+function rfAutoStop(reason){
+  RFAUTO.on=false; if(RFAUTO.timer) clearInterval(RFAUTO.timer); RFAUTO.timer=null;
+  const b=$("auto-btn"); if(b){ b.dataset.on='0'; b.textContent='Start Auto'; b.style.background=''; }
+  if(reason) rfAutoStatus(reason);
+}
+async function rfAutoTick(){
+  if(!RFAUTO.on) return;
+  if($("view-trade").hidden || GAME!=="rise_fall"){ rfAutoStop("stopped (left Rise/Fall)"); return; }
+  if(RFAUTO.rounds>=RFAUTO.target){ rfAutoStop(`✓ done — ${RFAUTO.target} rounds complete`); return; }
+  if(RFAUTO.busy) return;
+  const top=window._rfTop, ready=window._rfReady, conf=window._rfConf||0;
+  if(!ready||!top){ rfAutoStatus(`armed — waiting for 70%+ confidence (now ${conf}%) · ${RFAUTO.rounds}/${RFAUTO.target}`); return; }
+  RFAUTO.busy=true;
+  const dir=top.s.upPct>=50?"up":"down", dur=parseInt($("t-duration").value||"5",10);
+  rfAutoStatus(`${conf}% — placing ${dir==="up"?"RISE":"FALL"} on ${top.name} · ${RFAUTO.rounds+1}/${RFAUTO.target}`);
+  try{
+    const r=await api("/trade/manual",{method:"POST",body:JSON.stringify({account_id:CUR.id,trade_type:"rise_fall",symbol:top.code,direction:dir,stake:RFAUTO.stake,duration:dur,duration_unit:"t"})});
+    if(r.outcome==="skipped"){ rfAutoStop("stopped — "+(r.reason||"target reached")); return; }
+    if(r.outcome!=="error") RFAUTO.rounds++;
+    else rfAutoStatus("trade error: "+(r.error||"unknown"));
+  }catch(e){ rfAutoStatus("trade failed: "+e.message); }
+  try{ const a=(await api("/accounts")).find(x=>x.id===CUR.id); if(a){ CUR=a; updateAutoStatus(); } }catch(_){}
+  setTimeout(()=>{ RFAUTO.busy=false; }, Math.round((dur*2.2+3)*1000));   // wait for the contract to settle
+}
+
 $("auto-btn").addEventListener("click",async()=>{
   if(!CUR){ showView("connect"); return; }
+  if(GAME==="rise_fall"){ if($("auto-btn").dataset.on==='1') rfAutoStop("stopped"); else rfAutoStart(); return; }
   const on=$("auto-btn").dataset.on==='1', start=!on, st=$("auto-status");
   const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value), steps=parseInt($("auto-steps").value||"0",10);
   const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35);   // Deriv min stake
