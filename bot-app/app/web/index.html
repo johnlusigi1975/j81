@@ -535,6 +535,7 @@ function spawnMoney(){
 
 let CUR=null;          // current account (public dict)
 let GAME=null;         // current trade view game: rise_fall | even_odd | m_pro
+let LIVESIG=null;      // live client-side signal for digit games (from public-WS ticks)
 let DRY=true;
 let HAS_ACCOUNTS=false; // is any Deriv account connected? (drives the landing CTA)
 let _prevSpot=null, _lastRead=null;
@@ -720,8 +721,38 @@ const LiveWS=(function(){
     el.innerHTML=cnt.map((c,d)=>{ const h=Math.round(c/mx*46)+2, pc=n?Math.round(c/n*100):0;
       return `<div class="col ${d%2?'odd':''}"><div class="bar" style="height:${h}px"></div><div class="d">${d}</div><div class="n">${pc}%</div></div>`; }).join("");
     const ev=digits.filter(x=>x%2===0).length;
+    const z = n ? (2*ev-n)/Math.sqrt(n) : 0;     // how far the even/odd split is from fair
+    let sl=0, side=""; if(n){ const lp=digits[n-1]%2; sl=1; for(let i=n-2;i>=0;i--){ if(digits[i]%2===lp) sl++; else break; } side=lp===0?"E":"O"; }
     const c=$("live-count"); if(c)c.textContent=`(last ${n})`;
-    const eo=$("live-evenodd"); if(eo&&n)eo.textContent=`even ${Math.round(ev/n*100)}% · odd ${Math.round((n-ev)/n*100)}%`;
+    const eo=$("live-evenodd"); if(eo&&n)eo.textContent=`even ${Math.round(ev/n*100)}% · odd ${Math.round((n-ev)/n*100)}% · z ${z>=0?'+':''}${z.toFixed(1)} · streak ${sl}${side}`;
+    if(n>=20) applySig(n, ev, z);
+  }
+  // Live J81 signal for digit games — honest: descriptive stats from the last
+  // N ticks (RNG, so this is an observation + risk discipline, not a prediction).
+  function applySig(n, ev, z){
+    if($("view-trade").hidden) return;
+    const am=$("assist-msg"); if(!am) return;
+    let sel=null, msg=null;
+    if(GAME==="even_odd"){
+      const evp=Math.round(ev/n*100), call=ev>=n-ev?"even":"odd";
+      sel=call==="even"?".tbtn.even":".tbtn.odd";
+      msg=`Even ${evp}% · Odd ${100-evp}% over last ${n} (z ${z>=0?'+':''}${z.toFixed(1)}) — leaning ${call.toUpperCase()}`;
+      LIVESIG={trade_type:"even_odd",prediction:call};
+    } else if(GAME==="over_under"){
+      const b=SELDIGIT, over=digits.filter(x=>x>b).length, under=digits.filter(x=>x<b).length, call=over>=under?"over":"under";
+      sel=call==="over"?".tbtn.up":".tbtn.down";
+      msg=`Over ${b}: ${Math.round(over/n*100)}% · Under ${b}: ${Math.round(under/n*100)}% (last ${n}) — leaning ${call.toUpperCase()} ${b}`;
+      LIVESIG={trade_type:"over_under",direction:call,prediction:String(b)};
+    } else if(GAME==="matches_differs"){
+      const b=SELDIGIT, m=digits.filter(x=>x===b).length;
+      sel=".tbtn.odd";
+      msg=`Digit ${b} hit ${Math.round(m/n*100)}% of last ${n} (~10% expected) — Differs wins ~9 in 10`;
+      LIVESIG={trade_type:"matches_differs",direction:"differs",prediction:String(b)};
+    } else { return; }
+    am.textContent="📊 "+msg+" — synthetics are random, so manage your risk";
+    document.querySelectorAll(".tbtn").forEach(b=>b.classList.remove("sug"));
+    const tb=document.querySelector(sel); if(tb) tb.classList.add("sug");
+    const ub=$("assist-use"); if(ub){ ub.style.display=""; ub.textContent="Use this call"; }
   }
   return {
     start(sym){ want=sym; emptyMsg(); open(); resub(); },
@@ -760,8 +791,8 @@ async function openTrade(game){
     $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="matches_differs" data-dir="matches"><span class="big">= MATCHES</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn odd" data-tt="matches_differs" data-dir="differs"><span class="big">≠ DIFFERS</span><span class="pay" id="pay-b">—</span></button>`;
   }
-  // for the scanner we keep its own digit panel; hide the generic live strip
-  $("live-panel").hidden = (game==="m_pro");
+  // digit strength panel is for the digit games; Rise/Fall & the scanner skip it
+  $("live-panel").hidden = (game==="m_pro" || game==="rise_fall");
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
@@ -797,26 +828,28 @@ async function placeTrade(btn){
 }
 
 async function loadAssistant(){
-  if(GAME!=="rise_fall"&&GAME!=="even_odd"&&GAME!=="m_pro") return;
-  const sym=($("t-symbol")||{}).value||"R_100", mk=$("term-market"), ss=$("t-symbol");
-  if(mk&&ss&&ss.selectedOptions[0]) mk.textContent=ss.selectedOptions[0].textContent;
+  // Rise/Fall uses the price-momentum read from the analyser; the digit games
+  // (even_odd, over_under, matches_differs) are driven live by LiveWS/applySig.
+  if(GAME!=="rise_fall") return;
+  const sym=($("t-symbol")||{}).value||"R_100";
   try{
     const r=await api("/assistant/read?symbol="+encodeURIComponent(sym)); _lastRead=r;
     $("assist-msg").textContent=r.message||"studying…";
-    const se=$("term-spot"); if(se&&r.spot!=null){ const d=(_prevSpot!=null&&r.spot!==_prevSpot)?(r.spot>_prevSpot?"up":"down"):""; se.className="spot "+d; se.innerHTML='<small>spot price</small>'+Number(r.spot).toFixed(2); _prevSpot=r.spot; }
     const stake=parseFloat(($("t-stake")||{}).value||"1")||1, pay=(r.payout!=null)?("win $"+(r.payout*stake).toFixed(2)):"—";
     ["pay-a","pay-b"].forEach(id=>{const e=$(id);if(e)e.textContent=pay;});
     document.querySelectorAll(".tbtn").forEach(b=>b.classList.remove("sug"));
     const ub=$("assist-use"); let sel=null;
-    if(r.suggestion&&r.suggestion!=="wait"){
-      if(r.trade_type==="rise_fall"&&GAME==="rise_fall") sel=(r.direction==="up")?".tbtn.up":".tbtn.down";
-      else if(r.trade_type==="even_odd"&&GAME==="even_odd") sel=(r.prediction==="even")?".tbtn.even":".tbtn.odd";
-      if(sel){const b=document.querySelector(sel); if(b)b.classList.add("sug");}
-    }
-    if(ub){ if(sel){ub.style.display="";ub.textContent="Use this call ("+r.suggestion+")";} else ub.style.display="none"; }
+    if(r.suggestion&&r.suggestion!=="wait"&&r.trade_type==="rise_fall"){ sel=(r.direction==="up")?".tbtn.up":".tbtn.down"; const b=document.querySelector(sel); if(b)b.classList.add("sug"); }
+    if(ub){ if(sel){ub.style.display="";ub.textContent="Use this call ("+esc(r.suggestion)+")";} else ub.style.display="none"; }
   }catch(_){ $("assist-msg").textContent="J81 is warming up its analysis…"; }
 }
-(function(){ const u=$("assist-use"); if(u) u.addEventListener("click",()=>{ if(!_lastRead||_lastRead.suggestion==="wait")return; const f={dataset:{tt:_lastRead.trade_type},disabled:false}; if(_lastRead.trade_type==="rise_fall")f.dataset.dir=_lastRead.direction; if(_lastRead.trade_type==="even_odd")f.dataset.pred=_lastRead.prediction; placeTrade(f); }); })();
+(function(){ const u=$("assist-use"); if(u) u.addEventListener("click",()=>{
+  if(GAME==="rise_fall"){ if(!_lastRead||_lastRead.suggestion==="wait")return; placeTrade({dataset:{tt:"rise_fall",dir:_lastRead.direction}}); return; }
+  if(LIVESIG){ const f={dataset:{tt:LIVESIG.trade_type}};
+    if(LIVESIG.trade_type==="even_odd"){ f.dataset.pred=LIVESIG.prediction; }
+    else { f.dataset.dir=LIVESIG.direction; if(LIVESIG.prediction!=null) SELDIGIT=+LIVESIG.prediction; }
+    placeTrade(f); }
+}); })();
 (function(){ const s=$("t-symbol"); if(s) s.addEventListener("change",()=>{loadAssistant(); if(GAME==="m_pro")loadScan();}); })();
 
 // ---------- scanner (m_pro) ----------
