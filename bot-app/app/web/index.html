@@ -205,6 +205,24 @@
   .tbtn.even{background:linear-gradient(135deg,#fff0c2,#f0c64a 60%,#cf9e2a);color:#241d05;box-shadow:0 16px 36px -16px rgba(240,200,90,.7)}
   .tbtn.odd{background:linear-gradient(135deg,#eef0f5,#aab0bd 60%,#7c8290);color:#15151c;box-shadow:0 16px 36px -16px rgba(170,176,189,.6)}
   .tbtn.sug{outline:2px solid rgba(255,255,255,.9);outline-offset:3px;animation:sug 1.5s ease-in-out infinite}
+  /* compact, bank-style buttons (Rise/Fall) — small + decent, not a game */
+  .tgrid.compact{grid-template-columns:1fr 1fr;gap:10px;max-width:380px}
+  .tgrid.compact .tbtn{flex-direction:row;justify-content:center;gap:8px;padding:11px 12px;border-radius:10px;box-shadow:none;border:1px solid rgba(255,255,255,.12)}
+  .tgrid.compact .tbtn:hover{transform:none;filter:brightness(1.08)}
+  .tgrid.compact .tbtn .big{font-size:14px;letter-spacing:.02em} .tgrid.compact .tbtn .pay{font-size:10px;opacity:.9}
+  .tgrid.compact .tbtn.up{background:#16a463;color:#eafff3}
+  .tgrid.compact .tbtn.down{background:#c43952;color:#fff}
+  /* live scan panel (bank-style) */
+  .scanhead{display:flex;align-items:center;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin-bottom:8px}
+  .scanhead .spin{width:11px;height:11px;border-radius:50%;border:2px solid rgba(240,200,90,.3);border-top-color:var(--amber);animation:spin 1s linear infinite;flex-shrink:0}
+  #rf-top{font-size:12.5px;margin-top:9px;color:var(--dim)}
+  /* confidence gauge */
+  .confwrap{margin-bottom:12px}
+  .confhead{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:5px}
+  .confbar{position:relative;height:11px;border-radius:6px;background:rgba(255,255,255,.07);border:1px solid var(--bd);overflow:hidden}
+  .confbar>i{display:block;height:100%;width:0;border-radius:6px;transition:width .5s ease,background .3s}
+  .confbar .mark{position:absolute;top:-3px;bottom:-3px;left:70%;width:2px;background:rgba(255,255,255,.55)}
+  .confbar .mark::after{content:"70%";position:absolute;top:-14px;left:-8px;font-size:8px;color:var(--faint)}
   @keyframes sug{0%,100%{box-shadow:0 16px 36px -14px rgba(255,255,255,.45)}50%{box-shadow:0 20px 48px -10px rgba(255,255,255,.85)}}
   .autobox{margin-top:16px;padding:15px;border-radius:14px;border:1px solid rgba(240,200,90,.32);background:linear-gradient(135deg,rgba(240,200,90,.08),transparent)}
   .seg{display:inline-flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
@@ -437,6 +455,24 @@
         <div class="faint" id="rf-stats" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
       <svg id="rf-chart" viewBox="0 0 600 120" preserveAspectRatio="none" style="width:100%;height:120px;display:block;background:rgba(255,255,255,.02);border:1px solid var(--bd);border-radius:12px"></svg>
+      <div class="faint" style="font-size:10.5px;margin-top:6px;display:flex;gap:14px;flex-wrap:wrap">
+        <span><b style="color:#eef3fb">━</b> Deriv price</span>
+        <span><b style="color:#3ddc84">▰</b> Rise zone</span>
+        <span><b style="color:#ff6b81">▰</b> Fall zone</span>
+        <span class="faint">— projected volatility range ahead, not a direction prediction</span>
+      </div>
+    </div>
+
+    <!-- live multi-market scan (Rise/Fall) — the bot sweeping all 10 volatilities -->
+    <div id="rf-scan-panel" hidden style="margin-bottom:14px">
+      <div class="confwrap">
+        <div class="confhead"><span id="rf-conf-label" class="lab" style="font-size:10.5px">Analysing markets…</span><span id="rf-conf-val" style="font-family:var(--mono);font-weight:800;color:var(--dim)">—</span></div>
+        <div class="confbar"><i id="rf-conf-bar"></i><span class="mark"></span></div>
+        <div class="faint" style="font-size:10px;margin-top:5px">Confidence = strength of the recent move across markets. Synthetics are random, so this is not a win chance — only trade at 70%+ with your stop-loss set.</div>
+      </div>
+      <div class="scanhead"><span class="spin"></span> J81 scanning all 10 volatility markets — live</div>
+      <div id="rf-scan"><div class="empty" style="padding:14px">scanning markets…</div></div>
+      <div id="rf-top"></div>
     </div>
 
     <!-- LIVE market: real-time last-digit strength (browser → Deriv public WS, no auth) -->
@@ -504,7 +540,7 @@ function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display=(v==="landing"||v==="connect"||v==="loading")?"block":"none";
-  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} }   // stop live ticks when leaving the trade view
+  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
   // Remember the section so a refresh lands the user right back here.
@@ -770,24 +806,86 @@ const LiveWS=(function(){
   // ticks are independent ~50/50; this is for watching price + risk discipline).
   function renderChart(){
     const svg=$("rf-chart"); if(!svg) return;
-    const n=prices.length; if(n<2){ svg.innerHTML=''; return; }
-    const W=600,H=120, mn=Math.min(...prices), mx=Math.max(...prices), rng=(mx-mn)||1;
-    const y=p=>(H-8-((p-mn)/rng)*(H-16));
-    const pts=prices.map((p,i)=>`${(i/(n-1)*W).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
-    const up=prices[n-1]>=prices[0], col=up?"#3ddc84":"#ff6b81";
+    const n=prices.length; if(n<5){ svg.innerHTML=''; return; }
+    const W=600, H=120, Wh=Math.round(W*0.64);          // history = left 64%, projection = right
+    const hist=prices.slice(-80), hn=hist.length, P=hist[hn-1];
+    // recent per-tick volatility (std of moves) → sizes the forward zones
+    let s=0,s2=0,cc=0; for(let i=Math.max(1,hn-40);i<hn;i++){ const dd=hist[i]-hist[i-1]; s+=dd; s2+=dd*dd; cc++; }
+    const mean=cc?s/cc:0, vol=Math.sqrt(Math.max(0, cc? s2/cc-mean*mean : 0))||Math.abs(P)*1e-5;
+    const histRange=(Math.max(...hist)-Math.min(...hist))||(vol*4);
+    const F=28, cap=histRange*0.9; let band=Math.min(vol*Math.sqrt(F)*1.2, cap)||vol;
+    const mn=Math.min(Math.min(...hist), P-band), mx=Math.max(Math.max(...hist), P+band), rng=(mx-mn)||1;
+    const y=v=>(H-6-((v-mn)/rng)*(H-12));
+    const hcol="#eef3fb";   // real Deriv price line = white
+    const histPts=hist.map((p,i)=>`${(i/(hn-1)*Wh).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
+    const yP=y(P).toFixed(1);
+    let upP="", dnP=""; const steps=10;
+    for(let i=0;i<=steps;i++){ const t=i/steps, x=(Wh+t*(W-Wh)).toFixed(1), bb=Math.min(vol*Math.sqrt(t*F)*1.2, cap); upP+=`${x},${y(P+bb).toFixed(1)} `; dnP+=`${x},${y(P-bb).toFixed(1)} `; }
     svg.innerHTML=
-      `<polygon points="0,${H} ${pts} ${W},${H}" fill="${up?'rgba(61,220,132,.10)':'rgba(255,107,129,.10)'}" stroke="none"/>`+
-      `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/>`+
-      `<circle cx="${W}" cy="${y(prices[n-1]).toFixed(1)}" r="3.5" fill="${col}"/>`;
-    let ups=0; for(let i=1;i<n;i++){ if(prices[i]>prices[i-1]) ups++; }
-    const mv=n-1;
-    let sl=0, sd=null; for(let i=n-1;i>0;i--){ const dd=prices[i]>prices[i-1]?1:prices[i]<prices[i-1]?-1:0; if(dd===0) continue; if(sd===null){sd=dd;sl=1;} else if(dd===sd) sl++; else break; }
-    const rf=$("rf-stats"); if(rf&&mv) rf.textContent=`up ${Math.round(ups/mv*100)}% · down ${Math.round((mv-ups)/mv*100)}% · run ${sl}${sd===1?'▲':sd===-1?'▼':''} · last ${n}`;
+      `<polyline points="${histPts}" fill="none" stroke="${hcol}" stroke-width="2" vector-effect="non-scaling-stroke"/>`+
+      `<line x1="${Wh}" y1="6" x2="${Wh}" y2="${H-6}" stroke="rgba(255,255,255,.16)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>`+
+      `<polygon points="${Wh},${yP} ${upP}${W},${yP}" fill="rgba(61,220,132,.18)"/>`+
+      `<polyline points="${Wh},${yP} ${upP.trim()}" fill="none" stroke="#3ddc84" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`+
+      `<polygon points="${Wh},${yP} ${dnP}${W},${yP}" fill="rgba(255,107,129,.18)"/>`+
+      `<polyline points="${Wh},${yP} ${dnP.trim()}" fill="none" stroke="#ff6b81" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`+
+      `<circle cx="${Wh}" cy="${yP}" r="3.5" fill="${hcol}"/>`;
+    let ups=0; for(let i=1;i<hn;i++){ if(hist[i]>hist[i-1]) ups++; }
+    const mv=hn-1; let sl=0, sdir=null; for(let i=hn-1;i>0;i--){ const dd=hist[i]>hist[i-1]?1:hist[i]<hist[i-1]?-1:0; if(dd===0) continue; if(sdir===null){sdir=dd;sl=1;} else if(dd===sdir) sl++; else break; }
+    const rf=$("rf-stats"); if(rf&&mv) rf.textContent=`up ${Math.round(ups/mv*100)}% · down ${Math.round((mv-ups)/mv*100)}% · run ${sl}${sdir===1?'▲':sdir===-1?'▼':''}`;
     const sy=$("rf-sym"); if(sy) sy.textContent=want||"";
   }
   return {
     start(sym){ want=sym; emptyMsg(); open(); resub(); },
     stop(){ want=null; if(ws&&sub&&ws.readyState===1){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} } if(ws){ try{ws.close()}catch(_){} } ws=null; sub=null; }
+  };
+})();
+
+// ---------- Rise/Fall multi-market scan (browser → public WS, all 10 at once) ----------
+// Honest: ranks by how far each market's recent up/down split sits from 50/50
+// (a live observation, not a prediction — ticks are independent ~50/50).
+const RFScan=(function(){
+  const PUB="wss://api.derivws.com/trading/v1/options/ws/public";
+  const MK=[["R_10","Vol 10"],["R_25","Vol 25"],["R_50","Vol 50"],["R_75","Vol 75"],["R_100","Vol 100"],
+            ["1HZ10V","Vol 10 (1s)"],["1HZ25V","Vol 25 (1s)"],["1HZ50V","Vol 50 (1s)"],["1HZ75V","Vol 75 (1s)"],["1HZ100V","Vol 100 (1s)"]];
+  let ws=null, on=false, buf={}, rid=500, timer=null;
+  function openWs(){
+    ws=new WebSocket(PUB);
+    ws.onopen=()=>{ MK.forEach(([c])=>{ buf[c]=buf[c]||[]; ws.send(JSON.stringify({ticks:c,subscribe:1,req_id:++rid})); }); };
+    ws.onmessage=ev=>{ let m; try{m=JSON.parse(ev.data)}catch(_){return} if(m.msg_type==="tick"&&m.tick&&m.tick.symbol){ const c=m.tick.symbol; (buf[c]=buf[c]||[]).push(m.tick.quote); if(buf[c].length>60) buf[c].shift(); } };
+    ws.onclose=()=>{ ws=null; if(on) setTimeout(openWs,1500); };
+    ws.onerror=()=>{};
+  }
+  function stat(c){ const p=buf[c]||[], n=p.length; if(n<6) return null;
+    let ups=0; for(let i=1;i<n;i++) if(p[i]>p[i-1])ups++; const mv=n-1, upPct=Math.round(ups/mv*100);
+    let sl=0,sd=null; for(let i=n-1;i>0;i--){ const d=p[i]>p[i-1]?1:p[i]<p[i-1]?-1:0; if(d===0)continue; if(sd===null){sd=d;sl=1;} else if(d===sd)sl++; else break; }
+    return {n, price:p[n-1], upPct, run:sl, dir:sd}; }
+  function ranked(){ return MK.map(([c,nm])=>({code:c,name:nm,s:stat(c)})).filter(x=>x.s)
+    .map(x=>({...x, score:Math.abs(x.s.upPct-50)})).sort((a,b)=>b.score-a.score); }
+  function render(){
+    const el=$("rf-scan"); if(!el) return;
+    const r=ranked(); if(!r.length){ el.innerHTML='<div class="empty" style="padding:14px">collecting live ticks…</div>'; return; }
+    el.innerHTML='<table class="scan-table"><thead><tr><th>Market</th><th>Price</th><th>Up</th><th>Run</th><th>Bias</th></tr></thead><tbody>'+
+      r.map((x,i)=>{ const up=x.s.upPct>=50; return `<tr class="${i===0?'top':''}"><td>${i===0?'▸ ':''}${esc(x.name)}</td><td>${x.s.price}</td><td style="color:${up?'var(--good)':'var(--bad)'}">${x.s.upPct}%</td><td>${x.s.run}${x.s.dir===1?'▲':x.s.dir===-1?'▼':''}</td><td>${up?'<span style="color:var(--good)">RISE</span>':'<span style="color:var(--bad)">FALL</span>'}</td></tr>`; }).join("")+'</tbody></table>';
+    const top=r[0], up=top.s.upPct>=50, col=up?"#3ddc84":"#ff6b81";
+    window._rfTop=top;
+    // confidence = z-score of the top market's recent up/down split, scaled
+    const mv=top.s.n-1, ups=top.s.upPct/100*mv, z=mv? Math.abs(2*ups-mv)/Math.sqrt(mv):0;
+    const conf=Math.max(0, Math.min(99, Math.round(z/3*100)));
+    const ready = conf>=70 && top.s.n>=25;
+    window._rfReady=ready;
+    const bar=$("rf-conf-bar"); if(bar){ bar.style.width=conf+"%"; bar.style.background=col; }
+    const val=$("rf-conf-val"); if(val){ val.textContent=conf+"%"; val.style.color=conf>=70?col:"var(--dim)"; }
+    const lab=$("rf-conf-label"); if(lab){ lab.innerHTML = ready
+      ? `✓ Signal ready — <b style="color:${col}">${up?'RISE':'FALL'}</b> on <b>${esc(top.name)}</b>`
+      : (top.s.n<25 ? 'Analysing… collecting ticks' : 'Analysing 10 markets… (waiting for 70%+)'); }
+    const tp=$("rf-top"); if(tp) tp.innerHTML = ready
+      ? `<a href="#" onclick="RFScan.useTop();return false">Trade ${up?'RISE':'FALL'} on ${esc(top.name)} →</a> &nbsp;<span class="faint">— signal strength, not a guaranteed win</span>`
+      : `Top so far: ${up?'RISE':'FALL'} on <b>${esc(top.name)}</b> (${top.s.upPct}% up) · <a href="#" onclick="RFScan.useTop();return false">open it →</a>`;
+  }
+  return {
+    start(){ if(on)return; on=true; buf={}; openWs(); timer=setInterval(render,1000); render(); },
+    stop(){ on=false; if(timer)clearInterval(timer); timer=null; if(ws){ try{ws.send(JSON.stringify({forget_all:["ticks"]}))}catch(_){} try{ws.close()}catch(_){} } ws=null; },
+    useTop(){ const t=window._rfTop; if(t){ const sel=$("t-symbol"); if(sel){ sel.value=t.code; sel.dispatchEvent(new Event('change')); } } }
   };
 })();
 
@@ -822,9 +920,12 @@ async function openTrade(game){
     $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="matches_differs" data-dir="matches"><span class="big">= MATCHES</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn odd" data-tt="matches_differs" data-dir="differs"><span class="big">≠ DIFFERS</span><span class="pay" id="pay-b">—</span></button>`;
   }
-  // digit strength panel = digit games; price chart = Rise/Fall; scanner has its own
+  // digit strength panel = digit games; price chart + market scan = Rise/Fall
   $("live-panel").hidden = (game==="m_pro" || game==="rise_fall");
   $("rf-panel").hidden = (game!=="rise_fall");
+  $("rf-scan-panel").hidden = (game!=="rise_fall");
+  $("trade-buttons").className = "tgrid" + (game==="rise_fall" ? " compact" : "");
+  if(game==="rise_fall") RFScan.start(); else RFScan.stop();
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
