@@ -207,28 +207,19 @@ class TradingLoop:
 
     async def _settle_pending(self) -> None:
         """Poll Deriv for the outcome of live contracts that haven't settled.
-        DRY_RUN trades are never live so they're never in this set."""
+        DRY_RUN trades are never live so they're never in this set. Reuses the
+        same per-account settler the on-demand /settle endpoint uses, so the
+        loop and the UI settle contracts identically."""
         if get_settings().dry_run:
             return
-        from app.deriv import DerivBotError
-        from app.executor import _live_check
+        from app.executor import settle_pending_for_account
         store = get_store()
-        for t in store.list_pending_live_trades():
-            token = store.decrypted_token_for(t["account_id"])
-            if not token:
-                continue
-            acct = store.get_internal(t["account_id"]) or {}
+        account_ids = {t["account_id"] for t in store.list_pending_live_trades()}
+        for account_id in account_ids:
             try:
-                info = await _live_check(acct, token, t["deriv_contract_id"])
-            except DerivBotError:
+                await settle_pending_for_account(account_id)
+            except Exception:
                 continue
-            if info.get("is_sold"):
-                store.settle_trade(
-                    t["id"],
-                    outcome=info.get("status") or "settled",
-                    profit=info.get("profit"),
-                    markup_earned=info.get("app_markup_amount"),
-                )
 
     async def _grade_the_brain(self, summary: list[dict]) -> None:
         """The Bot grades the Analyser on how actionable its decisions were

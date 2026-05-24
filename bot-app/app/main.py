@@ -37,6 +37,7 @@ from app.executor import (
     execute_decision_for_account,
     execute_manual_trade,
     get_decision,
+    settle_pending_for_account,
 )
 from app.store import get_store
 from app.trading_loop import loop as trading_loop
@@ -673,6 +674,14 @@ async def trade_manual(req: ManualTradeRequest, request: Request) -> dict:
         direction=req.direction, prediction=req.prediction,
         stake=req.stake, duration=req.duration, duration_unit=req.duration_unit,
     )
+
+
+@app.post("/accounts/{account_id}/settle")
+async def account_settle(account_id: str, request: Request) -> dict:
+    """Settle this account's just-expired contracts on demand, so the site can
+    show the win/loss within seconds instead of waiting for the trading loop."""
+    _require_own(request, account_id)
+    return await settle_pending_for_account(account_id)
 
 
 # ---------------------------------------------------------------------------

@@ -366,3 +366,40 @@ async def execute_manual_trade(
         trade_intent["buy_price"] = bp
     trade_id = store.record_trade(trade_intent)
     return {**trade_intent, "trade_id": trade_id}
+
+
+async def settle_pending_for_account(account_id: str) -> dict:
+    """On-demand settlement for ONE account: poll Deriv for every live contract
+    that hasn't settled and write back its outcome/profit. This is what lets the
+    site reflect a win/loss within seconds of the contract expiring, instead of
+    waiting for the next 2-minute trading-loop cycle. Safe to call repeatedly;
+    dry-run trades never enter the pending set. Returns a small summary."""
+    if get_settings().dry_run:
+        return {"settled": 0, "pending": 0, "dry_run": True}
+    store = get_store()
+    acct = store.get_internal(account_id)
+    if not acct:
+        return {"settled": 0, "pending": 0, "error": "unknown account"}
+    token = store.decrypted_token_for(account_id)
+    if not token:
+        return {"settled": 0, "pending": 0, "error": "decryption failed"}
+    settled = pending = 0
+    for t in store.list_pending_live_trades():
+        if t["account_id"] != account_id:
+            continue
+        if not t.get("deriv_contract_id"):
+            continue
+        try:
+            info = await _live_check(acct, token, t["deriv_contract_id"])
+        except DerivBotError:
+            pending += 1
+            continue
+        if info.get("is_sold"):
+            store.settle_trade(
+                t["id"], outcome=info.get("status") or "settled",
+                profit=info.get("profit"), markup_earned=info.get("app_markup_amount"),
+            )
+            settled += 1
+        else:
+            pending += 1
+    return {"settled": settled, "pending": pending}

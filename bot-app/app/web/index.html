@@ -533,6 +533,8 @@
     </div>
 
     <div id="t-result" style="margin-top:12px"></div>
+    <div class="sec-title" style="margin:18px 0 8px">Live results <span class="faint" id="trade-bal" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
+    <div id="trade-recent"><div class="empty">no trades yet</div></div>
   </div>
 </div>
 
@@ -955,12 +957,41 @@ async function openTrade(game){
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
   if(game!=="m_pro") LiveWS.start(sym); else LiveWS.stop();
-  loadAssistant(); loadAutoState();
+  loadAssistant(); loadAutoState(); refreshLive();
   if(game==="m_pro") loadScan();
 }
 // live market follows the chosen symbol
 $("t-symbol").addEventListener("change",e=>{ $("term-market").textContent=e.target.selectedOptions[0]?.textContent||e.target.value; if(GAME!=="m_pro") LiveWS.start(e.target.value); });
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".tbtn"); if(b) placeTrade(b); });
+
+// Reflect Deriv on our site: refresh the live balance + recent results.
+async function refreshLive(){
+  if(!CUR) return;
+  // Settle any just-expired contracts first so a win/loss shows within seconds
+  // (don't wait for the 2-min trading loop). Best-effort, never blocks the UI.
+  try{ await api("/accounts/"+encodeURIComponent(CUR.id)+"/settle",{method:"POST"}); }catch(_){}
+  loadBalance(CUR.id).then(b=>{
+    if(!(b&&b.balance!=null)) return;
+    const m=fmtMoney(b.balance,b.currency);
+    const tb=$("trade-bal"); if(tb) tb.textContent="Balance: "+m;
+    const nv=$("nav-acct-txt"); if(nv) nv.textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL")+" · "+m;
+  });
+  try{
+    const t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=8");
+    const el=$("trade-recent"); if(!el) return;
+    el.innerHTML = (!t.length) ? '<div class="empty">no trades yet</div>'
+      : t.map(x=>{ const o=x.outcome;
+          const tag = o==="won"?'<span style="color:var(--good);font-weight:800">WON</span>'
+                    : o==="lost"?'<span style="color:var(--bad);font-weight:800">LOST</span>'
+                    : o==="pending"?'<span class="faint">settling…</span>' : esc(o||'');
+          const pl = x.profit!=null?` <span style="font-family:var(--mono);color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:'';
+          return `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
+            <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
+            <span style="margin-left:auto">${tag}</span>${pl}</div>`; }).join("");
+  }catch(_){}
+}
+// after a trade, poll a few times so the WON/LOST + new balance show as it settles
+function pollSettle(){ [800,3000,6000,10000,14000].forEach(ms=>setTimeout(()=>{ try{refreshLive();}catch(_){ } },ms)); }
 
 async function placeTrade(btn){
   if(!CUR){ showView("connect"); return; }
@@ -978,8 +1009,8 @@ async function placeTrade(btn){
   try{
     const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body)});
     const pay=(typeof r.payout==="number")?("$"+r.payout.toFixed(2)):"—";
-    if(r.outcome==="dry_run") res.innerHTML='<div class="banner warn" style="margin:0">✓ Practice '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · no real money (DRY_RUN)</div>';
-    else if(r.outcome==="pending") res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · settles automatically</div>';
+    if(r.outcome==="dry_run"){ res.innerHTML='<div class="banner warn" style="margin:0">✓ Practice '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · no real money (DRY_RUN)</div>'; pollSettle(); }
+    else if(r.outcome==="pending"){ res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · stake $'+Number(body.stake).toFixed(2)+' · result appears below as it settles ↓</div>'; pollSettle(); }
     else res.innerHTML='<div class="banner warn" style="margin:0">Couldn’t trade: '+esc(r.reason||r.error||"unknown")+'</div>';
   }catch(e){ res.innerHTML='<div class="banner bad" style="margin:0">Error: '+esc(e.message)+'</div>'; }
   finally{ btn.disabled=false; }
@@ -1147,7 +1178,7 @@ $("auto-btn").addEventListener("click",async()=>{
 });
 
 // ---------- polls ----------
-setInterval(()=>{ if(!$("view-trade").hidden){ loadAssistant(); updateAutoStatus(); if(GAME==="m_pro")loadScan(); } },10000);
+setInterval(()=>{ if(!$("view-trade").hidden){ loadAssistant(); updateAutoStatus(); refreshLive(); if(GAME==="m_pro")loadScan(); } },10000);
 setInterval(()=>{ if(!$("view-home").hidden) loadHome(); }, 20000);
 boot();
 </script>
