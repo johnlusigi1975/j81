@@ -195,16 +195,17 @@ def oauth_start() -> RedirectResponse:
         state = _secrets.token_urlsafe(24)
         _PKCE_STATES[state] = (verifier, _time.time())
         _prune_pkce()
-        # Ask for offline_access so Deriv issues a refresh token → the session
-        # can be renewed past the ~1h access-token expiry (no reconnect needed).
-        scope = s.deriv_oauth_scope
-        if "offline_access" not in scope.split():
-            scope = f"{scope} offline_access".strip()
+        # NOTE: this Deriv app is NOT allowed to request `offline_access` (Ory
+        # rejects it: "client is not allowed to request scope 'offline_access'"),
+        # so we send ONLY the configured scope. Without a refresh token the
+        # access token expires (~1h) and the user reconnects via the graceful
+        # "Reconnect Deriv ↻" prompt. The refresh machinery stays dormant in case
+        # the app's capabilities are later enabled in the Deriv dashboard.
         q = urlencode({
             "response_type": "code",
             "client_id": s.deriv_app_id,
             "redirect_uri": s.deriv_oauth_redirect_uri,
-            "scope": scope,
+            "scope": s.deriv_oauth_scope,
             "state": state,
             "code_challenge": challenge,
             "code_challenge_method": "S256",
