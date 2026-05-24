@@ -353,6 +353,34 @@ def accounts_list(request: Request) -> list[dict]:
     return get_store().list_accounts_public(session_id=sid)
 
 
+@app.get("/accounts/{account_id}/balance")
+async def account_balance(account_id: str, request: Request) -> dict:
+    """Live Deriv balance for one of the caller's accounts. New-platform
+    accounts read it over the OTP socket; legacy via authorize."""
+    _require_own(request, account_id)
+    store = get_store()
+    acct = store.get_internal(account_id)
+    if acct is None:
+        raise HTTPException(404, "account not found")
+    token = store.decrypted_token_for(account_id)
+    if not token:
+        raise HTTPException(400, "no stored token for this account")
+    platform = (acct.get("platform") or "legacy").lower()
+    try:
+        if platform == "new":
+            from app import deriv_new
+            ws_url = await deriv_new.request_otp_ws(token, acct["deriv_account_id"])
+            b = await deriv_new.balance(ws_url)
+            bal, cur = b.get("balance"), b.get("currency")
+        else:
+            info = await authorize_account(token)
+            bal, cur = info.get("balance"), info.get("currency")
+    except Exception as exc:
+        raise HTTPException(502, f"couldn't read balance: {exc}")
+    return {"balance": bal, "currency": cur or acct.get("currency") or "USD",
+            "deriv_account_id": acct["deriv_account_id"]}
+
+
 @app.post("/logout")
 def logout(response: Response) -> dict:
     """Disconnect THIS browser: clear its session cookie so it no longer sees

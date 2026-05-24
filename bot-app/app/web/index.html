@@ -418,7 +418,7 @@
     <div class="stat good"><div class="n" id="s-profit">—</div><div class="l">profit today</div></div>
     <div class="stat"><div class="n" id="s-wins">—</div><div class="l">wins / settled</div></div>
     <div class="stat"><div class="n" id="s-trades">—</div><div class="l">trades</div></div>
-    <div class="stat"><div class="n" id="s-acct">—</div><div class="l">account</div></div>
+    <div class="stat"><div class="n" id="s-acct">—</div><div class="l">balance</div></div>
   </div>
 
   <div id="choose-grid"></div>
@@ -540,6 +540,8 @@
 async function api(p,opts={}){ const r=await fetch(p,{headers:{"Content-Type":"application/json",...(opts.headers||{})},...opts}); let b=null;try{b=await r.json()}catch(_){ } if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status)); return b; }
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtMoney=(v,c)=>(v==null||isNaN(v))?"—":(((c||"USD")==="USD")?"$":(esc(c)+" "))+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+async function loadBalance(id){ try{ return await api("/accounts/"+encodeURIComponent(id)+"/balance"); }catch(_){ return null; } }
 const VIEWS=["landing","connect","loading","accounts","home","trade"];
 function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
   const inApp=(v==="accounts"||v==="home"||v==="trade");
@@ -643,7 +645,10 @@ async function logout(){   // disconnect THIS browser → back to the front page
 function openAccounts(){ showView("accounts"); }
 function updateNav(){
   if(!CUR) return;
-  $("nav-acct").hidden=false; $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL");
+  $("nav-acct").hidden=false;
+  const base=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL");
+  $("nav-acct-txt").textContent=base;
+  loadBalance(CUR.id).then(b=>{ if(b&&b.balance!=null&&CUR) $("nav-acct-txt").textContent=base+" · "+fmtMoney(b.balance,b.currency); });
 }
 
 // ---------- account picker (real / demo) ----------
@@ -657,12 +662,13 @@ async function loadAccounts(){
     const active=(CUR&&CUR.id===a.id)?'style="outline:2px solid var(--amber)"':'';
     return `<div class="gcard" data-acct="${esc(a.id)}" ${active} style="cursor:pointer">
       <div style="font-size:12px;font-weight:800;letter-spacing:.6px;color:${col}">${demo?"PRACTICE":"REAL MONEY"}</div>
-      <div style="font-size:20px;font-weight:800;margin:6px 0">${esc(a.deriv_account_id)}</div>
-      <div class="faint" style="font-size:12.5px">${cur} · ${sub}</div>
+      <div style="font-size:26px;font-weight:800;margin:8px 0 2px" id="bal-${esc(a.id)}"><span class="faint" style="font-size:13px">balance…</span></div>
+      <div class="faint" style="font-size:12.5px">${esc(a.deriv_account_id)} · ${cur}</div>
       <button class="btn" type="button" style="margin-top:12px;width:100%">Trade on this →</button>
     </div>`;
   }).join("");
   grid.querySelectorAll("[data-acct]").forEach(el=>el.addEventListener("click",()=>pickAccount(el.dataset.acct)));
+  accts.forEach(a=>loadBalance(a.id).then(b=>{ const el=$("bal-"+a.id); if(el) el.textContent = (b&&b.balance!=null)?fmtMoney(b.balance,b.currency):"—"; }));
 }
 async function pickAccount(id){
   try{ const a=(await api("/accounts")).find(x=>x.id===id); if(a){ CUR=a; enterApp(); } }
@@ -726,6 +732,7 @@ async function loadHome(){
     $("s-wins").textContent=s.settled?`${s.wins}/${s.settled}`:"0/0"; $("s-trades").textContent=s.trades_total;
     $("s-acct").textContent=CUR?(CUR.is_demo?"demo":"REAL"):"—";
   }catch(_){}
+  if(CUR) loadBalance(CUR.id).then(b=>{ const el=$("s-acct"); if(el&&b&&b.balance!=null) el.textContent=fmtMoney(b.balance,b.currency); });
   try{ const t=await api("/trades?limit=6"); const el=$("trades-mini");
     el.innerHTML = (!t.length)?'<div class="empty">no trades yet — pick a game above</div>'
       : t.map(x=>`<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
