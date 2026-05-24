@@ -470,7 +470,10 @@
         <div class="confbar"><i id="rf-conf-bar"></i><span class="mark" id="rf-conf-mark"></span></div>
         <div class="faint" style="font-size:10px;margin-top:5px">Confidence = strength of the recent move across markets. Synthetics are random, so this is not a win chance — only trade at 70%+ with your stop-loss set.</div>
       </div>
-      <div class="scanhead"><span class="spin"></span> J81 scanning all 10 volatility markets — live</div>
+      <div class="scanhead" style="justify-content:space-between">
+        <span><span class="spin"></span> J81 scanning all 10 volatility markets — live</span>
+        <label style="text-transform:none;letter-spacing:0;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="autovol" checked style="width:auto"> Auto-pick best volatility</label>
+      </div>
       <div id="rf-scan"><div class="empty" style="padding:14px">scanning markets…</div></div>
       <div id="rf-top"></div>
     </div>
@@ -882,6 +885,11 @@ const RFScan=(function(){
       r.map((x,i)=>{ const up=x.s.upPct>=50; return `<tr class="${i===0?'top':''}"><td>${i===0?'▸ ':''}${esc(x.name)}</td><td>${x.s.price}</td><td style="color:${up?'var(--good)':'var(--bad)'}">${x.s.upPct}%</td><td>${x.s.run}${x.s.dir===1?'▲':x.s.dir===-1?'▼':''}</td><td>${up?'<span style="color:var(--good)">RISE</span>':'<span style="color:var(--bad)">FALL</span>'}</td></tr>`; }).join("")+'</tbody></table>';
     const top=r[0], up=top.s.upPct>=50, col=up?"#3ddc84":"#ff6b81";
     window._rfTop=top;
+    // Auto-volatility: follow the best market automatically (default on).
+    if(window.AUTO_VOL!==false && GAME==="rise_fall" && top.code){
+      const sel=$("t-symbol");
+      if(sel && sel.value!==top.code){ sel.value=top.code; const mk=$("term-market"); if(mk) mk.textContent=top.name; try{ LiveWS.start(top.code); }catch(_){} }
+    }
     // confidence = z-score of the top market's recent up/down split, scaled
     const mv=top.s.n-1, ups=top.s.upPct/100*mv, z=mv? Math.abs(2*ups-mv)/Math.sqrt(mv):0;
     const conf=Math.max(0, Math.min(99, Math.round(z/3*100)));
@@ -942,6 +950,7 @@ async function openTrade(game){
   $("rf-scan-panel").hidden = (game!=="rise_fall");
   $("trade-buttons").className = "tgrid" + (game==="rise_fall" ? " compact" : "");
   if(game==="rise_fall") RFScan.start(); else RFScan.stop();
+  $("t-symbol").disabled = (game==="rise_fall" && window.AUTO_VOL!==false);   // auto-volatility controls the market
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
@@ -1045,7 +1054,8 @@ async function updateAutoStatus(){
   if(GAME==="m_pro"){ try{ const s=await api("/mpro/status"); const mine=(s.accounts||[]).find(x=>x.account_id===(CUR&&CUR.id)); if(mine) $("auto-status").textContent=mine.status; }catch(_){ } }
 }
 (function(){ const f=$("focus-btn"); if(f) f.addEventListener("click",async()=>{ f.disabled=true; const old=f.textContent; try{ await api("/priority",{method:"POST",body:JSON.stringify({enabled:true})}); f.textContent="✓ J81 focused"; }catch(_){ f.textContent="failed"; } setTimeout(()=>{ f.disabled=false; f.textContent=old; },2500); });
-  const c=$("auto-conf"); if(c) c.addEventListener("input",()=>{ try{ rfReadThreshold(); }catch(_){} }); })();
+  const c=$("auto-conf"); if(c) c.addEventListener("input",()=>{ try{ rfReadThreshold(); }catch(_){} });
+  window.AUTO_VOL=true; const av=$("autovol"); if(av) av.addEventListener("change",()=>{ window.AUTO_VOL=av.checked; const sel=$("t-symbol"); if(sel) sel.disabled=(av.checked&&GAME==="rise_fall"); }); })();
 // ---- Rise/Fall confidence-gated auto-runner (client-driven; fires only at >=70%) ----
 window.RF_THRESHOLD=70;
 let RFAUTO={on:false,target:50,rounds:0,stake:0.35,busy:false,timer:null};

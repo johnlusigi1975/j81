@@ -201,15 +201,23 @@ class BotStore:
         return acct_id
 
     def account_owned_by(self, account_id: str, session_id: str | None) -> bool:
-        """True if this account belongs to the given browser session. Used to
-        stop one visitor acting on another visitor's connected account."""
-        if not session_id:
-            return False
+        """True if this account is usable by the given browser session: it
+        matches the session, OR it's unclaimed (NULL session — e.g. connected
+        before per-session binding, or the cookie drifted). Unclaimed accounts
+        are claimed to the caller so future calls are clean."""
         row = self._conn.execute(
-            "SELECT 1 FROM accounts WHERE id=? AND session_id=?",
-            (account_id, session_id),
+            "SELECT session_id FROM accounts WHERE id=?", (account_id,)
         ).fetchone()
-        return row is not None
+        if row is None:
+            return False
+        owner = row["session_id"]
+        if owner is None and session_id:   # claim it for this session
+            with self._lock:
+                self._conn.execute("UPDATE accounts SET session_id=? WHERE id=?",
+                                   (session_id, account_id))
+                self._conn.commit()
+            return True
+        return owner is None or owner == session_id
 
     def list_accounts_public(self, session_id: str | None = None) -> list[dict[str, Any]]:
         """Public view — token is NEVER returned, only `has_token: True`.
@@ -224,6 +232,13 @@ class BotStore:
             "created_at, updated_at, last_trade_at FROM accounts "
         )
         if session_id is not None:
+            # Claim any unclaimed (NULL) accounts to this session so a returning
+            # owner whose cookie drifted still sees + can use their accounts.
+            with self._lock:
+                self._conn.execute(
+                    "UPDATE accounts SET session_id=? WHERE session_id IS NULL",
+                    (session_id,))
+                self._conn.commit()
             rows = self._conn.execute(
                 cols + "WHERE session_id=? ORDER BY created_at DESC", (session_id,)
             ).fetchall()
