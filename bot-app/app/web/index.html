@@ -516,10 +516,11 @@
         <label class="field" style="color:var(--good)">Stop at WIN $<input id="auto-tp" type="number" min="0" placeholder="5" style="width:100px"></label>
         <label class="field" style="color:var(--bad)">Stop at LOSS $<input id="auto-ll" type="number" min="0" placeholder="3" style="width:100px"></label>
         <label class="field">Martingale steps<input id="auto-steps" type="number" min="0" max="8" value="0" style="width:80px"></label>
+        <label class="field">Rounds<input id="auto-rounds" type="number" min="1" max="1000" value="50" style="width:80px"></label>
         <button class="btn" id="auto-btn" style="margin-left:auto">Start Auto</button>
       </div>
       <div class="read" style="margin:0"><div class="eq"><span></span><span></span><span></span><span></span><span></span></div><div style="flex:1"><div class="lab">Auto status</div><div class="val" id="auto-status">off — set a target and press Start Auto</div></div></div>
-      <div class="faint" style="font-size:11.5px;margin-top:8px">Martingale raises stake after a loss (capped by your max stake) — higher risk. Auto only places real trades when DRY_RUN is off; otherwise it practises.</div>
+      <div class="faint" style="font-size:11.5px;margin-top:8px">Set <b>Rounds</b> (up to 1000) and a <b>stake</b> (min $0.35). Press Start and J81 scans the markets and auto-trades up to that many rounds, stopping early if it hits your win or loss target. Martingale raises stake after a loss (capped) — higher risk. Auto trades for real only when DRY_RUN is off; otherwise it practises.</div>
     </div>
 
     <div id="t-result" style="margin-top:12px"></div>
@@ -1011,6 +1012,7 @@ async function loadAutoState(){
   const tp=CUR.take_profit, ll=CUR.daily_loss_limit, cfg=CUR.mpro_config||{};
   $("auto-tp").value=(tp!=null&&tp>0)?tp:''; $("auto-ll").value=(ll!=null&&ll>0)?ll:'';
   $("auto-steps").value=cfg.max_steps!=null?cfg.max_steps:0;
+  const rd=CUR.max_trades_per_day; if(rd && +rd>0) $("auto-rounds").value=rd;
   const running = GAME==="m_pro" ? CUR.mpro_enabled : (CUR.enabled && !CUR.mpro_enabled);
   const btn=$("auto-btn"); btn.dataset.on=running?'1':'0'; btn.textContent=running?'Stop Auto':'Start Auto'; btn.style.background=running?'var(--bad)':'';
   updateAutoStatus();
@@ -1024,21 +1026,25 @@ $("auto-btn").addEventListener("click",async()=>{
   if(!CUR){ showView("connect"); return; }
   const on=$("auto-btn").dataset.on==='1', start=!on, st=$("auto-status");
   const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value), steps=parseInt($("auto-steps").value||"0",10);
-  const stake=parseFloat($("t-stake").value||"1");
+  const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35);   // Deriv min stake
+  $("t-stake").value=stake;
+  const rounds=Math.max(1, Math.min(1000, parseInt($("auto-rounds").value||"50",10)||50));   // up to 1000 rounds
   const body={};
   if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  if(start) body.max_trades_per_day=rounds;   // stop automatically after N rounds
   if(GAME==="m_pro" || GAME==="even_odd"){
     body.mpro_enabled=start; body.enabled=start;
     body.mpro_config={ mode: GAME==="even_odd"?"auto":curMpMode(), reverse:(GAME==="m_pro"?$("mpro-reverse").checked:false),
       min_gap: GAME==="m_pro"?parseFloat($("mpro-mingap").value||"15"):10, base_stake:stake, cooldown:20, max_steps:steps, step_mult:2, duration:parseInt($("t-duration").value||"1",10) };
-  } else { // rise_fall → autonomous decision loop restricted to rise_fall
+  } else { // rise_fall → autonomous loop scans ALL volatility markets, trades rise_fall
     body.enabled=start; body.mpro_enabled=false; body.allowed_trade_types=["rise_fall"]; body.max_stake_per_trade=stake;
+    if(start) body.allowed_symbols=["R_10","R_25","R_50","R_75","R_100","1HZ10V","1HZ25V","1HZ50V","1HZ75V","1HZ100V"];
   }
   $("auto-btn").disabled=true; st.textContent=start?'starting…':'stopping…';
   try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); }
   catch(e){ st.textContent=e.message; $("auto-btn").disabled=false; return; }
   $("auto-btn").disabled=false; loadAutoState();
-  st.textContent = start ? (DRY?'running in practice mode — will stop at your win target':'running LIVE — will stop at your win target') : 'stopped';
+  st.textContent = start ? (DRY?`running in practice mode — auto-scans & trades up to ${rounds} rounds, stops at your win/loss target`:`running LIVE — auto-scans & trades up to ${rounds} rounds, stops at your win/loss target`) : 'stopped';
 });
 
 // ---------- polls ----------
