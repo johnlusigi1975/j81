@@ -168,14 +168,40 @@ async def proposal(ws_url: str, *, symbol, trade_type, direction, prediction,
 
 
 async def buy(ws_url: str, *, symbol, trade_type, direction, prediction,
-              duration, duration_unit, stake, currency="USD") -> dict:
-    """Place one contract via the OTP-authenticated socket (same buy payload as
-    legacy, but `underlying_symbol` and including app_markup_percentage)."""
+              duration, duration_unit, stake, currency="USD", timeout: float = 20.0) -> dict:
+    """Place one contract on the new Options API: PROPOSAL then BUY-by-id, on a
+    single OTP-authenticated socket (the new API expects a proposal id, and the
+    OTP authenticates only this one connection — so both must share it)."""
     body = _trade_payload(symbol, trade_type, direction, prediction,
                           duration, duration_unit, stake, currency)
-    body["parameters"] = _new_params(body)
-    msg = await _ws_request(ws_url, body, "buy")
-    return msg.get("buy") or {}
+    params = _new_params(body)
+    preq = {"proposal": 1, "amount": stake, "basis": "stake",
+            "contract_type": params["contract_type"], "currency": currency,
+            "duration": int(duration), "duration_unit": duration_unit or "t",
+            "underlying_symbol": params["underlying_symbol"], "req_id": 1}
+    if "barrier" in params:
+        preq["barrier"] = params["barrier"]
+    async with websockets.connect(ws_url, open_timeout=timeout) as ws:
+        await ws.send(json.dumps(preq))
+        pid = ask = None
+        for _ in range(25):
+            m = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
+            if "error" in m:
+                raise DerivBotError(m["error"].get("message", "proposal failed"))
+            if m.get("msg_type") == "proposal":
+                p = m.get("proposal") or {}
+                pid, ask = p.get("id"), _to_float(p.get("ask_price"))
+                break
+        if not pid:
+            raise DerivBotError("Deriv returned no proposal id")
+        await ws.send(json.dumps({"buy": pid, "price": ask if ask is not None else stake, "req_id": 2}))
+        for _ in range(25):
+            m = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
+            if "error" in m:
+                raise DerivBotError(m["error"].get("message", "buy failed"))
+            if m.get("msg_type") == "buy":
+                return m.get("buy") or {}
+    raise DerivBotError("no buy confirmation from Deriv")
 
 
 async def check_contract(ws_url: str, contract_id) -> dict:
