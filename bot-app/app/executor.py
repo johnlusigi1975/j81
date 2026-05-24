@@ -88,21 +88,26 @@ def goal_status(account: dict) -> tuple[bool, str | None]:
 async def _live_buy(account: dict, token: str, **p) -> dict:
     """Place ONE real contract on whichever Deriv platform the account is on:
       * legacy → authorize + buy on the classic WS (place_contract)
-      * new    → request a one-time OTP socket, then buy on it (deriv_new)
+      * new    → request a one-time OTP socket, then buy on it (deriv_new),
+                 auto-refreshing the OAuth token if it has expired.
     Returns the `buy` dict (contract_id, payout, buy_price)."""
     if (account.get("platform") or "legacy").lower() == "new":
-        from app import deriv_new
-        ws_url = await deriv_new.request_otp_ws(token, account["deriv_account_id"])
-        return await deriv_new.buy(ws_url, **p)
+        from app import deriv_new, tokens
+        async def _do(tk):
+            ws_url = await deriv_new.request_otp_ws(tk, account["deriv_account_id"])
+            return await deriv_new.buy(ws_url, **p)
+        return await tokens.with_fresh_token(account["id"], _do)
     return await place_contract(deriv_token=token, **p)
 
 
 async def _live_check(account: dict, token: str, contract_id) -> dict:
-    """Follow a contract to settlement on the right platform."""
+    """Follow a contract to settlement on the right platform (auto-refresh on new)."""
     if (account.get("platform") or "legacy").lower() == "new":
-        from app import deriv_new
-        ws_url = await deriv_new.request_otp_ws(token, account["deriv_account_id"])
-        return await deriv_new.check_contract(ws_url, contract_id)
+        from app import deriv_new, tokens
+        async def _do(tk):
+            ws_url = await deriv_new.request_otp_ws(tk, account["deriv_account_id"])
+            return await deriv_new.check_contract(ws_url, contract_id)
+        return await tokens.with_fresh_token(account["id"], _do)
     from app.deriv import check_contract
     return await check_contract(token, contract_id)
 

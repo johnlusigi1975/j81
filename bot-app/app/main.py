@@ -95,6 +95,60 @@ def health() -> dict:
     }
 
 
+@app.get("/health/tree")
+async def health_tree() -> dict:
+    """Whole-tree check-up: this bot's vitals + a live ping of the analyser and
+    researcher. One call to see if every organ is alive. Soft-fails per service."""
+    import time as _t
+    import httpx
+    s = get_settings()
+    store = get_store()
+    accts = store.list_accounts_public()
+    enabled = [a for a in accts if a["enabled"]]
+    proven = store.list_proven_strategies(limit=1000)
+
+    async def _ping(url: str) -> dict:
+        if not url:
+            return {"configured": False}
+        t0 = _t.monotonic()
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as c:
+                r = await c.get(url.rstrip("/") + "/health")
+                return {"configured": True, "ok": r.status_code < 400,
+                        "status": r.status_code, "ms": round((_t.monotonic() - t0) * 1000)}
+        except Exception as exc:
+            return {"configured": True, "ok": False, "error": str(exc)[:80]}
+
+    analyser = await _ping(s.analyser_url)
+    cycle = {}
+    if analyser.get("ok"):
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as c:
+                cycle = (await c.get(s.analyser_url.rstrip("/") + "/cycle/status")).json()
+        except Exception:
+            cycle = {}
+    return {
+        "bot": {"ok": True, "version": APP_VERSION, "dry_run": s.dry_run,
+                "loop_alive": trading_loop.status.get("loop_alive"),
+                "cycles": trading_loop.status.get("cycles"),
+                "last_error": trading_loop.status.get("last_error"),
+                "accounts": len(accts), "enabled": len(enabled),
+                "proven_strategies": len(proven)},
+        "analyser": analyser,
+        "researcher": await _ping(_researcher_url()),
+        "cycle": {"tested": cycle.get("tested"), "proven": cycle.get("proven_count"),
+                  "next_in_seconds": cycle.get("next_in_seconds")},
+    }
+
+
+def _researcher_url() -> str:
+    """Researcher URL is configured on the analyser, not the bot — best-effort
+    derive it from the analyser host so the tree check can ping it too."""
+    s = get_settings()
+    base = (s.analyser_url or "").rstrip("/")
+    return base.replace("analyser", "researcher") if "analyser" in base else ""
+
+
 # ---------------------------------------------------------------------------
 # OAuth flow — users authorize our app to trade on their Deriv account
 # ---------------------------------------------------------------------------
@@ -141,11 +195,16 @@ def oauth_start() -> RedirectResponse:
         state = _secrets.token_urlsafe(24)
         _PKCE_STATES[state] = (verifier, _time.time())
         _prune_pkce()
+        # Ask for offline_access so Deriv issues a refresh token → the session
+        # can be renewed past the ~1h access-token expiry (no reconnect needed).
+        scope = s.deriv_oauth_scope
+        if "offline_access" not in scope.split():
+            scope = f"{scope} offline_access".strip()
         q = urlencode({
             "response_type": "code",
             "client_id": s.deriv_app_id,
             "redirect_uri": s.deriv_oauth_redirect_uri,
-            "scope": s.deriv_oauth_scope,
+            "scope": scope,
             "state": state,
             "code_challenge": challenge,
             "code_challenge_method": "S256",
@@ -235,6 +294,8 @@ async def oauth_callback(request: Request) -> RedirectResponse:
         access = tok.get("access_token")
         if not access:
             return _auth_fail("Deriv did not return an access token — please try again.")
+        refresh = tok.get("refresh_token")          # present iff offline_access granted
+        expires_in = tok.get("expires_in")
         # New-platform token: read the user's accounts (demo + real) from the
         # new Options API, NOT the legacy v3 authorize (which rejects this token).
         from app import deriv_new
@@ -247,7 +308,8 @@ async def oauth_callback(request: Request) -> RedirectResponse:
             try:
                 store.upsert_account(
                     deriv_account_id=a["loginid"], token=access,
-                    currency=a.get("currency"), platform="new", session_id=sid)
+                    currency=a.get("currency"), platform="new", session_id=sid,
+                    refresh_token=refresh, expires_in=expires_in)
                 saved += 1
             except RuntimeError as exc:
                 return _auth_fail(f"Could not store your account: {exc}")
@@ -354,32 +416,59 @@ def accounts_list(request: Request) -> list[dict]:
     return get_store().list_accounts_public(session_id=sid)
 
 
+_BALANCE_CACHE: dict[str, tuple[float, dict]] = {}
+_BALANCE_TTL = 8.0  # collapse rapid polls into one real Deriv round-trip
+
+
 @app.get("/accounts/{account_id}/balance")
 async def account_balance(account_id: str, request: Request) -> dict:
     """Live Deriv balance for one of the caller's accounts. New-platform
-    accounts read it over the OTP socket; legacy via authorize."""
+    accounts read it over the OTP socket; legacy via authorize.
+
+    Never 502s: balance is a best-effort display value, so on a Deriv hiccup or
+    an EXPIRED TOKEN it returns 200 with balance=null (+ needs_reconnect) so the
+    UI shows "—" / a reconnect hint instead of spamming errors. Reads are cached
+    briefly and stale cache is served through transient failures."""
+    import time
     _require_own(request, account_id)
     store = get_store()
     acct = store.get_internal(account_id)
     if acct is None:
         raise HTTPException(404, "account not found")
-    token = store.decrypted_token_for(account_id)
+    now = time.monotonic()
+    hit = _BALANCE_CACHE.get(account_id)
+    if hit and (now - hit[0]) < _BALANCE_TTL:
+        return hit[1]
+    deriv_id = acct["deriv_account_id"]
+    cur_fallback = acct.get("currency") or "USD"
+    from app import tokens
+    token = await tokens.get_access_token(account_id)
     if not token:
-        raise HTTPException(400, "no stored token for this account")
+        return {"balance": None, "currency": cur_fallback, "deriv_account_id": deriv_id,
+                "error": "no stored token", "needs_reconnect": True}
     platform = (acct.get("platform") or "legacy").lower()
     try:
         if platform == "new":
             from app import deriv_new
-            ws_url = await deriv_new.request_otp_ws(token, acct["deriv_account_id"])
-            b = await deriv_new.balance(ws_url)
+            async def _read(tk):
+                ws_url = await deriv_new.request_otp_ws(tk, deriv_id)
+                return await deriv_new.balance(ws_url)
+            b = await tokens.with_fresh_token(account_id, _read)
             bal, cur = b.get("balance"), b.get("currency")
         else:
             info = await authorize_account(token)
             bal, cur = info.get("balance"), info.get("currency")
     except Exception as exc:
-        raise HTTPException(502, f"couldn't read balance: {exc}")
-    return {"balance": bal, "currency": cur or acct.get("currency") or "USD",
-            "deriv_account_id": acct["deriv_account_id"]}
+        if hit:  # serve last good value through a transient blip
+            return hit[1]
+        msg = str(exc).lower()
+        needs = any(k in msg for k in ("auth", "token", "otp", "401", "unauthor",
+                                       "invalid", "expire", "403"))
+        return {"balance": None, "currency": cur_fallback, "deriv_account_id": deriv_id,
+                "error": str(exc)[:140], "needs_reconnect": needs}
+    result = {"balance": bal, "currency": cur or cur_fallback, "deriv_account_id": deriv_id}
+    _BALANCE_CACHE[account_id] = (now, result)
+    return result
 
 
 @app.post("/logout")

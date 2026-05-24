@@ -53,6 +53,29 @@ def _is_demo(loginid: str, acct_type: str | None = None) -> bool:
     return loginid.upper().startswith("VR")
 
 
+async def refresh_token(refresh_tok: str, timeout: float = 20.0) -> dict:
+    """Exchange an OAuth refresh token for a fresh access token (and possibly a
+    rotated refresh token) at the OAuth2 token endpoint. Returns the raw token
+    response: {access_token, refresh_token?, expires_in?}. Raises on failure."""
+    s = get_settings()
+    url = s.deriv_oauth_token_url
+    if not url:
+        raise DerivBotError("no OAuth token URL configured — cannot refresh")
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_tok,
+        "client_id": s.deriv_app_id,
+    }
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        r = await client.post(url, data=data)
+    if r.status_code >= 400:
+        raise DerivBotError(f"token refresh failed: HTTP {r.status_code} {r.text[:160]}")
+    tok = r.json()
+    if not tok.get("access_token"):
+        raise DerivBotError("refresh returned no access_token")
+    return tok
+
+
 async def list_accounts(access_token: str, timeout: float = 20.0) -> list[dict]:
     """List every Options trading account the token controls (demo + real), so
     the client can choose which to trade on. Returns

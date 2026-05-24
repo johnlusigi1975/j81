@@ -154,6 +154,8 @@ class BotStore:
             ("accounts", "session_id", "TEXT"),        # browser session that connected this account
             ("accounts", "rf_config", "TEXT"),         # JSON: server-side Rise/Fall gated auto {enabled,min_conf,stake,duration}
             ("accounts", "proven_auto", "INTEGER"),    # 1 = auto-trade the analyser's PROVEN strategies
+            ("accounts", "refresh_token", "BLOB"),     # Fernet-encrypted OAuth refresh token (new platform)
+            ("accounts", "token_expires_at", "TEXT"),  # ISO time the access token expires (for proactive refresh)
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -161,6 +163,12 @@ class BotStore:
                 pass  # column already exists
 
     # --------------------------------------------------------------- accounts
+
+    def _expiry_iso(self, expires_in: int | None) -> str | None:
+        if not expires_in:
+            return None
+        from datetime import timedelta
+        return (datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))).isoformat()
 
     def upsert_account(
         self,
@@ -171,13 +179,19 @@ class BotStore:
         label: str | None = None,
         platform: str = "legacy",
         session_id: str | None = None,
+        refresh_token: str | None = None,
+        expires_in: int | None = None,
     ) -> str:
         """Encrypt+store. If the deriv_account_id is already present, the
         token is rotated and the row's updated_at bumped. Returns our id.
         `platform` is 'legacy' (PAT/legacy-OAuth → authorize+buy) or 'new'
-        (OAuth2 PKCE → OTP-WS) and decides how the executor places trades."""
+        (OAuth2 PKCE → OTP-WS) and decides how the executor places trades.
+        `refresh_token`/`expires_in` (new platform) enable auto-renewal so a
+        session survives past the ~1h access-token expiry."""
         f = _fernet()
         encrypted = f.encrypt(token.encode())
+        enc_refresh = f.encrypt(refresh_token.encode()) if refresh_token else None
+        expires_at = self._expiry_iso(expires_in)
         now = _now_iso()
         settings = get_settings()
         with self._lock:
@@ -186,11 +200,16 @@ class BotStore:
                 (deriv_account_id,),
             ).fetchone()
             if row:
+                # COALESCE keeps an existing refresh token if this sign-in didn't
+                # return a new one (e.g. legacy re-link), so we never lose it.
                 self._conn.execute(
                     "UPDATE accounts SET encrypted_token=?, currency=?, "
                     "label=COALESCE(?, label), platform=?, "
+                    "refresh_token=COALESCE(?, refresh_token), "
+                    "token_expires_at=?, "
                     "session_id=COALESCE(?, session_id), updated_at=? WHERE id=?",
-                    (encrypted, currency, label, platform, session_id, now, row["id"]),
+                    (encrypted, currency, label, platform, enc_refresh, expires_at,
+                     session_id, now, row["id"]),
                 )
                 acct_id = row["id"]
             else:
@@ -199,8 +218,9 @@ class BotStore:
                     "INSERT INTO accounts("
                     "id, deriv_account_id, currency, encrypted_token, label, "
                     "enabled, max_stake_per_trade, max_trades_per_day, "
-                    "min_confidence, platform, session_id, created_at, updated_at) "
-                    "VALUES (?,?,?,?,?,0,?,?,?,?,?,?,?)",
+                    "min_confidence, platform, session_id, refresh_token, "
+                    "token_expires_at, created_at, updated_at) "
+                    "VALUES (?,?,?,?,?,0,?,?,?,?,?,?,?,?,?)",
                     (
                         acct_id,
                         deriv_account_id,
@@ -212,6 +232,8 @@ class BotStore:
                         settings.default_min_confidence,
                         platform,
                         session_id,
+                        enc_refresh,
+                        expires_at,
                         now,
                         now,
                     ),
@@ -304,6 +326,35 @@ class BotStore:
             return _fernet().decrypt(row["encrypted_token"]).decode()
         except InvalidToken:
             return None  # key changed — token unreadable; surface higher up
+
+    def decrypted_refresh_for(self, account_id: str) -> str | None:
+        """The account's OAuth refresh token (plaintext), or None. Internal use."""
+        row = self._conn.execute(
+            "SELECT refresh_token FROM accounts WHERE id=?", (account_id,)
+        ).fetchone()
+        if not row or row["refresh_token"] is None:
+            return None
+        try:
+            return _fernet().decrypt(row["refresh_token"]).decode()
+        except InvalidToken:
+            return None
+
+    def update_token(self, account_id: str, *, access: str,
+                     refresh: str | None = None, expires_in: int | None = None) -> None:
+        """Rotate an account's access token (and refresh token, if Deriv rotated
+        it) after an OAuth refresh. Keeps the old refresh token if none returned."""
+        f = _fernet()
+        enc_access = f.encrypt(access.encode())
+        enc_refresh = f.encrypt(refresh.encode()) if refresh else None
+        with self._lock:
+            self._conn.execute(
+                "UPDATE accounts SET encrypted_token=?, "
+                "refresh_token=COALESCE(?, refresh_token), token_expires_at=?, "
+                "updated_at=? WHERE id=?",
+                (enc_access, enc_refresh, self._expiry_iso(expires_in),
+                 _now_iso(), account_id),
+            )
+            self._conn.commit()
 
     def update_account_settings(
         self,
