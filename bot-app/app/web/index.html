@@ -489,8 +489,8 @@
 
     <div class="row" style="margin-bottom:12px">
       <label class="field">Market<select id="t-symbol" style="min-width:150px"></select></label>
-      <label class="field">Stake $<input id="t-stake" type="number" value="1" min="0.35" step="0.5" style="width:90px"></label>
-      <label class="field">Ticks<input id="t-duration" type="number" value="5" min="1" max="10" style="width:70px"></label>
+      <label class="field">Stake $<input id="t-stake" type="number" value="100" min="0.35" step="0.5" style="width:90px"></label>
+      <label class="field">Ticks<input id="t-duration" type="number" value="1" min="1" max="10" style="width:70px"></label>
     </div>
 
     <!-- LIVE price chart (Rise/Fall) — browser → Deriv public WS, no auth -->
@@ -1051,6 +1051,7 @@ async function openTrade(game){
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
   if(game!=="m_pro") LiveWS.start(sym); else LiveWS.stop();
+  applyDefaultStake();   // $100 demo / $10 real (unless the user set their own)
   loadAssistant(); loadAutoState(); refreshLive(); loadProven();
   if(game==="m_pro") loadScan();
 }
@@ -1151,6 +1152,15 @@ async function loadAssistant(){
     placeTrade(f); }
 }); })();
 (function(){ const s=$("t-symbol"); if(s) s.addEventListener("change",()=>{loadAssistant(); if(GAME==="m_pro")loadScan();}); })();
+// Default stake by account type: $100 on demo, $10 on real — applied on each
+// load/open until the user types their own value (then we leave it alone).
+let _stakeEdited=false;
+(function(){ const s=$("t-stake"); if(s) s.addEventListener("input",()=>{ _stakeEdited=true; }); })();
+function applyDefaultStake(){
+  if(_stakeEdited) return;
+  const s=$("t-stake"); if(!s) return;
+  s.value = (CUR && CUR.is_demo===false) ? "10" : "100";   // real = 10, demo = 100
+}
 
 // ---------- scanner (m_pro) ----------
 function renderDigits(top){ const el=$("mpro-digits"),sym=$("mpro-digit-sym"); if(!el)return;
