@@ -375,7 +375,7 @@
 
 <!-- ============ VIEW: ACCESS (membership paywall) ============ -->
 <div class="view wrap" id="view-access" hidden>
-  <button class="backbtn" onclick="showView('landing')">← back</button>
+  <button class="backbtn" onclick="showView(HAS_ACCOUNTS?'accounts':'landing')">← back</button>
   <div class="hero">
     <h1>Unlock the <span class="g">J81 Trade Desk</span></h1>
     <p>A premium trading desk for Deriv — live market reads, the EV &amp; break-even calculator, the 10-market scanner, risk discipline (auto stop-loss / take-profit), the strategy lab and a clean luxury interface.</p>
@@ -665,8 +665,9 @@ const fmtMoney=(v,c)=>(v==null||isNaN(v))?"—":(((c||"USD")==="USD")?"$":(esc(c
 async function loadBalance(id){ try{ return await api("/accounts/"+encodeURIComponent(id)+"/balance"); }catch(_){ return null; } }
 const VIEWS=["landing","access","connect","loading","accounts","home","trade"];
 function showView(v){
-  // Paywall: connecting/trading needs a paid membership (when require_access is on).
-  if(window.REQUIRE_ACCESS && !window.LICENSED && (v==="connect"||v==="accounts"||v==="home"||v==="trade")) v="access";
+  // Paywall comes AFTER connecting Deriv + choosing Demo/Real: connect + the
+  // account picker stay free; the desk itself (dashboard/trade) needs membership.
+  if(window.REQUIRE_ACCESS && !window.LICENSED && (v==="home"||v==="trade")) v="access";
   VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
   const inApp=(v==="accounts"||v==="home"||v==="trade");
   ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
