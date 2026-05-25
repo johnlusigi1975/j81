@@ -287,19 +287,11 @@ async def execute_manual_trade(
     tt = (trade_type or "").lower()
     if tt not in MANUAL_TRADE_TYPES:
         return {"outcome": "error", "error": f"trade_type {trade_type!r} not supported (Rise/Fall, Even/Odd, Over/Under, Matches/Differs)"}
-    # NOTE: a manual trade is the human pressing the button — that IS the
-    # authorization, so we do NOT require the `enabled` autotrade opt-in here
-    # (a freshly connected account defaults to enabled=0). Money safety still
-    # holds: DRY_RUN, per-trade stake ceiling, daily cap and take-profit/loss.
-
-    blocked, why = goal_status(account)
-    if blocked:
-        return {"outcome": "skipped", "reason": why}
-
-    todays = store.trades_today(account["id"])
-    cap = int(account.get("max_trades_per_day") or 0)
-    if cap and todays >= cap:
-        return {"outcome": "skipped", "reason": f"hit daily cap ({todays}/{cap})"}
+    # A manual trade is the human pressing the button — that IS the
+    # authorization. So manual trades have NO auto-gates: we do NOT require the
+    # `enabled` opt-in, and we do NOT apply the take-profit / loss-limit / daily
+    # cap (those exist to stop the AUTONOMOUS loop, not the human). The only
+    # money safety that still holds is DRY_RUN and the $0.35 stake minimum.
 
     # Manual trade: the human typed this stake, so USE EXACTLY THAT amount —
     # no global ceiling shrinking it. Only enforce Deriv's $0.35 minimum.
