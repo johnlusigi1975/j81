@@ -534,9 +534,11 @@
         <div class="faint" id="live-evenodd" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
       <div class="dbar" id="live-digits"></div>
+      <!-- EVEN/ODD live digit flow (most recent sequence, newest on the right) -->
+      <div id="eo-flow" hidden style="margin-top:12px"></div>
       <!-- EVEN/ODD deeper read — multi-window bias, streak, randomness, hot/cold -->
       <div id="eo-read" hidden style="margin-top:12px"></div>
-      <!-- the one real edge: best-payout market -->
+      <!-- the one real edge: best-payout market (auto-pick) -->
       <div id="eo-payout" hidden style="margin-top:10px"></div>
     </div>
 
@@ -889,7 +891,19 @@ function renderDeepRead(prices, vol, P, streak, sdir){
 // ---------- Even/Odd deeper read (honest: digit observations, not a prediction) ----------
 function _eoChip(lab,val,col){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:54px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:'+(col||'var(--text)')+'">'+val+'</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">'+lab+'</span></span>'; }
 function _evenPct(arr){ if(!arr.length) return 50; var e=0; for(var i=0;i<arr.length;i++) if(arr[i]%2===0)e++; return Math.round(e/arr.length*100); }
+function renderEoFlow(digits){
+  var fl=$("eo-flow"); if(!fl) return;
+  if(GAME!=="even_odd"){ fl.hidden=true; return; }
+  fl.hidden=false;
+  var seq=digits.slice(-26);
+  fl.innerHTML='<div class="lab" style="font-size:10px;margin-bottom:5px">Live digit flow <span class="faint" style="letter-spacing:0">(newest →)</span></div>'+
+    '<div style="display:flex;gap:3px;flex-wrap:wrap">'+seq.map(function(d,i){ var even=d%2===0, newest=i===seq.length-1;
+      return '<span style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px;font-weight:800;font-family:var(--mono);'+
+        (even?'background:linear-gradient(180deg,#ffe49a,#cf9e2a);color:#241d05':'background:linear-gradient(180deg,#eef0f5,#8c93a1);color:#15151c')+
+        (newest?';outline:2px solid var(--text);outline-offset:1px':'')+'">'+d+'</span>'; }).join("")+'</div>';
+}
 function renderEvenOddRead(digits){
+  renderEoFlow(digits);
   var el=$("eo-read"); if(!el) return;
   if(GAME!=="even_odd"){ el.hidden=true; return; }
   el.hidden=false;
@@ -924,19 +938,26 @@ function _eoReadMsg(e20,e50,e100,streak,lp,fair,chi){
                   : 'distribution is skewed right now (χ²='+chi.toFixed(1)+') — likely noise, not a signal';
   return 'Read: '+lean+'; '+streak+' '+side+' in a row. '+note+'. Digits are an audited 50/50 RNG — use this to read, not predict.';
 }
-// The ONE genuine Even/Odd edge: trade the highest-PAYOUT market.
+// The ONE genuine Even/Odd edge: trade the highest-PAYOUT market (auto-pick).
 async function loadEvenOddPayouts(){
   var el=$("eo-payout"); if(!el) return;
   if(GAME!=="even_odd"){ el.hidden=true; return; }
   el.hidden=false; el.innerHTML='<div class="faint" style="font-size:11px">finding the best-payout market…</div>';
   try{
-    var d=await api("/even_odd/payouts"); var best=d.best; if(!best){ el.hidden=true; return; }
+    var d=await api("/even_odd/payouts"); var best=d.best, ranked=(d.ranked||[]).slice(0,3);
+    if(!best){ el.hidden=true; return; }
+    // Auto-pick: move to the highest-payout market (the real edge, automated).
+    if(window.EO_AUTO!==false){ var s=$("t-symbol"); if(s && s.value!==best.symbol){ s.value=best.symbol; s.dispatchEvent(new Event("change")); } }
     var cur=($("t-symbol")||{}).value, isBest=best.symbol===cur;
-    el.innerHTML='<div style="font-size:12px;padding:9px 12px;border:1px solid var(--bd2);border-radius:10px;background:linear-gradient(135deg,rgba(54,214,200,.10),rgba(240,200,90,.04))">'+
-      '💰 Best Even/Odd payout right now: <b>'+esc(best.name||best.symbol)+'</b> at <b>'+Number(best.payout_pct).toFixed(1)+'%</b>'+
-      (isBest?' — <span style="color:var(--good)">you\'re on it ✓</span>':' <a href="#" id="eo-switch" style="color:var(--amber)">switch to it →</a>')+
-      '<div class="faint" style="font-size:10px;margin-top:3px">This is the only real edge on Even/Odd: same 50/50 odds everywhere, but a higher payout loses you less to the house.</div></div>';
-    var sw=$("eo-switch"); if(sw) sw.addEventListener("click",function(e){ e.preventDefault(); var sel=$("t-symbol"); if(sel){ sel.value=best.symbol; sel.dispatchEvent(new Event("change")); } });
+    var medals=['🥇','🥈','🥉'];
+    var rows=ranked.map(function(r,i){ return '<span style="margin-right:12px;white-space:nowrap">'+medals[i]+' '+esc(r.name||r.symbol)+' <b>'+Number(r.payout_pct).toFixed(1)+'%</b></span>'; }).join("");
+    el.innerHTML='<div style="font-size:12px;padding:10px 12px;border:1px solid var(--bd2);border-radius:10px;background:linear-gradient(135deg,rgba(54,214,200,.10),rgba(240,200,90,.04))">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>💰 Best Even/Odd payouts</b>'+
+        '<label style="margin-left:auto;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="eo-auto" '+(window.EO_AUTO!==false?'checked':'')+' style="width:auto"> auto-pick best</label></div>'+
+      '<div style="margin-top:7px">'+rows+'</div>'+
+      '<div class="faint" style="font-size:10px;margin-top:5px">'+(isBest?'<span style="color:var(--good)">✓ On the best-payout market</span>':'<a href="#" id="eo-switch" style="color:var(--amber)">switch to '+esc(best.name||best.symbol)+' →</a>')+' · same 50/50 odds everywhere — a higher payout just loses less to the house.</div></div>';
+    var sw=$("eo-switch"); if(sw) sw.addEventListener("click",function(e){ e.preventDefault(); var s=$("t-symbol"); if(s){ s.value=best.symbol; s.dispatchEvent(new Event("change")); } });
+    var au=$("eo-auto"); if(au) au.addEventListener("change",function(){ window.EO_AUTO=au.checked; if(au.checked) loadEvenOddPayouts(); });
   }catch(_){ el.hidden=true; }
 }
 
@@ -1147,6 +1168,7 @@ async function openTrade(game){
   $("rf-scan-panel").hidden = (game!=="rise_fall");
   // Even/Odd deeper read + best-payout edge (only on even_odd)
   const isEO = (game==="even_odd");
+  if($("eo-flow")) $("eo-flow").hidden = !isEO;
   if($("eo-read")) $("eo-read").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
   if(isEO) loadEvenOddPayouts();
