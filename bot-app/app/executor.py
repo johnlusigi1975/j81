@@ -287,8 +287,10 @@ async def execute_manual_trade(
     tt = (trade_type or "").lower()
     if tt not in MANUAL_TRADE_TYPES:
         return {"outcome": "error", "error": f"trade_type {trade_type!r} not supported (Rise/Fall, Even/Odd, Over/Under, Matches/Differs)"}
-    if not account.get("enabled"):
-        return {"outcome": "skipped", "reason": "account is disabled — enable it first"}
+    # NOTE: a manual trade is the human pressing the button — that IS the
+    # authorization, so we do NOT require the `enabled` autotrade opt-in here
+    # (a freshly connected account defaults to enabled=0). Money safety still
+    # holds: DRY_RUN, per-trade stake ceiling, daily cap and take-profit/loss.
 
     blocked, why = goal_status(account)
     if blocked:

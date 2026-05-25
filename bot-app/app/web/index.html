@@ -274,6 +274,7 @@
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
+  <span class="chip" id="nav-session" hidden title="Deriv sessions last ~1 hour. Reconnect when it runs out." style="cursor:pointer" onclick="startDeriv()"></span>
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="startDeriv()">Connect with Deriv</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
   <button class="navbtn" id="nav-exit" hidden onclick="logout()">Log out</button>
@@ -1340,6 +1341,23 @@ setInterval(async ()=>{ if($("view-trade").hidden||_pollBusy) return; _pollBusy=
   finally{ _pollBusy=false; }
 },10000);
 setInterval(()=>{ if(!$("view-home").hidden) loadHome(); }, 20000);
+
+// ---------- Deriv session timer (tokens last ~1h; show a live countdown) ----------
+function tickSession(){
+  const el=$("nav-session"); if(!el) return;
+  if(!CUR || !CUR.token_expires_at || $("nav-acct").hidden){ el.hidden=true; return; }
+  const exp=Date.parse(CUR.token_expires_at);
+  if(isNaN(exp)){ el.hidden=true; return; }
+  el.hidden=false;
+  const left=exp-Date.now();
+  if(left<=0){ el.innerHTML='<span class="dot" style="background:var(--bad)"></span>Session expired · Reconnect ↻'; el.style.color='var(--amber)'; return; }
+  const s=Math.floor(left/1000), m=Math.floor(s/60), r=s%60, warn=left<5*60*1000;
+  el.innerHTML='<span class="dot" style="background:'+(warn?'var(--warn)':'var(--good)')+'"></span>Deriv '+m+':'+(r<10?'0':'')+r;
+  el.style.color = warn?'var(--warn)':'';
+  el.title = warn ? 'Your Deriv session is about to expire — click to reconnect.'
+                  : 'Deriv sessions last ~1 hour. Click to reconnect anytime.';
+}
+setInterval(tickSession,1000);
 boot();
 </script>
 </body>

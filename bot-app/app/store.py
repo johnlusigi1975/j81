@@ -274,7 +274,7 @@ class BotStore:
             "max_stake_per_trade, max_trades_per_day, min_confidence, "
             "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
             "mpro_enabled, mpro_config, rf_config, proven_auto, platform, "
-            "created_at, updated_at, last_trade_at FROM accounts "
+            "token_expires_at, created_at, updated_at, last_trade_at FROM accounts "
         )
         if session_id is not None:
             # Claim any unclaimed (NULL) accounts to this session so a returning

@@ -33,9 +33,11 @@ services:
         value: /var/data
       - key: PYTHONUNBUFFERED
         value: "1"
-      # Master safety switch — keep true until you've tested on demo.
+      # Master safety switch. false = REAL money. NOTE: if DRY_RUN is also set in
+      # the Render dashboard (Environment tab), the DASHBOARD value WINS — change
+      # it there too. Test on a DEMO account first.
       - key: DRY_RUN
-        value: "true"
+        value: "false"
       # Where the Bot reads decisions / scan from (the Analyser service URL).
       - key: ANALYSER_URL
         value: https://j81-analyser.onrender.com
