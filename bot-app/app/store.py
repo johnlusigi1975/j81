@@ -133,6 +133,21 @@ class BotStore:
                     updated_at    TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS ix_proven_tt ON proven_strategies(trade_type);
+
+                -- Paid access: one code = one membership. Owner generates codes
+                -- (after a customer pays via your payment link); the customer
+                -- redeems a code to unlock the desk for `days` days.
+                CREATE TABLE IF NOT EXISTS licenses (
+                    code        TEXT PRIMARY KEY,
+                    days        INTEGER NOT NULL,
+                    status      TEXT NOT NULL DEFAULT 'unused',  -- unused | active | revoked
+                    session_id  TEXT,                            -- bound on redeem
+                    note        TEXT,
+                    activated_at TEXT,
+                    expires_at  TEXT,
+                    created_at  TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_lic_session ON licenses(session_id);
                 """
             )
             self._migrate()
@@ -526,6 +541,88 @@ class BotStore:
             "SELECT * FROM proven_strategies ORDER BY updated_at DESC LIMIT ?",
             (max(1, min(limit, 1000)),),
         ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ----------------------------------------------------------- paid access
+    def create_licenses(self, count: int, days: int, note: str | None = None) -> list[str]:
+        """Owner mints N membership codes (give one to each paying customer)."""
+        import secrets
+        now = _now_iso()
+        codes: list[str] = []
+        with self._lock:
+            for _ in range(max(1, min(count, 1000))):
+                code = "J81-" + "-".join(
+                    "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(4))
+                    for _ in range(3))
+                self._conn.execute(
+                    "INSERT INTO licenses(code, days, status, note, created_at) "
+                    "VALUES (?,?, 'unused', ?, ?)", (code, days, note, now))
+                codes.append(code)
+            self._conn.commit()
+        return codes
+
+    def redeem_license(self, code: str, session_id: str) -> dict[str, Any]:
+        """Activate a code for this browser session. If the session already has
+        active access, a new code extends from the later of now/current expiry."""
+        from datetime import datetime, timedelta, timezone
+        code = (code or "").strip().upper()
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM licenses WHERE code=?", (code,)).fetchone()
+            if not row:
+                return {"ok": False, "error": "invalid code"}
+            d = dict(row)
+            if d["status"] == "revoked":
+                return {"ok": False, "error": "this code was revoked"}
+            if d["status"] == "active":
+                # already used — only the same session may re-check it
+                if d["session_id"] and d["session_id"] != session_id:
+                    return {"ok": False, "error": "code already in use on another device"}
+                return {"ok": True, "expires_at": d["expires_at"], "reused": True}
+            now = datetime.now(timezone.utc)
+            base = now
+            cur = self._session_expiry(session_id)
+            if cur and cur > now:
+                base = cur  # stack onto existing access
+            expires = (base + timedelta(days=int(d["days"]))).isoformat()
+            self._conn.execute(
+                "UPDATE licenses SET status='active', session_id=?, activated_at=?, "
+                "expires_at=? WHERE code=?", (session_id, now.isoformat(), expires, code))
+            self._conn.commit()
+            return {"ok": True, "expires_at": expires}
+
+    def _session_expiry(self, session_id: str):
+        from datetime import datetime
+        if not session_id:
+            return None
+        row = self._conn.execute(
+            "SELECT MAX(expires_at) AS e FROM licenses WHERE session_id=? AND status='active'",
+            (session_id,)).fetchone()
+        if not row or not row["e"]:
+            return None
+        try:
+            dt = datetime.fromisoformat(row["e"])
+            from datetime import timezone
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+
+    def access_status(self, session_id: str) -> dict[str, Any]:
+        """Is this session a paid member? Returns {licensed, days_left, expires_at}."""
+        from datetime import datetime, timezone
+        exp = self._session_expiry(session_id)
+        if not exp:
+            return {"licensed": False, "days_left": 0, "expires_at": None}
+        now = datetime.now(timezone.utc)
+        if exp <= now:
+            return {"licensed": False, "days_left": 0, "expires_at": exp.isoformat(), "expired": True}
+        secs = (exp - now).total_seconds()
+        return {"licensed": True, "days_left": max(1, round(secs / 86400)),
+                "expires_at": exp.isoformat()}
+
+    def list_licenses(self, *, limit: int = 500) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM licenses ORDER BY created_at DESC LIMIT ?",
+            (max(1, min(limit, 2000)),)).fetchall()
         return [dict(r) for r in rows]
 
     def list_pending_live_trades(self) -> list[dict[str, Any]]:

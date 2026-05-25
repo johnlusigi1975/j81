@@ -78,6 +78,71 @@ def home(request: Request) -> FileResponse:
     return resp
 
 
+# ---------------------------------------------------------------------------
+# Paid access (membership paywall) — honest model: pay for the TOOLS.
+# ---------------------------------------------------------------------------
+
+
+@app.get("/access/status")
+def access_status(request: Request, response: Response) -> dict:
+    """Is the caller a paid member? Also returns the offer (price + buy link) so
+    the paywall can render. require_access=false means the app is open to all."""
+    s = get_settings()
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not sid:
+        sid = _new_sid(); _set_session_cookie(response, sid)
+    st = get_store().access_status(sid)
+    return {**st, "require_access": s.require_access,
+            "price_label": s.access_price_label, "buy_url": s.access_buy_url,
+            "days_per_membership": s.access_days}
+
+
+class RedeemCode(BaseModel):
+    code: str
+
+
+@app.post("/access/redeem")
+def access_redeem(body: RedeemCode, request: Request, response: Response) -> dict:
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not sid:
+        sid = _new_sid(); _set_session_cookie(response, sid)
+    res = get_store().redeem_license(body.code, sid)
+    if not res.get("ok"):
+        raise HTTPException(400, res.get("error", "could not redeem code"))
+    return {**res, **get_store().access_status(sid)}
+
+
+def _require_admin(request: Request) -> None:
+    """Owner-only guard for license management. Disabled until ADMIN_KEY is set."""
+    expected = get_settings().admin_key
+    if not expected:
+        raise HTTPException(403, "admin disabled — set ADMIN_KEY in the dashboard")
+    got = request.headers.get("X-Admin-Key") or request.query_params.get("key", "")
+    if got != expected:
+        raise HTTPException(403, "bad admin key")
+
+
+class MintLicenses(BaseModel):
+    count: int = 1
+    note: str | None = None
+
+
+@app.post("/admin/licenses")
+def admin_mint(body: MintLicenses, request: Request) -> dict:
+    """Owner: mint membership codes (one per paying customer). Honest model —
+    these unlock the TOOLS, not guaranteed wins."""
+    _require_admin(request)
+    days = get_settings().access_days
+    codes = get_store().create_licenses(max(1, min(body.count, 1000)), days, body.note)
+    return {"created": len(codes), "days": days, "codes": codes}
+
+
+@app.get("/admin/licenses")
+def admin_list(request: Request) -> list[dict]:
+    _require_admin(request)
+    return get_store().list_licenses()
+
+
 @app.get("/robots.txt", include_in_schema=False)
 def robots() -> Response:
     """Let search engines crawl the public app; keep API/OAuth paths out of the

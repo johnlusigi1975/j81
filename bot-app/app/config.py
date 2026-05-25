@@ -61,6 +61,19 @@ class Settings(BaseSettings):
     # Trading loop interval
     trade_poll_seconds: int = 120
 
+    # ---- Paid access (membership paywall) ----
+    # Secret that protects the owner-only license endpoints (generate/list codes).
+    # Set ADMIN_KEY in the dashboard; while blank, those endpoints are disabled.
+    admin_key: str = ""
+    access_days: int = 90               # how long one membership lasts
+    access_price_label: str = "$100"    # shown on the paywall
+    # Your payment link (Stripe/Gumroad/etc.) — PUBLIC URL, safe to set here.
+    # After a customer pays, you give them a code (see /admin/licenses).
+    access_buy_url: str = ""
+    # Master switch: when False, the whole app is open (no paywall). Flip to
+    # True (REQUIRE_ACCESS=true) to charge.
+    require_access: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

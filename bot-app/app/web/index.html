@@ -278,6 +278,7 @@
 <nav class="nav"><div class="nav-in">
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
+  <span class="chip" id="nav-member" hidden title="Your membership" style="color:var(--amber);border-color:var(--bd2)"></span>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
   <span class="chip" id="nav-session" hidden title="Deriv sessions last ~1 hour. Reconnect when it runs out." style="cursor:pointer" onclick="startDeriv()"></span>
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="startDeriv()">Connect with Deriv</button>
@@ -370,6 +371,40 @@
   </div>
 
   <div class="riskline">Trading involves substantial risk and is not suitable for everyone — you can lose some or all of your invested capital. Synthetic indices and options are complex, high-risk products. J81 is an independent tool that trades on your own Deriv account via Deriv's API; it is not affiliated with or endorsed by Deriv. This is not investment advice.</div>
+</div>
+
+<!-- ============ VIEW: ACCESS (membership paywall) ============ -->
+<div class="view wrap" id="view-access" hidden>
+  <button class="backbtn" onclick="showView('landing')">← back</button>
+  <div class="hero">
+    <h1>Unlock the <span class="g">J81 Trade Desk</span></h1>
+    <p>A premium trading desk for Deriv — live market reads, the EV &amp; break-even calculator, the 10-market scanner, risk discipline (auto stop-loss / take-profit), the strategy lab and a clean luxury interface.</p>
+  </div>
+  <div class="glass" style="max-width:560px;margin:0 auto">
+    <div style="display:flex;align-items:baseline;gap:8px;justify-content:center;margin-bottom:6px">
+      <div style="font-family:var(--serif);font-size:40px;font-weight:800" id="acc-price">$100</div>
+      <div class="faint">/ <span id="acc-days">90</span> days full access</div>
+    </div>
+    <ul style="list-style:none;padding:0;margin:14px 0;display:grid;gap:9px;font-size:14px">
+      <li>✦ Live Even/Odd &amp; Rise/Fall reads + digit analytics</li>
+      <li>✦ EV / break-even calculator on every trade</li>
+      <li>✦ 10-market scanner + best-payout finder</li>
+      <li>✦ Auto risk controls — stop at win / loss, rounds</li>
+      <li>✦ Strategy lab + 30-min testing engine</li>
+      <li>✦ Connect your own Deriv account &amp; trade</li>
+    </ul>
+    <a id="acc-buy" class="btn big" href="#" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Get access — <span class="acc-price2">$100</span></a>
+    <div style="margin:16px 0 6px;text-align:center;color:var(--faint);font-size:12px">Already paid? Enter your access code</div>
+    <div class="row" style="gap:8px">
+      <input id="acc-code" placeholder="J81-XXXX-XXXX-XXXX" style="flex:1;text-transform:uppercase;font-family:var(--mono)">
+      <button class="btn" id="acc-redeem" type="button">Unlock</button>
+    </div>
+    <div id="acc-msg" style="margin-top:10px;font-size:13px"></div>
+    <div class="faint" style="font-size:11px;margin-top:16px;line-height:1.5;border-top:1px solid var(--bd);padding-top:12px">
+      <b>Important:</b> J81 is a set of analysis &amp; risk tools — <b>not</b> financial advice and <b>not</b> a promise of profit.
+      Deriv synthetic indices are an audited random-number generator with a built-in house edge, so <b>no tool can predict the next tick</b> and you can lose money. Trade only what you can afford to lose. Access is for the software/tools for the period shown.
+    </div>
+  </div>
 </div>
 
 <!-- ============ VIEW: CONNECT ============ -->
@@ -628,8 +663,11 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtMoney=(v,c)=>(v==null||isNaN(v))?"—":(((c||"USD")==="USD")?"$":(esc(c)+" "))+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 async function loadBalance(id){ try{ return await api("/accounts/"+encodeURIComponent(id)+"/balance"); }catch(_){ return null; } }
-const VIEWS=["landing","connect","loading","accounts","home","trade"];
-function showView(v){ VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
+const VIEWS=["landing","access","connect","loading","accounts","home","trade"];
+function showView(v){
+  // Paywall: connecting/trading needs a paid membership (when require_access is on).
+  if(window.REQUIRE_ACCESS && !window.LICENSED && (v==="connect"||v==="accounts"||v==="home"||v==="trade")) v="access";
+  VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
   const inApp=(v==="accounts"||v==="home"||v==="trade");
   ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
@@ -680,9 +718,40 @@ let DRY=true;
 let HAS_ACCOUNTS=false; // is any Deriv account connected? (drives the landing CTA)
 let _prevSpot=null, _lastRead=null;
 
+// ---------- paid access (membership) ----------
+async function checkAccess(){
+  try{
+    const a=await api("/access/status");
+    window.REQUIRE_ACCESS = !!a.require_access;
+    window.LICENSED = !a.require_access || !!a.licensed;   // open app when paywall off
+    // paint the offer
+    if(a.price_label){ var p=$("acc-price"); if(p)p.textContent=a.price_label; document.querySelectorAll(".acc-price2").forEach(function(e){e.textContent=a.price_label;}); }
+    if(a.days_per_membership){ var d=$("acc-days"); if(d)d.textContent=a.days_per_membership; }
+    var buy=$("acc-buy"); if(buy){ if(a.buy_url){ buy.href=a.buy_url; buy.style.display=""; } else { buy.style.display="none"; } }
+    // membership chip in the nav
+    var chip=$("nav-member");
+    if(chip){ if(a.licensed){ chip.hidden=false; chip.textContent="Member · "+a.days_left+"d left"; } else chip.hidden=true; }
+  }catch(_){ window.REQUIRE_ACCESS=false; window.LICENSED=true; }
+}
+(function(){ var b=$("acc-redeem"); if(b) b.addEventListener("click", redeemCode);
+  var i=$("acc-code"); if(i) i.addEventListener("keydown",function(e){ if(e.key==="Enter") redeemCode(); }); })();
+async function redeemCode(){
+  var code=($("acc-code")||{}).value||"", msg=$("acc-msg");
+  if(!code.trim()){ if(msg)msg.innerHTML='<span style="color:var(--bad)">Enter your access code.</span>'; return; }
+  if(msg) msg.textContent="checking…";
+  try{
+    var r=await api("/access/redeem",{method:"POST",body:JSON.stringify({code:code})});
+    window.LICENSED=true;
+    if(msg) msg.innerHTML='<span style="color:var(--good)">✓ Unlocked — '+(r.days_left||"")+' days. Loading your desk…</span>';
+    await checkAccess();
+    setTimeout(function(){ HAS_ACCOUNTS ? (CUR?enterApp():showView("accounts")) : showView("connect"); }, 700);
+  }catch(e){ if(msg) msg.innerHTML='<span style="color:var(--bad)">'+esc(e.message||"invalid code")+'</span>'; }
+}
+
 // ---------- boot ----------
 async function boot(){
   spawnMoney();
+  await checkAccess();
   try{ const h=await api("/health"); DRY=h.dry_run; if(!h.encryption_configured) showEncSetup();
        const rl=$("ref-link"); if(rl&&h.referral_url) rl.href=h.referral_url; }catch(_){}
   // Handle the return trip from Deriv OAuth (/oauth/callback redirects here).
