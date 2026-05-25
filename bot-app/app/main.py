@@ -78,6 +78,13 @@ def home(request: Request) -> FileResponse:
     return resp
 
 
+@app.get("/owner", include_in_schema=False)
+def owner_page() -> FileResponse:
+    """Owner console to mint/copy membership codes (guarded by ADMIN_KEY on the
+    API calls it makes; the page itself holds no secret)."""
+    return FileResponse(Path(__file__).parent / "web" / "owner.html", media_type="text/html")
+
+
 # ---------------------------------------------------------------------------
 # Paid access (membership paywall) — honest model: pay for the TOOLS.
 # ---------------------------------------------------------------------------
@@ -141,6 +148,69 @@ def admin_mint(body: MintLicenses, request: Request) -> dict:
 def admin_list(request: Request) -> list[dict]:
     _require_admin(request)
     return get_store().list_licenses()
+
+
+def _verify_stripe_sig(payload: bytes, sig_header: str, secret: str, tolerance: int = 300) -> bool:
+    """Verify a Stripe webhook signature with stdlib only (no `stripe` dep).
+    Header form: 't=<ts>,v1=<hmac>,v1=<hmac>'. Valid if any v1 matches."""
+    import hmac, hashlib, time
+    if not sig_header or not secret:
+        return False
+    try:
+        ts = None
+        sigs = []
+        for part in sig_header.split(","):
+            k, _, v = part.partition("=")
+            if k.strip() == "t":
+                ts = v.strip()
+            elif k.strip() == "v1":
+                sigs.append(v.strip())
+        if not ts or not sigs:
+            return False
+        if tolerance and abs(time.time() - int(ts)) > tolerance:
+            return False
+        expected = hmac.new(secret.encode(), f"{ts}.".encode() + payload,
+                            hashlib.sha256).hexdigest()
+        return any(hmac.compare_digest(expected, s) for s in sigs)
+    except Exception:
+        return False
+
+
+@app.post("/webhooks/stripe", include_in_schema=False)
+async def stripe_webhook(request: Request) -> dict:
+    """Stripe calls this when a payment completes. We verify the signature, then
+    mint ONE membership code tied to the checkout session (idempotent), which the
+    buyer's success page picks up via /access/code. Needs STRIPE_WEBHOOK_SECRET."""
+    secret = get_settings().stripe_webhook_secret
+    if not secret:
+        raise HTTPException(503, "stripe webhook not configured")
+    payload = await request.body()
+    if not _verify_stripe_sig(payload, request.headers.get("Stripe-Signature", ""), secret):
+        raise HTTPException(400, "bad signature")
+    import json as _json
+    try:
+        event = _json.loads(payload)
+    except Exception:
+        raise HTTPException(400, "bad payload")
+    if event.get("type") in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
+        obj = (event.get("data") or {}).get("object") or {}
+        sid = obj.get("id")
+        paid = obj.get("payment_status") in ("paid", "no_payment_required") or obj.get("status") == "complete"
+        if sid and paid:
+            code = get_store().mint_for_ref(f"stripe:{sid}", get_settings().access_days)
+            return {"ok": True, "code_issued": True, "code": code}
+    return {"ok": True, "code_issued": False}
+
+
+@app.get("/access/code")
+def access_code(session_id: str) -> dict:
+    """The buyer's success page calls this with the Stripe checkout session id to
+    fetch the code minted for their payment. (The session id is the buyer's own
+    one-time token, so it's the proof of purchase.)"""
+    lic = get_store().license_by_note(f"stripe:{session_id}")
+    if not lic:
+        return {"ready": False}
+    return {"ready": True, "code": lic["code"]}
 
 
 @app.get("/robots.txt", include_in_schema=False)

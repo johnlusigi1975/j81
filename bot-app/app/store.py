@@ -619,6 +619,21 @@ class BotStore:
         return {"licensed": True, "days_left": max(1, round(secs / 86400)),
                 "expires_at": exp.isoformat()}
 
+    def license_by_note(self, note: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT * FROM licenses WHERE note=? ORDER BY created_at DESC LIMIT 1",
+            (note,)).fetchone()
+        return dict(row) if row else None
+
+    def mint_for_ref(self, ref: str, days: int, note: str | None = None) -> str:
+        """Idempotently mint ONE code tied to an external ref (e.g. a Stripe
+        checkout session id). Re-calling for the same ref returns the same code
+        — so a retried webhook never issues duplicates."""
+        existing = self.license_by_note(ref)
+        if existing:
+            return existing["code"]
+        return self.create_licenses(1, days, note=note or ref)[0]
+
     def list_licenses(self, *, limit: int = 500) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             "SELECT * FROM licenses ORDER BY created_at DESC LIMIT ?",

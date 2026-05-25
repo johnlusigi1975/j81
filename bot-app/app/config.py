@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # Master switch: when False, the whole app is open (no paywall). Flip to
     # True (REQUIRE_ACCESS=true) to charge.
     require_access: bool = False
+    # Stripe webhook signing secret (whsec_…) — set in the dashboard to auto-issue
+    # a code when a payment completes. Blank disables the webhook.
+    stripe_webhook_secret: str = ""
 
 
 @lru_cache
