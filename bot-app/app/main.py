@@ -78,6 +78,59 @@ def home(request: Request) -> FileResponse:
     return resp
 
 
+@app.get("/robots.txt", include_in_schema=False)
+def robots() -> Response:
+    """Let search engines crawl the public app; keep API/OAuth paths out of the
+    index (they're not pages)."""
+    body = ("User-agent: *\n"
+            "Allow: /$\n"
+            "Disallow: /oauth/\n"
+            "Disallow: /accounts\n"
+            "Disallow: /trade/\n"
+            "Sitemap: https://j81-trade-desk.onrender.com/sitemap.xml\n")
+    return Response(body, media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap() -> Response:
+    body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            '  <url><loc>https://j81-trade-desk.onrender.com/</loc>'
+            '<changefreq>weekly</changefreq><priority>1.0</priority></url>\n'
+            '</urlset>\n')
+    return Response(body, media_type="application/xml")
+
+
+@app.get("/og-image.svg", include_in_schema=False)
+def og_image() -> Response:
+    """Branded 1200×630 link-preview card (SVG — self-contained, no binary asset).
+    Rendered by Slack/Discord/LinkedIn; X/Facebook may fall back to text."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">'
+        '<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0" stop-color="#090d16"/><stop offset="1" stop-color="#0d1424"/></linearGradient>'
+        '<linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">'
+        '<stop offset="0" stop-color="#ffeaa6"/><stop offset="1" stop-color="#d39f2c"/></linearGradient></defs>'
+        '<rect width="1200" height="630" fill="url(#bg)"/>'
+        '<rect x="64" y="64" width="120" height="120" rx="28" fill="#080709"/>'
+        '<text x="124" y="148" font-family="Georgia,serif" font-size="56" font-weight="800" '
+        'text-anchor="middle" fill="#f0c64a">J81</text>'
+        '<text x="220" y="150" font-family="Georgia,serif" font-size="64" font-weight="800" '
+        'fill="url(#gold)">Trade Desk</text>'
+        '<text x="66" y="330" font-family="Helvetica,Arial,sans-serif" font-size="52" font-weight="700" '
+        'fill="#eef3fb">AI-assisted trading on Deriv</text>'
+        '<text x="66" y="398" font-family="Helvetica,Arial,sans-serif" font-size="30" '
+        'fill="#9fb6c5">Live charts · one-tap connect · auto-trading · self-testing strategy engine</text>'
+        '<rect x="66" y="470" width="320" height="64" rx="14" fill="url(#gold)"/>'
+        '<text x="226" y="512" font-family="Helvetica,Arial,sans-serif" font-size="28" font-weight="800" '
+        'text-anchor="middle" fill="#2a1f05">Connect with Deriv</text>'
+        '<text x="66" y="588" font-family="Helvetica,Arial,sans-serif" font-size="22" '
+        'fill="#6f7d8c">Trading carries risk · synthetics are an audited RNG with a house edge</text>'
+        '</svg>'
+    )
+    return Response(svg, media_type="image/svg+xml")
+
+
 @app.get("/health")
 def health() -> dict:
     s = get_settings()
