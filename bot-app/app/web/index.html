@@ -1098,7 +1098,7 @@ async function refreshLive(){
   }catch(_){}
 }
 // after a trade, poll a few times so the WON/LOST + new balance show as it settles
-function pollSettle(){ [800,3000,6000,10000,14000].forEach(ms=>setTimeout(()=>{ try{refreshLive();}catch(_){ } },ms)); }
+function pollSettle(){ [2500,8000,15000].forEach(ms=>setTimeout(()=>{ try{refreshLive();}catch(_){ } },ms)); }
 
 async function placeTrade(btn){
   if(!CUR){ showView("connect"); return; }

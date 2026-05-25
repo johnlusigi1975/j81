@@ -365,14 +365,27 @@ async def execute_manual_trade(
     return {**trade_intent, "trade_id": trade_id}
 
 
+_LAST_SETTLE: dict[str, float] = {}
+_SETTLE_THROTTLE = 6.0  # min seconds between real settle passes per account
+
+
 async def settle_pending_for_account(account_id: str) -> dict:
     """On-demand settlement for ONE account: poll Deriv for every live contract
     that hasn't settled and write back its outcome/profit. This is what lets the
     site reflect a win/loss within seconds of the contract expiring, instead of
     waiting for the next 2-minute trading-loop cycle. Safe to call repeatedly;
-    dry-run trades never enter the pending set. Returns a small summary."""
+    dry-run trades never enter the pending set. Returns a small summary.
+
+    Throttled per account (each pass hits Deriv's OTP endpoint, which is rate
+    limited) so the post-trade polling burst can't trigger a 429."""
     if get_settings().dry_run:
         return {"settled": 0, "pending": 0, "dry_run": True}
+    import time
+    now = time.monotonic()
+    last = _LAST_SETTLE.get(account_id, 0.0)
+    if now - last < _SETTLE_THROTTLE:
+        return {"settled": 0, "pending": 0, "throttled": True}
+    _LAST_SETTLE[account_id] = now
     store = get_store()
     acct = store.get_internal(account_id)
     if not acct:

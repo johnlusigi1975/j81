@@ -115,13 +115,28 @@ async def list_accounts(access_token: str, timeout: float = 20.0) -> list[dict]:
 async def request_otp_ws(access_token: str, loginid: str, timeout: float = 20.0) -> str:
     """Exchange the OAuth access token for a one-time OTP WebSocket URL bound to
     `loginid`. Returns the wss URL to connect to (it already encodes real/demo).
-    The token is sent as a Bearer header — never in the URL/logs."""
+    The token is sent as a Bearer header — never in the URL/logs.
+
+    Deriv rate-limits this endpoint (HTTP 429), so we retry a few times with
+    backoff before giving up — smooths over bursts (a trade + its settle polls)."""
     url = f"{_api_base()}/trading/v1/options/accounts/{loginid}/otp"
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.post(url, headers=_headers(access_token), json={})
+    data: dict = {}
+    delays = [0.0, 1.5, 3.0, 5.0]   # first try immediate, then back off
+    last_err = ""
+    for i, delay in enumerate(delays):
+        if delay:
+            await asyncio.sleep(delay)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.post(url, headers=_headers(access_token), json={})
+        if r.status_code == 429:           # rate-limited — wait and retry
+            last_err = f"HTTP 429 {r.text[:120]}"
+            continue
         if r.status_code >= 400:
             raise DerivBotError(f"OTP request failed: HTTP {r.status_code} {r.text[:160]}")
         data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        break
+    else:
+        raise DerivBotError(f"OTP request failed after retries: {last_err or 'rate limited'}")
     # Response envelope may nest under "data". Deriv returns the full ws url
     # (preferred), or an otp we assemble into one.
     inner = data.get("data") if isinstance(data.get("data"), dict) else data
