@@ -301,13 +301,11 @@ async def execute_manual_trade(
     if cap and todays >= cap:
         return {"outcome": "skipped", "reason": f"hit daily cap ({todays}/{cap})"}
 
-    stake = min(
-        float(stake or 0) or settings.default_max_stake_per_trade,
-        float(account.get("max_stake_per_trade") or settings.default_max_stake_per_trade),
-        settings.default_max_stake_per_trade,  # global defensive ceiling
-    )
-    if stake <= 0:
-        return {"outcome": "error", "error": "stake must be greater than 0"}
+    # Manual trade: the human typed this stake, so USE EXACTLY THAT amount —
+    # no global ceiling shrinking it. Only enforce Deriv's $0.35 minimum.
+    stake = round(float(stake or 0), 2)
+    if stake < 0.35:
+        return {"outcome": "error", "error": "minimum stake is $0.35"}
 
     trade_intent = {
         "account_id": account["id"],
