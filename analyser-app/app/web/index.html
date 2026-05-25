@@ -245,6 +245,33 @@
     <div id="cy-top"><div class="faint" style="color:var(--text-faint)">no cycle has run yet</div></div>
   </section>
 
+  <!-- CALCULATOR --------------------------------------------------------- -->
+  <section class="card" id="calc-card" style="grid-column:1/-1">
+    <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h0M12 11h0M15 11h0M9 15h0M12 15h0M15 15h0"/></svg></span> Calculator <span style="font-weight:400;font-size:12px;color:var(--text-faint);margin-left:6px">shared fast math engine · honest trading math</span></h2>
+    <p class="lede">Any arithmetic (with math + trading functions like <code>ev()</code>, <code>kelly()</code>, <code>breakeven()</code>), plus a pre-trade breakdown. EV / break-even deliberately show Deriv's house edge — they don't hide it.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+      <div>
+        <div style="font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Expression</div>
+        <div style="display:flex;gap:8px">
+          <input id="calc-expr" value="ev(0.485, 1.95)" style="flex:1;padding:9px 11px;border-radius:9px;background:rgba(0,0,0,.35);color:inherit;border:1px solid rgba(255,255,255,.14);font-family:monospace">
+          <button id="calc-go" style="padding:9px 16px;border-radius:9px;border:0;background:#a78bfa;color:#10071f;font-weight:700;cursor:pointer">=</button>
+        </div>
+        <div id="calc-res" style="margin-top:10px;font-family:monospace;font-size:18px;font-weight:800">—</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Pre-trade math</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <label style="font-size:12px;color:var(--text-faint)">Stake <input id="calc-stake" type="number" value="10" style="width:70px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.35);color:inherit;border:1px solid rgba(255,255,255,.14)"></label>
+          <label style="font-size:12px;color:var(--text-faint)">Payout× <input id="calc-payout" type="number" step="0.01" value="1.95" style="width:80px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.35);color:inherit;border:1px solid rgba(255,255,255,.14)"></label>
+          <label style="font-size:12px;color:var(--text-faint)">Win% <input id="calc-win" type="number" value="50" style="width:70px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.35);color:inherit;border:1px solid rgba(255,255,255,.14)"></label>
+          <button id="calc-trade-go" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:transparent;color:inherit;cursor:pointer">Calc</button>
+        </div>
+        <div id="calc-trade-out" class="faint" style="font-size:12.5px;color:var(--text-faint)">enter your numbers</div>
+      </div>
+    </div>
+  </section>
+
   <!-- TOTALS ------------------------------------------------------------- -->
   <section class="card span-4">
     <h2><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><rect x="6" y="11" width="3" height="8"/><rect x="11" y="6" width="3" height="13"/><rect x="16" y="14" width="3" height="5"/></svg></span> Stats</h2>
@@ -1077,6 +1104,37 @@ setInterval(refresh, 30000);
     finally{ rb.disabled=false; rb.textContent=o; }
   });
   poll(); setInterval(poll, 15000);
+})();
+</script>
+<script>
+/* Calculator — POST /calc/eval and GET /calc/trade. */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var esc=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]);});};
+  async function go(){
+    var expr=($("calc-expr")||{}).value||""; var out=$("calc-res"); if(!out) return;
+    try{ var r=await fetch("/calc/eval",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({expr:expr})});
+      var b=await r.json(); if(!r.ok) throw new Error(b.detail||"error");
+      out.textContent="= "+(typeof b.result==="number"?(+b.result).toLocaleString(undefined,{maximumFractionDigits:6}):b.result); out.style.color="var(--text)";
+    }catch(e){ out.textContent=esc(e.message); out.style.color="var(--bad)"; }
+  }
+  async function tradeCalc(){
+    var s=($("calc-stake")||{}).value||"1", p=($("calc-payout")||{}).value||"1.95", w=(($("calc-win")||{}).value||"50")/100;
+    var out=$("calc-trade-out"); if(!out) return;
+    try{ var d=await fetch("/calc/trade?stake="+s+"&payout="+p+"&win_prob="+w).then(function(r){return r.json();});
+      var evc=Number(d.expected_value)>=0?'var(--good)':'var(--bad)';
+      out.innerHTML=
+        'EV/contract: <b style="color:'+evc+'">'+(d.expected_value>=0?'+':'')+Number(d.expected_value).toFixed(4)+'</b> · '+
+        'break-even win-rate: <b>'+d.break_even_pct+'%</b> · '+
+        'your edge: <b style="color:'+(d.edge>=0?'var(--good)':'var(--bad)')+'">'+(d.edge>=0?'+':'')+d.edge_pct+'%</b><br>'+
+        'Kelly stake: <b>'+d.kelly_stake_pct+'%</b> of bankroll · risk of ruin (20u): <b>'+Math.round(Number(d.risk_of_ruin_20u)*100)+'%</b><br>'+
+        '<b style="color:'+(d.expected_value>=0?'var(--good)':'var(--bad)')+'">'+esc(d.verdict)+'</b>';
+    }catch(e){ out.textContent="error"; }
+  }
+  if($("calc-go")) $("calc-go").addEventListener("click",go);
+  if($("calc-expr")) $("calc-expr").addEventListener("keydown",function(e){ if(e.key==="Enter") go(); });
+  if($("calc-trade-go")) $("calc-trade-go").addEventListener("click",tradeCalc);
+  tradeCalc();
 })();
 </script>
 </body>

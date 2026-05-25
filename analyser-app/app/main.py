@@ -389,6 +389,36 @@ def lab_reset() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Calculator — the shared fast math engine the systems call when they need
+# numbers (EV, break-even, Kelly, risk-of-ruin) or any safe arithmetic.
+# ---------------------------------------------------------------------------
+
+
+class CalcEval(BaseModel):
+    expr: str
+    vars: dict | None = None
+
+
+@app.post("/calc/eval")
+def calc_eval(body: CalcEval) -> dict:
+    """Evaluate one arithmetic expression safely (math + trading helpers)."""
+    from app import calc
+    try:
+        return {"expr": body.expr, "result": calc.safe_eval(body.expr, body.vars)}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.get("/calc/trade")
+def calc_trade(stake: float = 1.0, payout: float = 1.95, win_prob: float = 0.5) -> dict:
+    """Full pre-trade math: EV, break-even win-rate, edge, Kelly stake, verdict."""
+    from app import calc
+    out = calc.trade_summary(stake=stake, payout=payout, win_prob=win_prob)
+    out["risk_of_ruin_20u"] = calc.risk_of_ruin(win_prob, payout, 20)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Strategy cycle — backtest→prove(70%×100×5 + EV)→push to bot→auto-clear (30 min)
 # ---------------------------------------------------------------------------
 
