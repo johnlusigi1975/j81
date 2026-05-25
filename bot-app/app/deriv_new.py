@@ -206,10 +206,17 @@ async def proposal(ws_url: str, *, symbol, trade_type, direction, prediction,
 
 
 async def buy(ws_url: str, *, symbol, trade_type, direction, prediction,
-              duration, duration_unit, stake, currency="USD", timeout: float = 20.0) -> dict:
+              duration, duration_unit, stake, currency="USD", timeout: float = 20.0,
+              settle_wait: float = 0.0) -> dict:
     """Place one contract on the new Options API: PROPOSAL then BUY-by-id, on a
     single OTP-authenticated socket (the new API expects a proposal id, and the
-    OTP authenticates only this one connection — so both must share it)."""
+    OTP authenticates only this one connection — so both must share it).
+
+    If `settle_wait` > 0, after the buy we SUBSCRIBE to the contract on the SAME
+    socket and wait up to that many seconds for it to settle — so the result
+    (won/lost + profit) comes back in real time on the same connection, with NO
+    second OTP/WebSocket handshake. The settled outcome is attached as
+    `_settled`; if it doesn't settle in time we just return the buy (pending)."""
     body = _trade_payload(symbol, trade_type, direction, prediction,
                           duration, duration_unit, stake, currency)
     params = _new_params(body)
@@ -233,12 +240,41 @@ async def buy(ws_url: str, *, symbol, trade_type, direction, prediction,
         if not pid:
             raise DerivBotError("Deriv returned no proposal id")
         await ws.send(json.dumps({"buy": pid, "price": ask if ask is not None else stake, "req_id": 2}))
+        bought = None
         for _ in range(25):
             m = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
             if "error" in m:
                 raise DerivBotError(m["error"].get("message", "buy failed"))
             if m.get("msg_type") == "buy":
-                return m.get("buy") or {}
+                bought = m.get("buy") or {}
+                break
+        if bought is None:
+            raise DerivBotError("no buy confirmation from Deriv")
+        # FAST settlement: watch this contract live on the same socket.
+        cid = bought.get("contract_id")
+        if cid and settle_wait > 0:
+            try:
+                await ws.send(json.dumps({"proposal_open_contract": 1,
+                                          "contract_id": cid, "subscribe": 1, "req_id": 3}))
+                loop = asyncio.get_event_loop()
+                end = loop.time() + settle_wait
+                while loop.time() < end:
+                    rem = end - loop.time()
+                    if rem <= 0:
+                        break
+                    m = json.loads(await asyncio.wait_for(ws.recv(), timeout=min(timeout, rem)))
+                    if m.get("msg_type") == "proposal_open_contract":
+                        poc = m.get("proposal_open_contract") or {}
+                        if str(poc.get("contract_id")) == str(cid) and poc.get("is_sold"):
+                            bought["_settled"] = {
+                                "is_sold": True, "status": poc.get("status"),
+                                "profit": _to_float(poc.get("profit")),
+                                "payout": _to_float(poc.get("payout")),
+                                "app_markup_amount": _to_float(poc.get("app_markup_amount"))}
+                            break
+            except Exception:
+                pass  # settle watch is best-effort; fall back to pending + poll
+        return bought
     raise DerivBotError("no buy confirmation from Deriv")
 
 

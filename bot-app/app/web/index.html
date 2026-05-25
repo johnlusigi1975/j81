@@ -1119,10 +1119,13 @@ async function placeTrade(btn){
   if(tt==="over_under" && body.direction==="under" && SELDIGIT===0){ res.innerHTML='<div class="banner warn" style="margin:0">Pick a digit 1–9 for UNDER (nothing is under 0).</div>'; return; }
   res.innerHTML='<div class="banner warn" style="margin:0">placing '+esc(call)+'…</div>'; btn.disabled=true;
   try{
-    const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body)});
+    const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body),timeout:25000});
     const pay=(typeof r.payout==="number")?("$"+r.payout.toFixed(2)):"—";
+    const prof=(typeof r.profit==="number")?((r.profit>=0?'+$':'-$')+Math.abs(r.profit).toFixed(2)):'';
     if(r.outcome==="dry_run"){ res.innerHTML='<div class="banner warn" style="margin:0">✓ Practice '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · no real money (DRY_RUN)</div>'; pollSettle(); }
-    else if(r.outcome==="pending"){ res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · stake $'+Number(body.stake).toFixed(2)+' · result appears below as it settles ↓</div>'; pollSettle(); }
+    else if(r.outcome==="won"){ res.innerHTML='<div class="banner ok" style="margin:0">🎉 WON '+esc(call)+' on '+esc(body.symbol)+' · <b>'+prof+'</b></div>'; refreshLive(); }
+    else if(r.outcome==="lost"){ res.innerHTML='<div class="banner bad" style="margin:0">✗ LOST '+esc(call)+' on '+esc(body.symbol)+' · <b>'+prof+'</b></div>'; refreshLive(); }
+    else if(r.outcome==="pending"||r.outcome==="settled"){ res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · stake $'+Number(body.stake).toFixed(2)+' · result appears below as it settles ↓</div>'; pollSettle(); }
     else res.innerHTML='<div class="banner warn" style="margin:0">Couldn’t trade: '+esc(r.reason||r.error||"unknown")+'</div>';
   }catch(e){ res.innerHTML='<div class="banner bad" style="margin:0">Error: '+esc(e.message)+'</div>'; }
   finally{ btn.disabled=false; }

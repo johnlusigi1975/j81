@@ -85,17 +85,19 @@ def goal_status(account: dict) -> tuple[bool, str | None]:
 # ---------- platform-aware execution (legacy WS vs new OTP-WS) -----------
 
 
-async def _live_buy(account: dict, token: str, **p) -> dict:
+async def _live_buy(account: dict, token: str, settle_wait: float = 0.0, **p) -> dict:
     """Place ONE real contract on whichever Deriv platform the account is on:
       * legacy → authorize + buy on the classic WS (place_contract)
       * new    → request a one-time OTP socket, then buy on it (deriv_new),
                  auto-refreshing the OAuth token if it has expired.
-    Returns the `buy` dict (contract_id, payout, buy_price)."""
+    `settle_wait` (new platform) watches the contract on the SAME socket so the
+    result comes back fast without a second connection. Returns the `buy` dict
+    (contract_id, payout, buy_price, and `_settled` if it settled in time)."""
     if (account.get("platform") or "legacy").lower() == "new":
         from app import deriv_new, tokens
         async def _do(tk):
             ws_url = await deriv_new.request_otp_ws(tk, account["deriv_account_id"])
-            return await deriv_new.buy(ws_url, **p)
+            return await deriv_new.buy(ws_url, settle_wait=settle_wait, **p)
         return await tokens.with_fresh_token(account["id"], _do)
     return await place_contract(deriv_token=token, **p)
 
@@ -340,9 +342,12 @@ async def execute_manual_trade(
         store.record_trade(trade_intent)
         return trade_intent
     try:
+        # Watch the contract live on the buy socket so the result is fast — cap
+        # the wait so the HTTP call stays snappy (longer ticks fall back to poll).
+        settle_wait = min(int(trade_intent["duration"]) * 3 + 3, 12)
         buy = await _live_buy(
-            account, token, symbol=symbol, trade_type=tt, direction=direction,
-            prediction=prediction, duration=trade_intent["duration"],
+            account, token, settle_wait=settle_wait, symbol=symbol, trade_type=tt,
+            direction=direction, prediction=prediction, duration=trade_intent["duration"],
             duration_unit=trade_intent["duration_unit"], stake=stake,
         )
     except DerivBotError as exc:
@@ -362,6 +367,15 @@ async def execute_manual_trade(
     if bp is not None:
         trade_intent["buy_price"] = bp
     trade_id = store.record_trade(trade_intent)
+    # If it settled while we watched, persist + return the final result NOW so the
+    # site shows won/lost instantly — no waiting for the poll.
+    settled = buy.get("_settled") if isinstance(buy, dict) else None
+    if settled and settled.get("is_sold"):
+        outcome = settled.get("status") or "settled"
+        store.settle_trade(trade_id, outcome=outcome, profit=settled.get("profit"),
+                           markup_earned=settled.get("app_markup_amount"))
+        return {**trade_intent, "trade_id": trade_id, "outcome": outcome,
+                "profit": settled.get("profit")}
     return {**trade_intent, "trade_id": trade_id}
 
 
