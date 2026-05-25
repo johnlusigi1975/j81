@@ -609,6 +609,9 @@ async function api(p,opts={}){
     let b=null;try{b=await r.json()}catch(_){ }
     if(!r.ok) throw new Error((b&&(b.detail||b.error))||("HTTP "+r.status));
     return b;
+  } catch(e){
+    if(e&&(e.name==="AbortError"||/abort/i.test(String(e&&e.message)))) throw new Error("timed out");
+    throw e;
   } finally { clearTimeout(to); }
 }
 const $=id=>document.getElementById(id);
@@ -1162,7 +1165,11 @@ async function placeTrade(btn){
     else if(r.outcome==="lost"){ res.innerHTML='<div class="banner bad" style="margin:0">✗ LOST '+esc(call)+' on '+esc(body.symbol)+' · <b>'+prof+'</b></div>'; refreshLive(); }
     else if(r.outcome==="pending"||r.outcome==="settled"){ res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · result appears below as it settles ↓</div>'; pollSettle(); }
     else res.innerHTML='<div class="banner warn" style="margin:0">Couldn’t trade: '+esc(r.reason||r.error||"unknown")+'</div>';
-  }).catch(e=>{ res.innerHTML='<div class="banner bad" style="margin:0">Error: '+esc(e.message)+'</div>'; });
+  }).catch(e=>{
+    const m=String(e&&e.message||e);
+    if(/timed out|abort/i.test(m)){ res.innerHTML='<div class="banner live" style="margin:0">✓ sent '+esc(call)+' — confirming; result appears below ↓</div>'; pollSettle(); }
+    else res.innerHTML='<div class="banner bad" style="margin:0">Couldn’t place: '+esc(m)+'</div>';
+  });
 }
 
 async function loadAssistant(){
