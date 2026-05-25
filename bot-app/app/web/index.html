@@ -52,7 +52,7 @@
   .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
 
   /* nav */
-  .nav{position:sticky;top:0;z-index:20;background:rgba(3,7,18,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)}
+  .nav{position:sticky;top:0;z-index:20;background:rgba(6,10,20,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--bd)}
   .nav-in{max-width:1080px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:14px}
   .brand{display:flex;align-items:center;gap:9px;font-weight:800}
   .brand .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#fff0c2,#f0c64a 55%,#b9851f);color:#1a1505;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 0 18px rgba(240,200,90,.4)}
@@ -97,7 +97,10 @@
   .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--bd2);box-shadow:none}
   .btn.big{padding:14px 22px;font-size:16px;width:100%}
   .btn:disabled{opacity:.5;cursor:not-allowed}
-  .glass{background:var(--panel);border:1px solid var(--bd);border-radius:18px;padding:22px;backdrop-filter:blur(14px);box-shadow:0 30px 70px -34px rgba(0,0,0,.8)}
+  /* no backdrop-filter here — a large blurred surface repaints every scroll
+     frame on mobile (the cause of the laggy chart + "reloading" feel). The
+     panel tint over the dark bg looks the same without the GPU cost. */
+  .glass{background:#0b111e;border:1px solid var(--bd);border-radius:18px;padding:22px;box-shadow:0 30px 70px -34px rgba(0,0,0,.8)}
   .lede{color:var(--dim);font-size:14px} .faint{color:var(--faint)}
   input,select{font-family:inherit;font-size:14px;color:var(--text);background:rgba(0,0,0,.4);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;transition:border-color .15s,box-shadow .15s}
   input:focus,select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(240,200,90,.20)}
@@ -472,8 +475,8 @@
       <div class="spot" id="term-spot"><small>spot price</small>—</div>
     </div>
 
-    <!-- live Deriv balance, right where you trade -->
-    <div id="balbar" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:11px 15px;border-radius:13px;background:linear-gradient(135deg,rgba(54,214,200,.14),rgba(240,200,90,.05));border:1px solid var(--bd)">
+    <!-- live Deriv balance — STICKY so it stays in view while you trade/scroll -->
+    <div id="balbar" style="position:sticky;top:54px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:12px 16px;border-radius:13px;background:linear-gradient(135deg,rgba(54,214,200,.16),rgba(240,200,90,.06)),#0c1422;border:1px solid var(--bd2);box-shadow:0 10px 30px -16px rgba(0,0,0,.9)">
       <span class="lab" style="font-size:11px;letter-spacing:.08em">Your Deriv balance <span class="faint" id="trade-bal-kind" style="letter-spacing:0"></span></span>
       <b id="trade-bal-top" style="font-family:var(--mono);font-size:21px;font-weight:800">—</b>
     </div>
@@ -1000,7 +1003,7 @@ const RFScan=(function(){
       : `Top so far: ${up?'RISE':'FALL'} on <b>${esc(top.name)}</b> (${top.s.upPct}% up) · <a href="#" onclick="RFScan.useTop();return false">open it →</a>`;
   }
   return {
-    start(){ if(on)return; on=true; buf={}; openWs(); timer=setInterval(render,1000); render(); },
+    start(){ if(on)return; on=true; buf={}; openWs(); timer=setInterval(render,2000); render(); },
     stop(){ on=false; if(timer)clearInterval(timer); timer=null; if(ws){ try{ws.send(JSON.stringify({forget_all:["ticks"]}))}catch(_){} try{ws.close()}catch(_){} } ws=null; },
     useTop(){ const t=window._rfTop; if(t){ const sel=$("t-symbol"); if(sel){ sel.value=t.code; sel.dispatchEvent(new Event('change')); } } }
   };
