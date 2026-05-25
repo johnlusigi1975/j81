@@ -264,6 +264,8 @@
   .dbar .bar{width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#ffe49a,#cf9e2a);min-height:2px;transition:height .3s}
   .dbar .col.odd .bar{background:linear-gradient(180deg,#eef0f5,#8c93a1)}
   .dbar .d{font-size:11px;font-weight:800} .dbar .n{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+  .dbar .col.hot .bar{background:linear-gradient(180deg,#6ff0a8,#12c46a);box-shadow:0 0 10px -2px rgba(45,220,130,.6)}
+  .dbar .col.hot .d{color:var(--good)} .dbar .col.cold .bar{background:linear-gradient(180deg,#ff9aac,#e23a52)} .dbar .col.cold .d{color:var(--bad)}
   .backbtn{font-family:inherit;font-size:13px;color:var(--dim);background:transparent;border:none;cursor:pointer;padding:0;margin-bottom:14px}
   .backbtn:hover{color:var(--text)}
   footer{max-width:1080px;margin:0 auto;padding:24px 22px 50px;color:var(--faint);font-size:12px;border-top:1px solid var(--bd)}
@@ -532,6 +534,10 @@
         <div class="faint" id="live-evenodd" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
       <div class="dbar" id="live-digits"></div>
+      <!-- EVEN/ODD deeper read — multi-window bias, streak, randomness, hot/cold -->
+      <div id="eo-read" hidden style="margin-top:12px"></div>
+      <!-- the one real edge: best-payout market -->
+      <div id="eo-payout" hidden style="margin-top:10px"></div>
     </div>
 
     <!-- digit picker (Over/Under, Matches/Differs only) -->
@@ -880,6 +886,60 @@ function renderDeepRead(prices, vol, P, streak, sdir){
     '<div class="faint" style="font-size:10.5px;margin-top:6px">'+esc(_deepReadMsg(w10,w30,streak,sdir,volLab))+'</div>';
 }
 
+// ---------- Even/Odd deeper read (honest: digit observations, not a prediction) ----------
+function _eoChip(lab,val,col){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:54px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:'+(col||'var(--text)')+'">'+val+'</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">'+lab+'</span></span>'; }
+function _evenPct(arr){ if(!arr.length) return 50; var e=0; for(var i=0;i<arr.length;i++) if(arr[i]%2===0)e++; return Math.round(e/arr.length*100); }
+function renderEvenOddRead(digits){
+  var el=$("eo-read"); if(!el) return;
+  if(GAME!=="even_odd"){ el.hidden=true; return; }
+  el.hidden=false;
+  var n=digits.length; if(n<12){ el.innerHTML='<div class="faint" style="font-size:11px">collecting ticks…</div>'; return; }
+  var last=digits.slice(-100), nn=last.length;
+  var ev=0; for(var i=0;i<nn;i++) if(last[i]%2===0)ev++; var od=nn-ev;
+  var e20=_evenPct(digits.slice(-20)), e50=_evenPct(digits.slice(-50)), e100=_evenPct(last);
+  // current parity streak + longest run in the sample
+  var lp=last[nn-1]%2, sl=1; for(var i=nn-2;i>=0;i--){ if(last[i]%2===lp)sl++; else break; }
+  var maxRun=1,cur=1; for(var i=1;i<nn;i++){ if(last[i]%2===last[i-1]%2){cur++; if(cur>maxRun)maxRun=cur;} else cur=1; }
+  // randomness checks: even/odd z + chi-square across the 10 digits (df=9, 16.92 ≈ p.05)
+  var z=(2*ev-nn)/Math.sqrt(nn);
+  var freq=[0,0,0,0,0,0,0,0,0,0]; for(var i=0;i<nn;i++) freq[last[i]]++; var exp=nn/10, chi=0;
+  for(var d=0;d<10;d++){ chi+=(freq[d]-exp)*(freq[d]-exp)/exp; }
+  var fair = Math.abs(z)<2 && chi<16.92;
+  var ec=function(v){ return v>=55?'var(--good)':v<=45?'var(--bad)':'var(--faint)'; };
+  el.innerHTML=
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+      '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:70px;padding:6px 10px;border:1px solid var(--bd2);border-radius:10px"><b style="font-size:15px">'+e100+'% / '+(100-e100)+'%</b><span style="font-size:9px;color:var(--faint);letter-spacing:.04em">EVEN / ODD (100)</span></span>'+
+      _eoChip('20t even',e20+'%',ec(e20))+_eoChip('50t even',e50+'%',ec(e50))+
+      _eoChip('streak',sl+(lp===0?' E':' O'),lp===0?'var(--good)':'var(--bad)')+
+      _eoChip('longest',maxRun,'var(--amber)')+
+      _eoChip('even/odd z',(z>=0?'+':'')+z.toFixed(1),Math.abs(z)>=2?'var(--amber)':'var(--faint)')+
+      _eoChip('randomness',fair?'fair':'skewed',fair?'var(--good)':'var(--amber)')+
+    '</div>'+
+    '<div class="faint" style="font-size:10.5px;margin-top:6px">'+esc(_eoReadMsg(e20,e50,e100,sl,lp,fair,chi))+'</div>';
+}
+function _eoReadMsg(e20,e50,e100,streak,lp,fair,chi){
+  var side=lp===0?'even':'odd';
+  var lean = (e20>=58&&e50>=54)?'recent EVEN lean' : (e20<=42&&e50<=46)?'recent ODD lean' : (e20>=58)?'very-recent even burst' : (e20<=42)?'very-recent odd burst' : 'balanced ~50/50';
+  var note = fair ? 'distribution looks fair (RNG) — no real edge'
+                  : 'distribution is skewed right now (χ²='+chi.toFixed(1)+') — likely noise, not a signal';
+  return 'Read: '+lean+'; '+streak+' '+side+' in a row. '+note+'. Digits are an audited 50/50 RNG — use this to read, not predict.';
+}
+// The ONE genuine Even/Odd edge: trade the highest-PAYOUT market.
+async function loadEvenOddPayouts(){
+  var el=$("eo-payout"); if(!el) return;
+  if(GAME!=="even_odd"){ el.hidden=true; return; }
+  el.hidden=false; el.innerHTML='<div class="faint" style="font-size:11px">finding the best-payout market…</div>';
+  try{
+    var d=await api("/even_odd/payouts"); var best=d.best; if(!best){ el.hidden=true; return; }
+    var cur=($("t-symbol")||{}).value, isBest=best.symbol===cur;
+    el.innerHTML='<div style="font-size:12px;padding:9px 12px;border:1px solid var(--bd2);border-radius:10px;background:linear-gradient(135deg,rgba(54,214,200,.10),rgba(240,200,90,.04))">'+
+      '💰 Best Even/Odd payout right now: <b>'+esc(best.name||best.symbol)+'</b> at <b>'+Number(best.payout_pct).toFixed(1)+'%</b>'+
+      (isBest?' — <span style="color:var(--good)">you\'re on it ✓</span>':' <a href="#" id="eo-switch" style="color:var(--amber)">switch to it →</a>')+
+      '<div class="faint" style="font-size:10px;margin-top:3px">This is the only real edge on Even/Odd: same 50/50 odds everywhere, but a higher payout loses you less to the house.</div></div>';
+    var sw=$("eo-switch"); if(sw) sw.addEventListener("click",function(e){ e.preventDefault(); var sel=$("t-symbol"); if(sel){ sel.value=best.symbol; sel.dispatchEvent(new Event("change")); } });
+  }catch(_){ el.hidden=true; }
+}
+
 // ---------- LIVE market (browser → Deriv public Options WS, no auth) ----------
 // Confirmed: wss://api.derivws.com/trading/v1/options/ws/public streams ticks +
 // active_symbols with no token. We use it to drive a live spot price + live
@@ -908,7 +968,7 @@ const LiveWS=(function(){
     const q=t.quote; if(q==null) return;
     const s=Number(q).toFixed(pip), d=+s[s.length-1];
     const sp=$("term-spot"); if(sp){ sp.innerHTML='<small>spot price</small>'+s; sp.classList.remove("up","down"); if(lastQ!=null&&q!==lastQ) sp.classList.add(q>lastQ?"up":"down"); }
-    lastQ=q; digits.push(d); if(digits.length>50) digits.shift();
+    lastQ=q; digits.push(d); if(digits.length>240) digits.shift();   // keep enough for 100-tick windows
     prices.push(q); if(prices.length>140) prices.shift();
     render();
   }
@@ -916,9 +976,11 @@ const LiveWS=(function(){
     if(GAME==="rise_fall"){ renderChart(); return; }   // price chart instead of digit bars
     const el=$("live-digits"); if(!el) return;
     const n=digits.length, cnt=Array(10).fill(0); digits.forEach(x=>cnt[x]++);
-    const mx=Math.max(1,...cnt);
+    const mx=Math.max(1,...cnt), mn=Math.min(...cnt);
     el.innerHTML=cnt.map((c,d)=>{ const h=Math.round(c/mx*46)+2, pc=n?Math.round(c/n*100):0;
-      return `<div class="col ${d%2?'odd':''}"><div class="bar" style="height:${h}px"></div><div class="d">${d}</div><div class="n">${pc}%</div></div>`; }).join("");
+      const hot=n>=20&&c===mx?' hot':'', cold=n>=20&&c===mn?' cold':'';   // most/least frequent
+      return `<div class="col ${d%2?'odd':''}${hot}${cold}"><div class="bar" style="height:${h}px"></div><div class="d">${d}</div><div class="n">${pc}%</div></div>`; }).join("");
+    if(GAME==="even_odd") renderEvenOddRead(digits);
     const ev=digits.filter(x=>x%2===0).length;
     const z = n ? (2*ev-n)/Math.sqrt(n) : 0;     // how far the even/odd split is from fair
     let sl=0, side=""; if(n){ const lp=digits[n-1]%2; sl=1; for(let i=n-2;i>=0;i--){ if(digits[i]%2===lp) sl++; else break; } side=lp===0?"E":"O"; }
@@ -1083,6 +1145,11 @@ async function openTrade(game){
   $("live-panel").hidden = (game==="m_pro" || game==="rise_fall");
   $("rf-panel").hidden = (game!=="rise_fall");
   $("rf-scan-panel").hidden = (game!=="rise_fall");
+  // Even/Odd deeper read + best-payout edge (only on even_odd)
+  const isEO = (game==="even_odd");
+  if($("eo-read")) $("eo-read").hidden = !isEO;
+  if($("eo-payout")) $("eo-payout").hidden = !isEO;
+  if(isEO) loadEvenOddPayouts();
   $("trade-buttons").className = "tgrid" + (game==="rise_fall" ? " compact" : "");
   if(game==="rise_fall") RFScan.start(); else RFScan.stop();
   $("t-symbol").disabled = (game==="rise_fall" && window.AUTO_VOL!==false);   // auto-volatility controls the market

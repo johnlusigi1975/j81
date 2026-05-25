@@ -22,16 +22,17 @@ from simpleeval import EvalWithCompoundTypes
 
 # ----------------------------------------------------------------- trading math
 def ev(win_prob: float, payout: float, stake: float = 1.0) -> float:
-    """Expected value of one contract. `payout` is the TOTAL returned on a win
-    for `stake` (e.g. 1.95 → you get 1.95 back, i.e. +0.95 profit). Win profit =
-    payout-stake; a loss costs the stake."""
+    """Expected value of one contract. `payout` is the MULTIPLIER per unit stake
+    (e.g. 1.95 → a win returns 1.95× your stake, i.e. +0.95× profit). Win profit =
+    stake*(payout-1); a loss costs the stake."""
     p = max(0.0, min(1.0, win_prob))
-    return round(p * (payout - stake) - (1 - p) * stake, 6)
+    return round(p * stake * (payout - 1.0) - (1 - p) * stake, 6)
 
 
 def break_even_winrate(payout: float, stake: float = 1.0) -> float:
-    """Win-rate (0–1) where EV = 0. p*(payout-stake) = (1-p)*stake → p = stake/payout."""
-    return round(stake / payout, 6) if payout else 1.0
+    """Win-rate (0–1) where EV = 0. With payout as a multiplier: p*(payout-1) =
+    (1-p) → p = 1/payout (independent of stake)."""
+    return round(1.0 / payout, 6) if payout else 1.0
 
 
 def edge(win_prob: float, payout: float, stake: float = 1.0) -> float:
@@ -42,7 +43,7 @@ def edge(win_prob: float, payout: float, stake: float = 1.0) -> float:
 def kelly(win_prob: float, payout: float, stake: float = 1.0) -> float:
     """Kelly-optimal fraction of bankroll to stake. 0 when there's no edge
     (which, on RNG synthetics, is the usual answer). b = net odds."""
-    b = (payout - stake) / stake if stake else 0.0
+    b = payout - 1.0   # net odds per unit (payout is a multiplier)
     if b <= 0:
         return 0.0
     p = max(0.0, min(1.0, win_prob))
@@ -92,7 +93,7 @@ def trade_summary(stake: float = 1.0, payout: float = 1.95, win_prob: float = 0.
     be = break_even_winrate(payout, stake)
     return {
         "stake": stake, "payout": payout, "win_prob": win_prob,
-        "win_profit": round(payout - stake, 6),
+        "win_profit": round(stake * (payout - 1.0), 6),
         "expected_value": ev(win_prob, payout, stake),
         "break_even_winrate": be,
         "break_even_pct": round(be * 100, 2),

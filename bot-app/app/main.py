@@ -742,6 +742,22 @@ async def scan_proxy() -> dict:
         raise HTTPException(502, f"scanner unavailable (is the Analyser running?): {exc!r}")
 
 
+@app.get("/even_odd/payouts")
+async def even_odd_payouts_proxy(stake: float = 1.0, duration: int = 1) -> dict:
+    """Proxy the Analyser's live Even/Odd payout comparison across all markets —
+    the one genuine EV lever for Even/Odd is trading the highest-payout market."""
+    import httpx
+    url = (get_settings().analyser_url.rstrip("/") +
+           f"/even_odd/payouts?stake={stake}&duration={duration}")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as c:
+            r = await c.get(url)
+            r.raise_for_status()
+            return r.json()
+    except Exception as exc:
+        raise HTTPException(502, f"payout scan unavailable: {exc!r}")
+
+
 @app.get("/mpro/status")
 def mpro_status() -> dict:
     from app.mpro import engine
