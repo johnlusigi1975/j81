@@ -541,6 +541,8 @@
     </div>
 
     <!-- manual buttons (Rise/Fall, Even/Odd, Over/Under, Matches/Differs) -->
+    <!-- honest pre-trade math (payout · break-even · EV) -->
+    <div id="trade-math" style="margin-bottom:10px"></div>
     <div class="tgrid" id="trade-buttons"></div>
     <!-- result shows RIGHT under the buttons so a tap visibly does something -->
     <div id="t-result" style="margin-top:12px"></div>
@@ -1052,7 +1054,7 @@ let SELDIGIT=5;   // chosen digit for Over/Under + Matches/Differs
 function renderDigitPicker(game){
   const row=$("digit-row"); if(!row) return;
   row.innerHTML=[0,1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" class="digbtn ${n===SELDIGIT?'on':''}" data-dig="${n}">${n}</button>`).join("");
-  row.querySelectorAll(".digbtn").forEach(b=>b.addEventListener("click",()=>{ SELDIGIT=+b.dataset.dig; row.querySelectorAll(".digbtn").forEach(x=>x.classList.toggle("on",+x.dataset.dig===SELDIGIT)); }));
+  row.querySelectorAll(".digbtn").forEach(b=>b.addEventListener("click",()=>{ SELDIGIT=+b.dataset.dig; row.querySelectorAll(".digbtn").forEach(x=>x.classList.toggle("on",+x.dataset.dig===SELDIGIT)); scheduleTradeMath(); }));
   $("digit-hint").textContent = game==="over_under" ? "— win if the last digit lands over / under this" : "— win if the last digit matches / differs from this";
 }
 async function openTrade(game){
@@ -1089,7 +1091,7 @@ async function openTrade(game){
   const sym=$("t-symbol").value; $("term-market").textContent=$("t-symbol").selectedOptions[0]?.textContent||sym;
   if(game!=="m_pro") LiveWS.start(sym); else LiveWS.stop();
   applyDefaultStake();   // $100 demo / $10 real (unless the user set their own)
-  loadAssistant(); loadAutoState(); refreshLive(); loadProven();
+  loadAssistant(); loadAutoState(); refreshLive(); loadProven(); scheduleTradeMath();
   if(game==="m_pro") loadScan();
 }
 // live market follows the chosen symbol
@@ -1195,15 +1197,37 @@ async function loadAssistant(){
     else { f.dataset.dir=LIVESIG.direction; if(LIVESIG.prediction!=null) SELDIGIT=+LIVESIG.prediction; }
     placeTrade(f); }
 }); })();
-(function(){ const s=$("t-symbol"); if(s) s.addEventListener("change",()=>{loadAssistant(); if(GAME==="m_pro")loadScan();}); })();
+(function(){ const s=$("t-symbol"); if(s) s.addEventListener("change",()=>{loadAssistant(); scheduleTradeMath(); if(GAME==="m_pro")loadScan();}); })();
 // Default stake by account type: $100 on demo, $10 on real — applied on each
 // load/open until the user types their own value (then we leave it alone).
 let _stakeEdited=false;
-(function(){ const s=$("t-stake"); if(s) s.addEventListener("input",()=>{ _stakeEdited=true; }); })();
+(function(){ const s=$("t-stake"); if(s) s.addEventListener("input",()=>{ _stakeEdited=true; scheduleTradeMath(); });
+  const d=$("t-duration"); if(d) d.addEventListener("input",scheduleTradeMath); })();
 function applyDefaultStake(){
   if(_stakeEdited) return;
   const s=$("t-stake"); if(!s) return;
   s.value = (CUR && CUR.is_demo===false) ? "10" : "100";   // real = 10, demo = 100
+}
+// ---- honest pre-trade math strip (payout · break-even · win-chance · EV) ----
+let _mathTimer=null;
+function scheduleTradeMath(){ clearTimeout(_mathTimer); _mathTimer=setTimeout(loadTradeMath,400); }
+async function loadTradeMath(){
+  const el=$("trade-math"); if(!el) return;
+  if(!CUR || $("view-trade").hidden || GAME==="m_pro"){ el.innerHTML=""; return; }
+  const tt=GAME, stake=parseFloat(($("t-stake")||{}).value||"1")||1, dur=parseInt(($("t-duration")||{}).value||"1",10)||1;
+  const p=new URLSearchParams({trade_type:tt,symbol:($("t-symbol")||{}).value||"R_100",stake:String(stake),duration:String(dur),duration_unit:"t"});
+  let side="";
+  if(tt==="rise_fall") p.set("direction","up");
+  else if(tt==="even_odd") p.set("direction","even");
+  else if(tt==="over_under"){ p.set("direction","over"); p.set("prediction",String(SELDIGIT)); side=" (OVER "+SELDIGIT+")"; }
+  else if(tt==="matches_differs"){ p.set("direction","differs"); p.set("prediction",String(SELDIGIT)); side=" (DIFFERS "+SELDIGIT+")"; }
+  try{
+    const q=await api("/quote?"+p.toString());
+    if(!q.payout){ el.innerHTML=""; return; }
+    const evc=Number(q.expected_value)>=0?'var(--good)':'var(--bad)';
+    el.innerHTML='<div style="font-size:12px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;background:rgba(255,255,255,.02);color:var(--dim)">'+
+      '📐 Payout <b>'+Number(q.payout).toFixed(2)+'×</b> · break-even <b>'+q.break_even_pct+'%</b> · win chance'+esc(side)+' <b>~'+q.win_prob_pct+'%</b> · EV <b style="color:'+evc+'">'+(q.expected_value>=0?'+':'')+'$'+Math.abs(Number(q.expected_value)).toFixed(2)+'</b> · <b style="color:'+evc+'">'+esc(q.verdict)+'</b></div>';
+  }catch(_){ el.innerHTML=""; }
 }
 
 // ---------- scanner (m_pro) ----------

@@ -601,6 +601,26 @@ async def account_trade_now(account_id: str, request: Request, symbol: str = "R_
     return await execute_decision_for_account(acct, decision)
 
 
+def _structural_winprob(trade_type: str | None, direction: str | None,
+                        prediction: int | None) -> float:
+    """The TRUE win chance of a Deriv synthetic bet (audited RNG):
+      rise_fall / even_odd → 0.5
+      over N  → digits N+1..9 = (9-N)/10 ; under N → digits 0..N-1 = N/10
+      matches a digit → 0.1 ; differs → 0.9
+    Recent streaks don't move these — that's the honest point."""
+    tt = (trade_type or "").lower()
+    d = (direction or "").lower()
+    if tt in ("rise_fall", "even_odd"):
+        return 0.5
+    if tt == "over_under":
+        n = int(prediction) if prediction is not None else 5
+        n = max(0, min(9, n))
+        return (9 - n) / 10.0 if d == "over" else n / 10.0
+    if tt == "matches_differs":
+        return 0.9 if d == "differs" else 0.1
+    return 0.5
+
+
 @app.get("/quote")
 async def quote(
     symbol: str = "R_100",
@@ -629,7 +649,7 @@ async def quote(
     except Exception as exc:
         raise HTTPException(502, f"deriv quote failed: {exc!r}")
     payout = q.get("payout")
-    return {
+    out = {
         "symbol": symbol,
         "trade_type": trade_type,
         "stake": stake,
@@ -640,6 +660,22 @@ async def quote(
         "markup_percent": get_settings().deriv_markup_percent,
         "longcode": q.get("longcode"),
     }
+    # Honest pre-trade math from the contract's STRUCTURAL win probability
+    # (RNG, so this is the real chance — recent streaks don't change it).
+    if payout:
+        wp = _structural_winprob(trade_type, direction, prediction)
+        s = float(stake)
+        ev = round(wp * (payout - s) - (1 - wp) * s, 4)
+        be = round(s / payout, 4) if payout else 1.0
+        out.update({
+            "win_prob": round(wp, 4),
+            "win_prob_pct": round(wp * 100, 1),
+            "expected_value": ev,
+            "break_even_pct": round(be * 100, 2),
+            "edge_pct": round((wp - be) * 100, 2),
+            "verdict": "positive EV" if ev > 0 else "negative EV — house edge",
+        })
+    return out
 
 
 # ---------------------------------------------------------------------------
