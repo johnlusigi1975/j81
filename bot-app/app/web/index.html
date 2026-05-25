@@ -506,6 +506,8 @@
         <span><b style="color:#ff6b81">▰</b> Fall zone</span>
         <span class="faint">— projected volatility range ahead, not a direction prediction</span>
       </div>
+      <!-- DEEPER LIVE READ — multi-window bias, streak, momentum, volatility -->
+      <div id="rf-read" style="margin-top:10px"></div>
     </div>
 
     <!-- live multi-market scan (Rise/Fall) — the bot sweeping all 10 volatilities -->
@@ -842,6 +844,37 @@ async function loadHomeCycle(){
   }catch(_){}
 }
 
+// ---------- Deeper live read for Rise/Fall (honest: observations, not a prediction) ----------
+function _upPct(arr){ let u=0; for(let i=1;i<arr.length;i++) if(arr[i]>arr[i-1])u++; const m=arr.length-1; return m>0?Math.round(u/m*100):50; }
+function _deepReadMsg(w10,w30,streak,sdir,volLab){
+  const dir=sdir===1?'up':sdir===-1?'down':'flat';
+  let lean='balanced — no clear lean';
+  if(w10>=58&&w30>=54) lean='short-term upward lean';
+  else if(w10<=42&&w30<=46) lean='short-term downward lean';
+  else if(w10>=58) lean='very-recent up burst (often fades)';
+  else if(w10<=42) lean='very-recent down burst (often fades)';
+  const vn = volLab==='wild'?' · high volatility, wide swings' : volLab==='calm'?' · calm, small moves' : '';
+  return `Read: ${lean}; ${streak} in a row ${dir}${vn}. Ticks are ~50/50 — use this to time entries, not to predict.`;
+}
+function renderDeepRead(prices, vol, P, streak, sdir){
+  const rd=$("rf-read"); if(!rd||!prices||prices.length<6) return;
+  const w10=_upPct(prices.slice(-11)), w30=_upPct(prices.slice(-31)), w60=_upPct(prices.slice(-61));
+  const base=prices[Math.max(0,prices.length-21)], mom=P-base, momPct=base?mom/base*100:0;
+  const vp=P?vol/P*100:0, volLab=vp<0.003?'calm':vp<0.01?'active':'wild';
+  const r60=prices.slice(-60), lo=Math.min(...r60), hi=Math.max(...r60), pos=hi>lo?Math.round((P-lo)/(hi-lo)*100):50;
+  const uc=v=>v>=55?'var(--good)':v<=45?'var(--bad)':'var(--faint)';
+  const chip=(lab,val,col)=>`<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:50px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:${col||'var(--text)'}">${val}</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">${lab}</span></span>`;
+  rd.innerHTML=
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      chip('10t up',w10+'%',uc(w10))+chip('30t up',w30+'%',uc(w30))+chip('60t up',w60+'%',uc(w60))+
+      chip('streak',streak+(sdir===1?'▲':sdir===-1?'▼':''),sdir===1?'var(--good)':sdir===-1?'var(--bad)':'var(--faint)')+
+      chip('momentum',(mom>=0?'▲':'▼')+Math.abs(momPct).toFixed(2)+'%',mom>=0?'var(--good)':'var(--bad)')+
+      chip('volatility',volLab,'var(--amber)')+
+      chip('range',pos+'%',pos>=70?'var(--good)':pos<=30?'var(--bad)':'var(--faint)')+
+    '</div>'+
+    '<div class="faint" style="font-size:10.5px;margin-top:6px">'+esc(_deepReadMsg(w10,w30,streak,sdir,volLab))+'</div>';
+}
+
 // ---------- LIVE market (browser → Deriv public Options WS, no auth) ----------
 // Confirmed: wss://api.derivws.com/trading/v1/options/ws/public streams ticks +
 // active_symbols with no token. We use it to drive a live spot price + live
@@ -946,6 +979,7 @@ const LiveWS=(function(){
     const mv=hn-1; let sl=0, sdir=null; for(let i=hn-1;i>0;i--){ const dd=hist[i]>hist[i-1]?1:hist[i]<hist[i-1]?-1:0; if(dd===0) continue; if(sdir===null){sdir=dd;sl=1;} else if(dd===sdir) sl++; else break; }
     const rf=$("rf-stats"); if(rf&&mv) rf.textContent=`up ${Math.round(ups/mv*100)}% · down ${Math.round((mv-ups)/mv*100)}% · run ${sl}${sdir===1?'▲':sdir===-1?'▼':''}`;
     const sy=$("rf-sym"); if(sy) sy.textContent=want||"";
+    renderDeepRead(prices, vol, P, sl, sdir);   // richer live read under the chart
   }
   return {
     start(sym){ want=sym; emptyMsg(); open(); resub(); },
@@ -1117,18 +1151,18 @@ async function placeTrade(btn){
   // Impossible digit bets: nothing is over 9, nothing is under 0.
   if(tt==="over_under" && body.direction==="over" && SELDIGIT===9){ res.innerHTML='<div class="banner warn" style="margin:0">Pick a digit 0–8 for OVER (nothing is over 9).</div>'; return; }
   if(tt==="over_under" && body.direction==="under" && SELDIGIT===0){ res.innerHTML='<div class="banner warn" style="margin:0">Pick a digit 1–9 for UNDER (nothing is under 0).</div>'; return; }
-  res.innerHTML='<div class="banner warn" style="margin:0">placing '+esc(call)+'…</div>'; btn.disabled=true;
-  try{
-    const r=await api("/trade/manual",{method:"POST",body:JSON.stringify(body),timeout:25000});
+  res.innerHTML='<div class="banner warn" style="margin:0">✓ sent '+esc(call)+' on '+esc(body.symbol)+' · stake $'+Number(body.stake).toFixed(2)+'…</div>';
+  // FIRE-AND-FORGET: don't lock the button — manual trading stays responsive so
+  // you can place the next one immediately. The result updates when it lands.
+  api("/trade/manual",{method:"POST",body:JSON.stringify(body),timeout:25000}).then(r=>{
     const pay=(typeof r.payout==="number")?("$"+r.payout.toFixed(2)):"—";
     const prof=(typeof r.profit==="number")?((r.profit>=0?'+$':'-$')+Math.abs(r.profit).toFixed(2)):'';
     if(r.outcome==="dry_run"){ res.innerHTML='<div class="banner warn" style="margin:0">✓ Practice '+esc(call)+' on '+esc(body.symbol)+' · payout if win <b>'+pay+'</b> · no real money (DRY_RUN)</div>'; pollSettle(); }
     else if(r.outcome==="won"){ res.innerHTML='<div class="banner ok" style="margin:0">🎉 WON '+esc(call)+' on '+esc(body.symbol)+' · <b>'+prof+'</b></div>'; refreshLive(); }
     else if(r.outcome==="lost"){ res.innerHTML='<div class="banner bad" style="margin:0">✗ LOST '+esc(call)+' on '+esc(body.symbol)+' · <b>'+prof+'</b></div>'; refreshLive(); }
-    else if(r.outcome==="pending"||r.outcome==="settled"){ res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · stake $'+Number(body.stake).toFixed(2)+' · result appears below as it settles ↓</div>'; pollSettle(); }
+    else if(r.outcome==="pending"||r.outcome==="settled"){ res.innerHTML='<div class="banner live" style="margin:0">✓ REAL '+esc(call)+' on '+esc(body.symbol)+' · result appears below as it settles ↓</div>'; pollSettle(); }
     else res.innerHTML='<div class="banner warn" style="margin:0">Couldn’t trade: '+esc(r.reason||r.error||"unknown")+'</div>';
-  }catch(e){ res.innerHTML='<div class="banner bad" style="margin:0">Error: '+esc(e.message)+'</div>'; }
-  finally{ btn.disabled=false; }
+  }).catch(e=>{ res.innerHTML='<div class="banner bad" style="margin:0">Error: '+esc(e.message)+'</div>'; });
 }
 
 async function loadAssistant(){
