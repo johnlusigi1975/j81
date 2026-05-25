@@ -567,7 +567,7 @@
         <button class="btn" id="auto-btn" style="margin-left:auto">Start Auto</button>
       </div>
       <div class="row" style="margin:0 0 12px;align-items:center">
-        <label class="field">Trade at confidence ≥ %<input id="auto-conf" type="number" min="50" max="95" value="70" style="width:80px"></label>
+        <label class="field">Trade at confidence ≥ %<input id="auto-conf" type="number" min="50" max="95" value="60" style="width:80px"></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:7px;text-transform:none;font-size:12px"><input type="checkbox" id="auto-bg" checked style="width:auto"> Run in the background (keeps trading on our server even if you close the app)</label>
         <button class="btn ghost" id="focus-btn" type="button" style="margin-left:auto">🎯 Focus J81 on this</button>
       </div>
@@ -1190,7 +1190,7 @@ async function loadProven(){
   const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50));
   const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value);
   const body={proven_auto:turningOn, enabled:turningOn, max_stake_per_trade:stake, max_trades_per_day:rounds};
-  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  body.take_profit=isNaN(tp)?0:tp; body.daily_loss_limit=isNaN(ll)?0:ll;   // blank = clear the limit
   b.disabled=true;
   try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); CUR.proven_auto=turningOn; CUR.enabled=turningOn; }
   catch(e){ if($("proven-status")) $("proven-status").textContent="couldn't update: "+e.message; }
@@ -1245,7 +1245,7 @@ async function updateAutoStatus(){
   const c=$("auto-conf"); if(c) c.addEventListener("input",()=>{ try{ rfReadThreshold(); }catch(_){} });
   window.AUTO_VOL=true; const av=$("autovol"); if(av) av.addEventListener("change",()=>{ window.AUTO_VOL=av.checked; const sel=$("t-symbol"); if(sel) sel.disabled=(av.checked&&GAME==="rise_fall"); }); })();
 // ---- Rise/Fall confidence-gated auto-runner (client-driven; fires only at >=70%) ----
-window.RF_THRESHOLD=70;
+window.RF_THRESHOLD=60;
 let RFAUTO={on:false,target:50,rounds:0,stake:0.35,busy:false,timer:null};
 function rfAutoStatus(t){ const s=$("auto-status"); if(s) s.textContent=t; }
 function rfReadThreshold(){ window.RF_THRESHOLD=Math.max(50,Math.min(95,parseInt($("auto-conf").value||"70",10)||70)); const mk=$("rf-conf-mark"); if(mk) mk.style.left=window.RF_THRESHOLD+"%"; return window.RF_THRESHOLD; }
@@ -1262,7 +1262,7 @@ async function rfStartServer(thr){
   const stake=Math.max(0.35, parseFloat($("t-stake").value||"0.35")||0.35); $("t-stake").value=stake;
   const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50)), dur=parseInt($("t-duration").value||"5",10);
   const body={enabled:true, mpro_enabled:false, allowed_trade_types:["rise_fall"], max_stake_per_trade:stake, max_trades_per_day:rounds, rf_config:{enabled:true,min_conf:thr,stake,duration:dur}};
-  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  body.take_profit=isNaN(tp)?0:tp; body.daily_loss_limit=isNaN(ll)?0:ll;   // blank = clear the limit
   const b=$("auto-btn"); b.disabled=true; rfAutoStatus("starting background runner…");
   try{ await api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}); }
   catch(e){ rfAutoStatus("couldn't start: "+e.message); b.disabled=false; return; }
@@ -1276,7 +1276,7 @@ function rfAutoStart(thr){
   const rounds=Math.max(1,Math.min(1000,parseInt($("auto-rounds").value||"50",10)||50));
   const tp=parseFloat($("auto-tp").value), ll=parseFloat($("auto-ll").value);
   const body={enabled:false, mpro_enabled:false, max_stake_per_trade:stake, max_trades_per_day:rounds, allowed_trade_types:["rise_fall"]};
-  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  body.take_profit=isNaN(tp)?0:tp; body.daily_loss_limit=isNaN(ll)?0:ll;   // blank = clear the limit
   api("/accounts/"+encodeURIComponent(CUR.id),{method:"PATCH",body:JSON.stringify(body)}).catch(()=>{});
   RFAUTO={on:true,target:rounds,rounds:0,stake,busy:false,timer:null};
   const b=$("auto-btn"); b.dataset.on='1'; b.textContent='Stop Auto'; b.style.background='var(--bad)';
@@ -1317,7 +1317,7 @@ $("auto-btn").addEventListener("click",async()=>{
   $("t-stake").value=stake;
   const rounds=Math.max(1, Math.min(1000, parseInt($("auto-rounds").value||"50",10)||50));   // up to 1000 rounds
   const body={};
-  if(!isNaN(tp)) body.take_profit=tp; if(!isNaN(ll)) body.daily_loss_limit=ll;
+  body.take_profit=isNaN(tp)?0:tp; body.daily_loss_limit=isNaN(ll)?0:ll;   // blank = clear the limit
   if(start) body.max_trades_per_day=rounds;   // stop automatically after N rounds
   if(GAME==="m_pro" || GAME==="even_odd"){
     body.mpro_enabled=start; body.enabled=start;
