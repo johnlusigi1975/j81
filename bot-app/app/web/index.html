@@ -219,9 +219,9 @@
   .eq span:nth-child(2){animation-delay:.15s}.eq span:nth-child(3){animation-delay:.3s}.eq span:nth-child(4){animation-delay:.45s}.eq span:nth-child(5){animation-delay:.6s}
   @keyframes eq{0%,100%{height:6px;opacity:.5}50%{height:24px;opacity:1}}
   .read .lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint)} .read .val{font-size:15px;font-weight:700;margin-top:2px}
-  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0}
-  .tbtn{border:none;border-radius:16px;cursor:pointer;padding:20px 12px 15px;color:#08121c;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:800;transition:transform .12s,filter .12s}
-  .tbtn .big{font-size:22px} .tbtn .pay{font-size:11.5px;font-weight:700;opacity:.78;font-family:var(--mono)}
+  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0}
+  .tbtn{border:none;border-radius:12px;cursor:pointer;padding:11px 10px 9px;color:#08121c;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:800;transition:transform .12s,filter .12s}
+  .tbtn .big{font-size:16px;letter-spacing:.01em} .tbtn .pay{font-size:10.5px;font-weight:700;opacity:.78;font-family:var(--mono)}
   .tbtn:hover{transform:translateY(-3px);filter:brightness(1.07)} .tbtn:active{transform:translateY(0) scale(.97)}
   .tbtn{box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
   .tbtn.up{background:linear-gradient(135deg,#6ff0a8,#12c46a);color:#04200f;box-shadow:0 16px 40px -14px rgba(45,220,130,.6)}
@@ -233,12 +233,12 @@
   .tgrid.eo3{grid-template-columns:1fr 1fr 1.05fr}
   @media(max-width:560px){.tgrid.eo3{grid-template-columns:1fr 1fr;gap:10px} .tgrid.eo3 .tbtn.auto{grid-column:1/-1}}
   .tbtn.auto{background:linear-gradient(135deg,#1a2236 0%,#262f4a 55%,#3a4768);color:#f0e7c8;border:1px solid rgba(212,184,122,.35);box-shadow:0 16px 36px -16px rgba(60,80,140,.55), inset 0 1px 0 rgba(255,255,255,.06)}
-  .tbtn.auto .big{display:flex;align-items:center;justify-content:center;gap:9px}
-  .tbtn.auto .mix{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#241c0a;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);padding:3px 9px 2px;border-radius:6px;box-shadow:0 0 0 1px rgba(0,0,0,.18) inset, 0 4px 10px -3px rgba(212,184,122,.45);position:relative;top:-1px}
+  .tbtn.auto .big{display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px}
+  .tbtn.auto .mix{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#241c0a;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);padding:2px 6px 1px;border-radius:5px;box-shadow:0 0 0 1px rgba(0,0,0,.18) inset, 0 3px 8px -3px rgba(212,184,122,.45);position:relative;top:-1px}
+  .tbtn.auto .sub{font-size:9.5px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.04em}
   .tbtn.auto.on{background:linear-gradient(135deg,#0f2c1a 0%,#13502c 55%,#1c6e3c);color:#e8ffe9;border-color:rgba(70,207,158,.45);box-shadow:0 16px 36px -14px rgba(45,220,130,.5), inset 0 1px 0 rgba(255,255,255,.12)}
   .tbtn.auto.on .mix{background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a);color:#04200f;animation:eo-mix-pulse 1.4s ease-in-out infinite}
   @keyframes eo-mix-pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,207,158,.7)}50%{box-shadow:0 0 0 6px rgba(70,207,158,0)}}
-  .tbtn.auto .sub{font-size:10.5px;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.04em;margin-top:2px}
 
   /* Even/Odd multi-market confidence scanner — compact 5×2 grid, no scroll.
      Row 1 = standard 2-sec volatilities (R_*), Row 2 = the 1-second family. */
@@ -279,6 +279,32 @@
   .eo-cell.warm .big .pct{font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.06em}
   .eo-cell.warm .big .side{color:var(--faint);opacity:.7}
   .eo-cell.warm .meta{color:var(--faint);opacity:.7}
+
+  /* Recent activity — clean ticker-style list, no debug-text feel. */
+  .recent-list{border:1px solid var(--bd);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.18));overflow:hidden}
+  .recent-empty{padding:18px 16px;text-align:center;color:var(--faint);font-size:12px;font-style:italic}
+  .recent-row{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.04);font-size:12.5px}
+  .recent-row:first-child{border-top:0}
+  .recent-row .side{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.16em;padding:3px 7px;border-radius:5px;text-transform:uppercase;line-height:1}
+  .recent-row .side.even{background:linear-gradient(135deg,#fff0c2,#cf9e2a);color:#241d05}
+  .recent-row .side.odd{background:linear-gradient(135deg,#eef0f5,#8c93a1);color:#15151c}
+  .recent-row .side.up{background:linear-gradient(135deg,#6ff0a8,#12c46a);color:#04200f}
+  .recent-row .side.down{background:linear-gradient(135deg,#ff8aa0,#e23a52);color:#fff}
+  .recent-row .side.over,.recent-row .side.under{background:rgba(212,184,122,.15);color:var(--amber);border:1px solid rgba(212,184,122,.4)}
+  .recent-row .side.dim{background:rgba(255,255,255,.06);color:var(--faint)}
+  .recent-row .desc{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .recent-row .desc .m{font-weight:800;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .recent-row .desc .t{font-size:10.5px;color:var(--faint);font-family:var(--mono);letter-spacing:.04em}
+  .recent-row .pl{font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;min-width:60px}
+  .recent-row .pl.up{color:var(--good)} .recent-row .pl.dn{color:var(--bad)} .recent-row .pl.muted{color:var(--faint);font-weight:600}
+  .recent-row .status{font-family:var(--mono);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:3px 8px;border-radius:5px;line-height:1;white-space:nowrap}
+  .recent-row .status.won{background:rgba(70,207,158,.15);color:var(--good)}
+  .recent-row .status.lost{background:rgba(255,120,140,.15);color:var(--bad)}
+  .recent-row .status.pending{background:rgba(212,184,122,.12);color:var(--amber);animation:recent-pending 1.5s ease-in-out infinite}
+  .recent-row .status.practice{background:rgba(255,255,255,.06);color:var(--faint)}
+  @keyframes recent-pending{0%,100%{opacity:.55}50%{opacity:1}}
+  .recent-row.skipped{opacity:.55}
+  @media(max-width:480px){.recent-row{grid-template-columns:auto 1fr auto;padding:10px 12px;font-size:12px}.recent-row .pl{display:none}}
 
   /* Dedicated Even/Odd auto-trade control surface — premium look. */
   .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:16px;padding:16px 18px 18px;background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.10),transparent 55%),radial-gradient(120% 100% at 100% 0%,rgba(212,184,122,.08),transparent 55%),linear-gradient(180deg,rgba(20,28,40,.55),rgba(10,14,22,.55));position:relative;box-shadow:0 26px 60px -28px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05)}
@@ -996,8 +1022,8 @@
       <div class="faint" style="font-size:11.5px;margin-top:8px">Set <b>Rounds</b> (up to 1000) and a <b>stake</b> (min $0.35). Press Start and J81 scans the markets and auto-trades up to that many rounds, stopping early if it hits your win or loss target. Martingale raises stake after a loss (capped) — higher risk. Auto trades for real only when DRY_RUN is off; otherwise it practises.</div>
     </div>
 
-    <div class="sec-title" style="margin:18px 0 8px">Live results <span class="faint" id="trade-bal" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
-    <div id="trade-recent"><div class="empty">no trades yet</div></div>
+    <div class="sec-title" style="margin:18px 0 8px">Recent activity <span class="faint" id="trade-bal" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
+    <div id="trade-recent" class="recent-list"><div class="recent-empty">No trades yet — your activity will appear here as soon as you place one.</div></div>
 
     <!-- ===================== J81 ENGINES — live demonstration ===================== -->
     <div class="sec-title" style="margin:24px 0 8px">J81 Execution Desk <span class="faint" style="text-transform:none;letter-spacing:0">your private trading stack</span></div>
@@ -1857,19 +1883,68 @@ async function openTrade(game){
 $("t-symbol").addEventListener("change",e=>{ $("term-market").textContent=e.target.selectedOptions[0]?.textContent||e.target.value; if(GAME!=="m_pro") LiveWS.start(e.target.value); });
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".tbtn"); if(b) placeTrade(b); });
 
-// Reflect Deriv on our site: refresh the live balance + recent results.
-function renderRecent(t){
-  const el=$("trade-recent"); if(!el) return;
-  el.innerHTML = (!t.length) ? '<div class="empty">no trades yet</div>'
-    : t.map(x=>{ const o=x.outcome;
-        const tag = o==="won"?'<span style="color:var(--good);font-weight:800">WON</span>'
-                  : o==="lost"?'<span style="color:var(--bad);font-weight:800">LOST</span>'
-                  : o==="pending"?'<span class="faint">settling…</span>'
-                  : o==="dry_run"?'<span class="faint">practice</span>' : esc(o||'');
-        const pl = x.profit!=null?` <span style="font-family:var(--mono);color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:'';
-        return `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
-          <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
-          <span style="margin-left:auto">${tag}</span>${pl}</div>`; }).join("");
+// Recent activity ticker — clean rows, no debug-text leak. Errors / skipped
+// trades are filtered out so the user sees a tidy log, not a noisy log.
+function _recentTimeAgo(iso){
+  if(!iso) return "";
+  const t = new Date(iso).getTime(); if(!isFinite(t)) return "";
+  const s = Math.max(0, Math.round((Date.now()-t)/1000));
+  if(s < 60) return s+"s ago";
+  if(s < 3600) return Math.round(s/60)+"m ago";
+  if(s < 86400) return Math.round(s/3600)+"h ago";
+  return Math.round(s/86400)+"d ago";
+}
+function _recentSideHtml(x){
+  // The "side" pill on the left. Picks the right gradient for each trade type.
+  const tt = (x.trade_type||"").toLowerCase();
+  const dir = (x.direction||"").toLowerCase();
+  const pred = String(x.prediction||"").toLowerCase();
+  let cls = "dim", txt = "—";
+  if(tt === "rise_fall"){ cls = dir==="up"?"up":"down"; txt = dir==="up"?"RISE":"FALL"; }
+  else if(tt === "even_odd"){ cls = (pred==="even"||pred==="0")?"even":"odd"; txt = (pred==="even"||pred==="0")?"EVEN":"ODD"; }
+  else if(tt === "over_under"){ cls = dir==="over"?"over":"under"; txt = (dir||"").toUpperCase() + (pred?" "+pred:""); }
+  return '<span class="side '+cls+'">'+esc(txt)+'</span>';
+}
+function renderRecent(rows){
+  const el = $("trade-recent"); if(!el) return;
+  // Hide anything that isn't a real trade outcome — error / skipped / unknown
+  // states were the source of the "error written all over it" feel.
+  const visible = (rows||[]).filter(x => {
+    const o = (x.outcome||"").toLowerCase();
+    return o === "won" || o === "lost" || o === "pending" || o === "settled" || o === "dry_run";
+  });
+  if(!visible.length){
+    el.innerHTML = '<div class="recent-empty">No trades yet — your activity will appear here as soon as you place one.</div>';
+    return;
+  }
+  el.innerHTML = visible.slice(0, 8).map(x => {
+    const o = (x.outcome||"").toLowerCase();
+    const isPractice = !!x.is_dry_run || o === "dry_run";
+    const statusCls = o === "won" ? "won"
+                    : o === "lost" ? "lost"
+                    : (o === "pending" || o === "settled") ? "pending"
+                    : "practice";
+    const statusTxt = o === "won" ? "Won"
+                    : o === "lost" ? "Lost"
+                    : (o === "pending" || o === "settled") ? "Settling"
+                    : "Practice";
+    // P/L: shown when we actually have one; muted dash for pending/practice.
+    let plHtml = '<div class="pl muted">—</div>';
+    if(typeof x.profit === "number" && (o==="won" || o==="lost")){
+      const v = Number(x.profit);
+      plHtml = '<div class="pl '+(v>=0?"up":"dn")+'">'+(v>=0?"+":"−")+"$"+Math.abs(v).toFixed(2)+'</div>';
+    }
+    const market = esc(x.symbol_name || x.symbol || "—");
+    const when = esc(_recentTimeAgo(x.created_at || x.placed_at || x.settled_at) || "just now");
+    const stakeBit = (x.stake!=null) ? " · $"+Number(x.stake).toFixed(2) : "";
+    return ''
+      +'<div class="recent-row">'
+      +  _recentSideHtml(x)
+      +'  <div class="desc"><div class="m">'+market+'</div><div class="t">'+when+(isPractice?" · practice":"")+stakeBit+'</div></div>'
+      +'  <div class="status '+statusCls+'">'+statusTxt+'</div>'
+      +  plHtml
+      +'</div>';
+  }).join("");
 }
 function showBalance(b){
   if(b&&b.balance==null&&b.needs_reconnect){
