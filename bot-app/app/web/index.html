@@ -250,7 +250,10 @@
   .confbar .mark{position:absolute;top:-3px;bottom:-3px;left:70%;width:2px;background:rgba(255,255,255,.55)}
   .confbar .mark::after{content:"70%";position:absolute;top:-14px;left:-8px;font-size:8px;color:var(--faint)}
   @keyframes sug{0%,100%{box-shadow:0 16px 36px -14px rgba(255,255,255,.45)}50%{box-shadow:0 20px 48px -10px rgba(255,255,255,.85)}}
-  .autobox{margin-top:16px;padding:15px;border-radius:14px;border:1px solid rgba(212,184,122,.3);background:linear-gradient(135deg,rgba(212,184,122,.08),transparent)}
+  /* Auto-trade box hidden: the trading interface is manual-only for now.
+     CSS-hide (not delete) so all the auto JS hooks/IDs still exist and
+     nothing throws. To bring it back, remove this 'display:none' line. */
+  .autobox{display:none;margin-top:16px;padding:15px;border-radius:14px;border:1px solid rgba(212,184,122,.3);background:linear-gradient(135deg,rgba(212,184,122,.08),transparent)}
   .seg{display:inline-flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
   .segbtn{background:transparent;color:var(--dim);border:none;padding:9px 15px;cursor:pointer;font-weight:800;font-size:13px;font-family:inherit}
   .segbtn.on{background:var(--amber);color:#08121c}
@@ -334,7 +337,6 @@
       <div class="ttype"><div class="ic">E·O</div><div><h4>Even / Odd</h4><p>Will the last digit be even or odd?</p></div></div>
       <div class="ttype"><div class="ic">7▲</div><div><h4>Over / Under</h4><p>Will the last digit land over or under your pick?</p></div></div>
       <div class="ttype"><div class="ic">=≠</div><div><h4>Matches / Differs</h4><p>Will the last digit match or differ from your pick?</p></div></div>
-      <div class="ttype"><div class="ic">★</div><div><h4>Auto scanner</h4><p>Scans 10 markets and auto-trades the best edge.</p></div></div>
       <div class="ttype"><div class="ic">◷</div><div><h4>Auto take-profit</h4><p>Runs by itself and stops at your win or loss limit.</p></div></div>
     </div>
   </div>
@@ -900,10 +902,6 @@ const GAMES=[
   {id:"even_odd",ic:"E·O",name:"Even / Odd",d:"Will the last digit be even or odd?",status:"live",grp:"Quick trades"},
   {id:"over_under",ic:"7▲",name:"Over / Under",d:"Will the last digit land over or under your pick?",status:"live",grp:"Quick trades"},
   {id:"matches_differs",ic:"=≠",name:"Matches / Differs",d:"Will the last digit match or differ from your pick?",status:"live",grp:"Quick trades"},
-  {id:"m_pro",ic:"★",name:"M Pro · Auto Scanner",d:"Scans 10 markets, auto-trades the best even/odd edge",status:"live",grp:"Auto & advanced"},
-  {id:"m_digit",ic:"№",name:"M Digit",d:"Adaptive single-digit predictor",status:"soon",grp:"Auto & advanced"},
-  {id:"sniper_x",ic:"◎",name:"Sniper X",d:"Best over/under pairs · 11-market",status:"soon",grp:"Auto & advanced"},
-  {id:"antiloss",ic:"↺",name:"AntiLoss",d:"Recovery engine",status:"soon",grp:"Auto & advanced"},
 ];
 function renderGames(){
   const groups=[...new Set(GAMES.map(g=>g.grp))];
