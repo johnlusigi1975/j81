@@ -1,21 +1,18 @@
-# Render Blueprint for the J81 tree (Bot + Analyser + Researcher).
+# Render Blueprint for the J81 Trade Desk (single-bot edition).
 #
 # Deploy: push this repo to GitHub → Render → "New +" → "Blueprint" → pick the
-# repo. Render reads this file and creates the 3 services + their disks.
+# repo. Render reads this file and creates ONE service with a persistent disk.
 #
-# The Bot (j81-trade-desk) is the PUBLIC, client-facing URL. It calls the Analyser
-# over its public URL; the Researcher feeds the Analyser strategies.
+# The original 3-service tree (Bot + Analyser + Researcher) was collapsed into
+# one process for simplicity + cost. The analyser-app/ and research-app/
+# directories stay in the repo as archive but are no longer deployed.
 #
-# COST/UPTIME: 24/7 (no sleeping) + persistent disks need PAID instances
-# (plan: starter, ~$7/mo each). Minimum to run the trading app = j81-trade-desk +
-# j81-analyser. j81-researcher is optional (adds strategy gathering) — comment
-# it out to save cost.
-#
-# AFTER FIRST DEPLOY: confirm each service's real URL in the dashboard. If
-# Render appended a suffix to a name, update the *_URL env vars below to match.
+# COST/UPTIME: 24/7 (no sleeping) + persistent disk needs a paid instance
+# (plan: starter, ~$7/mo). The bot already has the library, observer, brain
+# advisor + paywall built in.
 
 services:
-  # ---------------- BOT (public, client-facing) ----------------
+  # ---------------- BOT (public, client-facing — single service) ----------------
   - type: web
     name: j81-trade-desk
     runtime: docker
@@ -38,9 +35,6 @@ services:
       # it there too. Test on a DEMO account first.
       - key: DRY_RUN
         value: "false"
-      # Where the Bot reads decisions / scan from (the Analyser service URL).
-      - key: ANALYSER_URL
-        value: https://j81-analyser.onrender.com
       # STABLE encryption key for stored tokens. Generate once, paste in the
       # dashboard. If this ever changes, previously stored tokens break.
       - key: BOT_ENCRYPTION_KEY
@@ -88,58 +82,3 @@ services:
         value: "$100"
       - key: ACCESS_DAYS
         value: "90"
-
-  # ---------------- ANALYSER (brain + scanner + comms hub) ----------------
-  - type: web
-    name: j81-analyser
-    runtime: docker
-    dockerfilePath: ./analyser-app/Dockerfile
-    dockerContext: ./analyser-app
-    plan: starter
-    healthCheckPath: /health
-    autoDeploy: true
-    disk:
-      name: j81-analyser-data
-      mountPath: /var/data
-      sizeGB: 1
-    envVars:
-      - key: DATA_DIR
-        value: /var/data
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: RESEARCHER_URL
-        value: https://j81-researcher.onrender.com
-      # Optional: protect the ingest endpoints with a bearer token.
-      - key: INCOMING_API_KEY
-        sync: false
-
-  # ---------------- RESEARCHER (optional — gathers strategies) ----------------
-  - type: web
-    name: j81-researcher
-    runtime: docker
-    dockerfilePath: ./research-app/Dockerfile
-    dockerContext: ./research-app
-    plan: starter
-    healthCheckPath: /health
-    autoDeploy: true
-    disk:
-      name: j81-researcher-data
-      mountPath: /var/data
-      sizeGB: 1
-    envVars:
-      - key: DATA_DIR
-        value: /var/data
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      # On Gemini (free tier) — set GOOGLE_API_KEY in the dashboard.
-      - key: LLM_PROVIDER
-        value: google
-      - key: GOOGLE_API_KEY
-        sync: false
-      - key: GEMINI_MODEL
-        value: gemini-2.5-flash
-      # Ship the gathered library to the Analyser + obey it as the comms hub.
-      - key: LOGGING_APP_URL
-        value: https://j81-analyser.onrender.com
-      - key: COMMS_HUB_URL
-        value: https://j81-analyser.onrender.com

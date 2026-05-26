@@ -288,6 +288,44 @@ async def get_proposal(
     }
 
 
+async def fetch_proposal_payout(
+    symbol: str,
+    *,
+    contract_type: str = "DIGITEVEN",
+    duration: int = 1,
+    stake: float = 1.0,
+    timeout: float = 15.0,
+) -> dict:
+    """Live PAYOUT for a digit contract via the no-auth `proposal` endpoint.
+    Used by the local library to compare Even/Odd payouts across markets —
+    the one genuine EV lever is trading the highest-payout market.
+
+    Maps the legacy contract_type back to (trade_type, direction, prediction)
+    so we can call the bot's own get_proposal() (which is the same call,
+    just shaped for the bot's trade UI)."""
+    tt, direction, prediction = "even_odd", None, None
+    ct = (contract_type or "").upper()
+    if ct == "DIGITEVEN":
+        tt, prediction = "even_odd", 0   # 0 == even in our scheme
+    elif ct == "DIGITODD":
+        tt, prediction = "even_odd", 1
+    elif ct == "CALL":
+        tt, direction = "rise_fall", "up"
+    elif ct == "PUT":
+        tt, direction = "rise_fall", "down"
+    p = await get_proposal(
+        symbol=symbol, trade_type=tt, direction=direction,
+        prediction=prediction, duration=int(duration), duration_unit="t",
+        stake=float(stake), timeout=timeout,
+    )
+    payout = float(p.get("payout") or 0.0)
+    return {
+        "payout": round(payout, 4),
+        "ask_price": float(p.get("ask_price") or 0.0),
+        "payout_pct": round(100.0 * payout / float(stake), 2) if stake else 0.0,
+    }
+
+
 async def sell_contract(
     deriv_token: str,
     contract_id: str | int,

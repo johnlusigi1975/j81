@@ -1,9 +1,9 @@
 """J81 Brain Advisor — turns the shared library into live recommendations.
 
-The library (deriv_lib.py on the analyser) is a stockpile of principles. This
-module is the ORCHESTRATOR that, given the current state (scoreboard, account,
-balance), pulls the relevant principles and produces a ranked list of
-recommended actions — with the section/verse/source cited next to each one.
+Reads the library + observer state LOCALLY (single-bot edition — both used to
+live on the analyser service; merged in). Given the user's current state
+(scoreboard, account, balance), pulls the relevant principles and produces a
+ranked list of recommended actions — with the section/verse/source cited.
 
 Rules-based, deterministic, honest. The brain does NOT predict markets; it
 applies discipline + risk + library knowledge to whatever state the user is in.
@@ -11,51 +11,27 @@ applies discipline + risk + library knowledge to whatever state the user is in.
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
-import httpx
-
-from app.config import get_settings
-
-# ---- Library + observer cache (the analyser is the authoritative source) -----
-_LIB_CACHE: dict[str, Any] = {"at": 0.0, "data": None}
-_LIB_TTL = 300.0   # 5 min — the static parts barely change; live payouts refresh ~hourly
-_OBS_CACHE: dict[str, Any] = {"at": 0.0, "data": None}
-_OBS_TTL = 30.0    # 30 s — observer state is live; reasonable freshness for advice
+from app import library as _lib_mod
+from app import observer as _obs_mod
 
 
 async def _get_library() -> dict[str, Any]:
-    """Fetch /deriv/library from the analyser, cached. Falls back to an empty
-    skeleton if the analyser is unreachable so the brain still gives advice."""
-    now = time.monotonic()
-    if _LIB_CACHE["data"] and (now - _LIB_CACHE["at"]) < _LIB_TTL:
-        return _LIB_CACHE["data"]
-    url = get_settings().analyser_url.rstrip("/") + "/deriv/library"
+    """Return the locally-built library dict. Soft-fails to a tiny skeleton so
+    the brain can still give discipline advice even if something goes wrong."""
     try:
-        async with httpx.AsyncClient(timeout=8.0) as c:
-            r = await c.get(url); r.raise_for_status()
-            _LIB_CACHE["data"] = r.json(); _LIB_CACHE["at"] = now
-            return _LIB_CACHE["data"]
+        return _lib_mod.library()
     except Exception:
-        return _LIB_CACHE.get("data") or {
-            "live": {}, "j81_goal": {"win_target": {"threshold_pct": 60, "sample_size": 100}},
-        }
+        return {"live": {}, "j81_goal": {"win_target": {"threshold_pct": 60, "sample_size": 100}}}
 
 
 async def _get_observer() -> dict[str, Any]:
-    """Fetch /observer/status from the analyser, cached 30s. Soft-fails."""
-    now = time.monotonic()
-    if _OBS_CACHE["data"] and (now - _OBS_CACHE["at"]) < _OBS_TTL:
-        return _OBS_CACHE["data"]
-    url = get_settings().analyser_url.rstrip("/") + "/observer/status"
+    """Return the local observer snapshot. Soft-fails to an empty shape."""
     try:
-        async with httpx.AsyncClient(timeout=6.0) as c:
-            r = await c.get(url); r.raise_for_status()
-            _OBS_CACHE["data"] = r.json(); _OBS_CACHE["at"] = now
-            return _OBS_CACHE["data"]
+        return _obs_mod.observer_snapshot_safe()
     except Exception:
-        return {"unreachable": True, "markets": [], "flagged": []}
+        return {"markets": [], "flagged": [], "ticks_seen": 0, "markets_ready": 0}
 
 
 # ---- The advisor ------------------------------------------------------------

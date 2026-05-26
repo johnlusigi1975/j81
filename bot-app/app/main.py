@@ -48,6 +48,20 @@ async def lifespan(_: FastAPI):
     trading_loop.ensure_running()
     from app.mpro import engine as mpro_engine
     mpro_engine.ensure_running()
+    # Single-bot edition: observer + library used to live on the analyser; they
+    # now run in this same process. Start the 24/7 tick observer and refresh
+    # the live payout table once at boot (best-effort).
+    try:
+        from app.observer import observer as _obs
+        _obs.ensure_running()
+    except Exception:
+        pass
+    try:
+        import asyncio as _asyncio
+        from app import library as _lib
+        _asyncio.create_task(_lib.refresh_payouts())   # one-shot best-effort
+    except Exception:
+        pass
     yield
 
 
@@ -288,48 +302,20 @@ def health() -> dict:
         "deriv_app_registered": bool(s.deriv_app_id),
         "encryption_configured": bool(s.bot_encryption_key),
         "markup_percent": s.deriv_markup_percent,
-        "analyser_url": s.analyser_url,
         "referral_url": s.deriv_referral_url,
         "oauth_ready": bool(s.deriv_app_id),
     }
 
 
 @app.get("/health/tree")
-async def health_tree() -> dict:
-    """Whole-tree check-up: this bot's vitals + a live ping of the analyser and
-    researcher. One call to see if every organ is alive. Soft-fails per service."""
-    import time as _t
-    import httpx
+def health_tree() -> dict:
+    """Single-bot health check. The 'tree' is now this one process — keeping
+    the shape the UI expects so the engines panel keeps rendering."""
     s = get_settings()
     store = get_store()
     accts = store.list_accounts_public()
     enabled = [a for a in accts if a["enabled"]]
     proven = store.list_proven_strategies(limit=1000)
-
-    async def _ping(url: str) -> dict:
-        if not url:
-            return {"configured": False}
-        t0 = _t.monotonic()
-        try:
-            async with httpx.AsyncClient(timeout=6.0) as c:
-                r = await c.get(url.rstrip("/") + "/health")
-                return {"configured": True, "ok": r.status_code < 400,
-                        "status": r.status_code, "ms": round((_t.monotonic() - t0) * 1000)}
-        except Exception as exc:
-            return {"configured": True, "ok": False, "error": str(exc)[:80]}
-
-    # Parallel pings + cycle fetch — cuts the worst-case wait roughly in half.
-    import asyncio as _asyncio
-    async def _cycle():
-        try:
-            async with httpx.AsyncClient(timeout=6.0) as c:
-                return (await c.get(s.analyser_url.rstrip("/") + "/cycle/status")).json()
-        except Exception:
-            return {}
-    analyser, researcher, cycle = await _asyncio.gather(
-        _ping(s.analyser_url), _ping(_researcher_url()), _cycle())
-    if not (analyser or {}).get("ok"):
-        cycle = {}
     return {
         "bot": {"ok": True, "version": APP_VERSION, "dry_run": s.dry_run,
                 "loop_alive": trading_loop.status.get("loop_alive"),
@@ -337,19 +323,18 @@ async def health_tree() -> dict:
                 "last_error": trading_loop.status.get("last_error"),
                 "accounts": len(accts), "enabled": len(enabled),
                 "proven_strategies": len(proven)},
-        "analyser": analyser,
-        "researcher": researcher,
-        "cycle": {"tested": cycle.get("tested"), "proven": cycle.get("proven_count"),
-                  "next_in_seconds": cycle.get("next_in_seconds")},
+        "analyser": {"configured": True, "ok": True, "ms": 0,
+                     "note": "in-process (single-bot edition)"},
+        "researcher": {"configured": False,
+                       "note": "researcher branch cut from tree"},
+        "cycle": {"tested": 0, "proven": 0, "next_in_seconds": None},
     }
 
 
 def _researcher_url() -> str:
-    """Researcher URL is configured on the analyser, not the bot — best-effort
-    derive it from the analyser host so the tree check can ping it too."""
-    s = get_settings()
-    base = (s.analyser_url or "").rstrip("/")
-    return base.replace("analyser", "researcher") if "analyser" in base else ""
+    """Kept for backwards-compat in any caller that still references it; always
+    returns an empty string since the researcher is no longer in the tree."""
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -892,59 +877,59 @@ def strategies() -> dict:
 
 
 @app.get("/scan")
-async def scan_proxy() -> dict:
-    """Proxy the Analyser's live 10-market Even/Odd scan so the client page
-    only ever talks to the Bot."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + "/scan/even_odd?count=120"
+async def scan_local() -> dict:
+    """Live Even/Odd scan over the 10 synthetic markets. Reads the local
+    observer's rolling snapshot — no analyser call needed (single-bot edition).
+    Returns a compact rank-by-payout view derived from the library + observer
+    so the UI can render the trade-type selector unchanged."""
     try:
-        async with httpx.AsyncClient(timeout=60.0) as c:
-            r = await c.get(url)
-            r.raise_for_status()
-            return r.json()
+        from app import library as _lib
+        from app import observer as _obs
+        lib = _lib.library()
+        obs = _obs.observer_snapshot_safe()
     except Exception as exc:
-        raise HTTPException(502, f"scanner unavailable (is the Analyser running?): {exc!r}")
+        raise HTTPException(502, f"scan unavailable: {exc!r}")
+    by_sym = {m["symbol"]: m for m in (obs.get("markets") or []) if m.get("symbol")}
+    out = []
+    payouts = ((lib or {}).get("live") or {}).get("even_odd_payouts_by_market") or {}
+    for sym, info in payouts.items():
+        st = by_sym.get(sym) or {}
+        out.append({
+            "symbol": sym, "name": info.get("name") or sym,
+            "payout_pct": info.get("payout_pct"),
+            "even_pct": st.get("even_pct"), "odd_pct": st.get("odd_pct"),
+            "eo_z": st.get("eo_z"), "ticks": st.get("ticks") or 0,
+        })
+    out.sort(key=lambda x: (x.get("payout_pct") or 0), reverse=True)
+    return {"markets": out, "best": (out[0] if out else None)}
 
 
 @app.get("/deriv/library")
-async def deriv_library_proxy() -> dict:
-    """Proxy the analyser's Deriv trade-type library so the UI and the
-    researcher can fetch from a single endpoint (the bot)."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + "/deriv/library"
-    try:
-        async with httpx.AsyncClient(timeout=12.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
-    except Exception as exc:
-        raise HTTPException(502, f"library unavailable: {exc!r}")
+def deriv_library_local() -> dict:
+    """Local Deriv trade-type library (single-bot edition — used to live on the
+    analyser, now built in-process)."""
+    from app import library as _lib
+    return _lib.library()
 
 
 @app.post("/deriv/library/refresh")
-async def deriv_library_refresh_proxy() -> dict:
-    """Trigger the analyser to re-pull real payouts for every (market, contract)."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + "/deriv/library/refresh"
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as c:
-            r = await c.post(url); r.raise_for_status(); return r.json()
-    except Exception as exc:
-        raise HTTPException(502, f"library refresh failed: {exc!r}")
+async def deriv_library_refresh_local() -> dict:
+    """Re-pull live payouts for the 10 synthetic markets and persist to disk."""
+    from app import library as _lib
+    return await _lib.refresh_payouts()
 
 
 @app.get("/even_odd/payouts")
-async def even_odd_payouts_proxy(stake: float = 1.0, duration: int = 1) -> dict:
-    """Proxy the Analyser's live Even/Odd payout comparison across all markets —
-    the one genuine EV lever for Even/Odd is trading the highest-payout market."""
-    import httpx
-    url = (get_settings().analyser_url.rstrip("/") +
-           f"/even_odd/payouts?stake={stake}&duration={duration}")
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as c:
-            r = await c.get(url)
-            r.raise_for_status()
-            return r.json()
-    except Exception as exc:
-        raise HTTPException(502, f"payout scan unavailable: {exc!r}")
+async def even_odd_payouts_local(stake: float = 1.0, duration: int = 1) -> dict:
+    """Live Even/Odd payout comparison across all 10 markets. Reads the local
+    library's cached payout table (refreshed in the background)."""
+    from app import library as _lib
+    lib = _lib.library()
+    payouts = ((lib or {}).get("live") or {}).get("even_odd_payouts_by_market") or {}
+    rows = [{"symbol": s, **info} for s, info in payouts.items()]
+    rows.sort(key=lambda r: (r.get("payout_pct") or 0), reverse=True)
+    return {"stake": float(stake), "duration": int(duration), "markets": rows,
+            "best": (rows[0] if rows else None)}
 
 
 @app.get("/mpro/status")
@@ -1087,247 +1072,117 @@ class PriorityToggle(BaseModel):
 
 @app.post("/priority")
 async def priority_set(body: PriorityToggle) -> dict:
-    """Proxy to the hub so the Bot page can flip tree-wide priority too."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + "/priority"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(url, json={"enabled": body.enabled})
-            r.raise_for_status()
-            return r.json()
-    except Exception as exc:
-        raise HTTPException(502, f"could not reach the hub to set priority: {exc!r}")
+    """Single-bot edition: priority is a local flag (no hub to coordinate)."""
+    from app import comms_client
+    return await comms_client.set_priority(body.enabled)
 
 
 @app.get("/observer/status")
-async def observer_status_proxy() -> dict:
-    """Proxy the analyser's live market observer status (24/7 WS to Deriv)."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + "/observer/status"
+def observer_status_local() -> dict:
+    """Local 24/7 live observer snapshot (single-bot edition)."""
+    from app import observer as _obs
     try:
-        async with httpx.AsyncClient(timeout=8.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
+        return _obs.snapshot()
     except Exception:
-        return {"unreachable": True, "markets": []}
+        return {"unreachable": False, "markets": [], "flagged": [],
+                "ticks_seen": 0, "markets_ready": 0}
 
 
 @app.get("/observer/patterns")
-async def observer_patterns_proxy(limit: int = 30) -> list:
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + f"/observer/patterns?limit={int(limit)}"
+def observer_patterns_local(limit: int = 30) -> list:
+    from app import observer as _obs
     try:
-        async with httpx.AsyncClient(timeout=8.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
+        return _obs.patterns(limit=limit)
     except Exception:
         return []
+
+
+# ---------------------------------------------------------------------------
+# Single-bot edition: the researcher + analyser services were retired and the
+# library/observer/brain logic now lives in-process. The cycle + maintenance
+# endpoints used to coordinate across systems; we keep tiny stubs so the UI
+# can call them without breaking, but they always return empty/static state.
+# ---------------------------------------------------------------------------
 
 
 @app.get("/cycle/history")
-async def cycle_history_proxy(limit: int = 20) -> dict:
-    """Proxy the analyser's durable cycle audit trail so the UI can render it."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + f"/cycle/history?limit={int(limit)}"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
-    except Exception:
-        return {"recent": [], "summary": {"cycles": 0, "any_proven": False}, "unreachable": True}
+def cycle_history_stub(limit: int = 20) -> dict:
+    """Stub — there is no strategy cycle in the single-bot edition."""
+    return {"recent": [], "summary": {"cycles": 0, "any_proven": False},
+            "note": "single-bot edition: no analyser cycle"}
 
 
-@app.get("/maintenance/conversation")
-async def maintenance_conversation(limit: int = 30) -> dict:
-    """Live tree chatter — the three systems' running conversation about what
-    they need from each other to work better. Aggregates the comms bus,
-    cross-system recommendations, open maintenance issues, and every system's
-    latest productivity rate so the UI can show one combined panel that
-    refreshes every ~30 s and is ready to copy-paste."""
-    import asyncio
-    import httpx
-    base = get_settings().analyser_url.rstrip("/")
-    paths = [
-        f"{base}/comms/log?limit={int(limit)}",
-        f"{base}/comms/recommendations?limit={int(limit)}",
-        f"{base}/maintenance/issues?status=open&limit=50",
-        f"{base}/productivity",
-    ]
-
-    async def _g(client: httpx.AsyncClient, url: str):
-        try:
-            r = await client.get(url); r.raise_for_status(); return r.json()
-        except Exception:
-            return None
-
-    async with httpx.AsyncClient(timeout=8.0) as client:
-        chatter, recs, issues, prod = await asyncio.gather(
-            *(_g(client, u) for u in paths)
-        )
-    unreachable = all(x is None for x in (chatter, recs, issues, prod))
-    # Self-report from bot so the panel reflects the bot's current view live.
-    try:
-        from app import productivity as _bot_prod, comms_client as _cc
-        me = _bot_prod.compute_self()
-        await _cc.report_productivity(me["score"], me["summary"], me["metrics"])
-    except Exception:
-        pass
-    return {
-        "unreachable": unreachable,
-        "chatter": chatter or [],
-        "recommendations": recs or [],
-        "issues": issues or [],
-        "productivity": prod or {"systems": [], "average": 0.0},
-    }
-
-
-@app.get("/maintenance/issues")
-async def maintenance_issues_proxy(status: str = "open", limit: int = 200) -> list:
-    import httpx
-    url = (get_settings().analyser_url.rstrip("/")
-           + f"/maintenance/issues?status={status}&limit={int(limit)}")
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
-    except Exception:
-        return []
-
-
-@app.get("/comms/recommendations")
-async def comms_recommendations_proxy(limit: int = 50) -> list:
-    import httpx
-    url = (get_settings().analyser_url.rstrip("/")
-           + f"/comms/recommendations?limit={int(limit)}")
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
-    except Exception:
-        return []
-
-
-@app.get("/comms/log")
-async def comms_log_proxy(limit: int = 100) -> list:
-    import httpx
-    url = (get_settings().analyser_url.rstrip("/")
-           + f"/comms/log?limit={int(limit)}")
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as c:
-            r = await c.get(url); r.raise_for_status(); return r.json()
-    except Exception:
-        return []
-
-
-@app.post("/maintenance/resolve_all")
-async def maintenance_resolve_all() -> dict:
-    """Sweep every open maintenance issue at the analyser hub in one click —
-    used after a fix lands so the panel reflects the current world. Pulls the
-    open list, posts the ids back to /maintenance/resolve, returns the count."""
-    import httpx
-    base = get_settings().analyser_url.rstrip("/")
-    async with httpx.AsyncClient(timeout=10.0) as c:
-        try:
-            r = await c.get(f"{base}/maintenance/issues?status=open&limit=500")
-            r.raise_for_status()
-            issues = r.json() or []
-        except Exception as exc:
-            return {"resolved": 0, "error": repr(exc)[:160]}
-        ids = [i["id"] for i in issues if i.get("id")]
-        if not ids:
-            return {"resolved": 0, "note": "no open issues"}
-        try:
-            r = await c.post(f"{base}/maintenance/resolve", json={"ids": ids})
-            r.raise_for_status()
-            data = r.json()
-            return {"resolved": data.get("resolved", len(ids)), "count": len(ids)}
-        except Exception as exc:
-            return {"resolved": 0, "error": repr(exc)[:160]}
-
-
-@app.post("/maintenance/peer_watch")
-async def maintenance_peer_watch() -> dict:
-    """Force the bot to push a fresh peer-watch + recommendations RIGHT NOW.
-    Lets the UI prime the conversation without waiting for the next cycle."""
-    try:
-        from app import productivity as _bot_prod
-        return await _bot_prod.peer_watch(write_recommendations=True)
-    except Exception as exc:
-        return {"ok": False, "error": repr(exc)}
+@app.get("/cycle/status")
+def cycle_status_stub() -> dict:
+    """Stub — no analyser cycle in this edition."""
+    return {"reachable": True, "tested": 0, "proven_count": 0,
+            "next_in_seconds": None,
+            "note": "single-bot edition: no analyser cycle"}
 
 
 @app.get("/maintenance/tree_status")
-async def maintenance_tree_status() -> dict:
-    """Live on/off state of the active tree: analyser strategy cycle + bot
-    trading loop. The researcher branch was cut from the productive tree
-    (per user policy — it wasn't producing visible value); its service may
-    still be deployed but it is intentionally not represented here."""
-    import httpx
-    s = get_settings()
-    a_url = s.analyser_url.rstrip("/")
-
-    async def _g(client, url):
-        try:
-            r = await client.get(url, timeout=6.0); r.raise_for_status(); return r.json()
-        except Exception:
-            return None
-
-    async with httpx.AsyncClient() as client:
-        analyser_cycle = await _g(client, f"{a_url}/cycle/status")
-    # The bot's "on" is whether its trading loop is alive and any account is enabled.
+def maintenance_tree_status() -> dict:
+    """The 'tree' is now just one process — the bot. Returned shape stays
+    compatible with the UI so the engines pills keep rendering."""
     store = get_store()
     accts_enabled = (store.stats() or {}).get("accounts_enabled", 0)
     return {
-        "analyser": {
-            "reachable": analyser_cycle is not None,
-            "on": bool(analyser_cycle and not analyser_cycle.get("paused")),
-            "next_in_seconds": (analyser_cycle or {}).get("next_in_seconds"),
-        },
-        "bot": {
-            "reachable": True,
-            "on": accts_enabled > 0,
-            "accounts_enabled": accts_enabled,
-        },
+        "analyser": {"reachable": True, "on": True, "next_in_seconds": None,
+                     "note": "in-process (single-bot edition)"},
+        "bot": {"reachable": True, "on": accts_enabled > 0,
+                "accounts_enabled": accts_enabled},
     }
 
 
 @app.post("/maintenance/tree_on")
 async def maintenance_tree_on() -> dict:
-    """ONE click → wake the productive engines: resume the analyser's
-    strategy cycle + prime a bot peer-watch. The researcher is no longer in
-    the tree (per user policy) — its service may still be deployed for ad-hoc
-    manual research, but it is not started or coordinated from here."""
-    import httpx
-    s = get_settings()
-    a_url = s.analyser_url.rstrip("/")
-    results: dict = {}
-
-    async def _post(client, url):
-        try:
-            r = await client.post(url, timeout=8.0); r.raise_for_status(); return r.json()
-        except Exception as exc:
-            return {"error": repr(exc)[:160]}
-
-    async with httpx.AsyncClient() as client:
-        results["analyser"] = await _post(client, f"{a_url}/cycle/resume")
-    # Prime a bot peer-watch so the maintenance log fills with fresh chatter.
+    """No-op in the single-bot edition (everything runs in this process).
+    Kept so the UI's '🌳 Power on the tree' button still has something to call —
+    triggers a library payout refresh as a tangible 'wake up' signal."""
+    out: dict = {}
     try:
-        from app import productivity as _bot_prod
-        results["bot_peer_watch"] = await _bot_prod.peer_watch(write_recommendations=True)
+        from app import library as _lib
+        out["library_refresh"] = await _lib.refresh_payouts()
     except Exception as exc:
-        results["bot_peer_watch"] = {"error": repr(exc)[:160]}
-    return {"powered_on": True, "tree": "analyser + bot", "results": results}
+        out["library_refresh"] = {"error": repr(exc)[:160]}
+    return {"powered_on": True, "tree": "single-bot (in-process)", "results": out}
 
 
-@app.get("/cycle/status")
-async def cycle_status_proxy() -> dict:
-    """Proxy the Analyser's 30-min strategy-cycle status so the Bot dashboard can
-    show it without the client needing the analyser URL. Soft-fails if unreachable."""
-    import httpx
-    url = get_settings().analyser_url.rstrip("/") + "/cycle/status"
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            return r.json()
-    except Exception:
-        return {"reachable": False, "tested": 0, "proven_count": 0,
-                "next_in_seconds": None, "note": "analyser unreachable"}
+# Maintenance panel / comms endpoints — kept as empty-shape stubs because the
+# UI still calls them. The single-bot edition has no inter-system chatter, so
+# the maintenance card just shows a quiet info note.
+@app.get("/maintenance/conversation")
+def maintenance_conversation_stub(limit: int = 30) -> dict:
+    return {"unreachable": False, "chatter": [], "recommendations": [],
+            "issues": [],
+            "productivity": {"systems": [{"app": "bot", "score": None,
+                                          "summary": "single-bot edition — no peer chatter"}],
+                             "average": 0.0}}
+
+
+@app.get("/maintenance/issues")
+def maintenance_issues_stub(status: str = "open", limit: int = 200) -> list:
+    return []
+
+
+@app.get("/comms/recommendations")
+def comms_recommendations_stub(limit: int = 50) -> list:
+    return []
+
+
+@app.get("/comms/log")
+def comms_log_stub(limit: int = 100) -> list:
+    return []
+
+
+@app.post("/maintenance/resolve_all")
+def maintenance_resolve_all_stub() -> dict:
+    return {"resolved": 0, "note": "single-bot edition — no issue store"}
+
+
+@app.post("/maintenance/peer_watch")
+def maintenance_peer_watch_stub() -> dict:
+    return {"ok": True, "note": "single-bot edition — no peer to advise"}
 
 
 @app.get("/trades")
@@ -1426,7 +1281,6 @@ def preflight() -> dict:
     checks = {
         "deriv_app_id_set": bool(s.deriv_app_id),
         "encryption_key_set": bool(s.bot_encryption_key),
-        "analyser_reachable_config": bool(s.analyser_url),
         "accounts_connected": len(accts) > 0,
     }
     ready_for_demo = all([
