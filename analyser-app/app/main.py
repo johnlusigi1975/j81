@@ -70,6 +70,14 @@ async def lifespan(_: FastAPI):
         cycle_runner.ensure_running()  # 30-min backtest→prove→push→auto-clear cycle
     except Exception:
         pass
+    # Warm the Deriv trade-type library in the background so /deriv/library is
+    # fresh on first request (best-effort; uses persisted data otherwise).
+    try:
+        import asyncio as _asyncio
+        from app import deriv_lib
+        _asyncio.create_task(deriv_lib.refresh_payouts())
+    except Exception:
+        pass
     yield
 
 
@@ -458,6 +466,43 @@ def cycle_pause() -> dict:
 def cycle_resume() -> dict:
     from app import cycle
     return cycle.resume()
+
+
+# ---------------------------------------------------------------------------
+# Deriv Trade-Type Library — single source of truth for the four contract
+# types the tree trades (Rise/Fall, Even/Odd, Over/Under, Matches/Differs).
+# ---------------------------------------------------------------------------
+
+
+@app.get("/deriv/library")
+def deriv_library() -> dict:
+    """Full library: static knowledge (contract codes, win rules, structural
+    odds, market list, constraints, honest notes) PLUS live payout data."""
+    from app import deriv_lib
+    return deriv_lib.library()
+
+
+@app.get("/deriv/library/types")
+def deriv_library_types() -> dict:
+    from app import deriv_lib
+    return deriv_lib.TRADE_TYPES
+
+
+@app.get("/deriv/library/markets")
+def deriv_library_markets() -> list[dict]:
+    from app import deriv_lib
+    return deriv_lib.MARKETS
+
+
+@app.post("/deriv/library/refresh")
+async def deriv_library_refresh() -> dict:
+    """Pull real payouts from Deriv for every (market, contract) we track.
+    Updates the best-Even/Odd-market pick and persists to disk."""
+    from app import deriv_lib
+    try:
+        return await deriv_lib.refresh_payouts()
+    except Exception as exc:
+        raise HTTPException(502, f"library refresh failed: {exc!r}")
 
 
 @app.get("/even_odd/payouts")

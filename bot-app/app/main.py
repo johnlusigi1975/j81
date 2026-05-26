@@ -904,6 +904,31 @@ async def scan_proxy() -> dict:
         raise HTTPException(502, f"scanner unavailable (is the Analyser running?): {exc!r}")
 
 
+@app.get("/deriv/library")
+async def deriv_library_proxy() -> dict:
+    """Proxy the analyser's Deriv trade-type library so the UI and the
+    researcher can fetch from a single endpoint (the bot)."""
+    import httpx
+    url = get_settings().analyser_url.rstrip("/") + "/deriv/library"
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception as exc:
+        raise HTTPException(502, f"library unavailable: {exc!r}")
+
+
+@app.post("/deriv/library/refresh")
+async def deriv_library_refresh_proxy() -> dict:
+    """Trigger the analyser to re-pull real payouts for every (market, contract)."""
+    import httpx
+    url = get_settings().analyser_url.rstrip("/") + "/deriv/library/refresh"
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as c:
+            r = await c.post(url); r.raise_for_status(); return r.json()
+    except Exception as exc:
+        raise HTTPException(502, f"library refresh failed: {exc!r}")
+
+
 @app.get("/even_odd/payouts")
 async def even_odd_payouts_proxy(stake: float = 1.0, duration: int = 1) -> dict:
     """Proxy the Analyser's live Even/Odd payout comparison across all markets —
