@@ -992,12 +992,15 @@ async def assistant_read(symbol: str = "R_100") -> dict:
 
 
 @app.get("/assistant/summary")
-def assistant_summary() -> dict:
-    """Today's results in plain numbers for the client — wins, trades, profit,
-    and progress toward each account's take-profit goal. No internal jargon."""
+def assistant_summary(account_id: str | None = None) -> dict:
+    """Today's results in plain numbers for the client — wins, trades, profit.
+    When `account_id` is given, the numbers are filtered to that ONE account
+    (so switching from demo → real shows real history only, not aggregated).
+    No internal jargon."""
     store = get_store()
-    accts = store.list_accounts_public()
-    trades = store.list_trades(limit=500)
+    accts_all = store.list_accounts_public()
+    accts = [a for a in accts_all if a["id"] == account_id] if account_id else accts_all
+    trades = store.list_trades(account_id=account_id, limit=500)
     settled = [t for t in trades if t.get("outcome") in ("won", "lost")]
     wins = sum(1 for t in settled if t.get("outcome") == "won")
     profit_today = sum(a.get("profit_today", 0.0) for a in accts)
@@ -1007,9 +1010,16 @@ def assistant_summary() -> dict:
          "take_profit": a.get("take_profit"), "daily_loss_limit": a.get("daily_loss_limit")}
         for a in accts if a["enabled"]
     ]
+    # trades_total: account-scoped count if account_id given, else global.
+    if account_id:
+        trades_total = len(store.list_trades(account_id=account_id, limit=100000))
+    else:
+        trades_total = store.stats().get("trades_total", 0)
     return {
-        "accounts_connected": len(accts),
-        "trades_total": store.stats().get("trades_total", 0),
+        "accounts_connected": len(accts_all),
+        "scope": "account" if account_id else "all",
+        "account_id": account_id,
+        "trades_total": trades_total,
         "settled": len(settled),
         "wins": wins,
         "win_rate": round(wins / len(settled), 3) if settled else None,
