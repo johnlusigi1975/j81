@@ -1225,6 +1225,84 @@ async def maintenance_peer_watch() -> dict:
         return {"ok": False, "error": repr(exc)}
 
 
+@app.get("/maintenance/tree_status")
+async def maintenance_tree_status() -> dict:
+    """Live on/off state of each system in the tree: researcher autonomous
+    gather, analyser strategy cycle, and the bot's trading loop. Used by the
+    maintenance card to show one health badge per system."""
+    import asyncio, httpx
+    s = get_settings()
+    a_url = s.analyser_url.rstrip("/")
+    r_url = _researcher_url().rstrip("/")
+
+    async def _g(client, url):
+        try:
+            r = await client.get(url, timeout=6.0); r.raise_for_status(); return r.json()
+        except Exception:
+            return None
+
+    async with httpx.AsyncClient() as client:
+        analyser_cycle, researcher_auto = await asyncio.gather(
+            _g(client, f"{a_url}/cycle/status"),
+            _g(client, f"{r_url}/autonomous/status") if r_url else _g(client, ""),
+        )
+    # The bot's "on" is whether its trading loop is alive and any account is enabled.
+    store = get_store()
+    accts_enabled = (store.stats() or {}).get("accounts_enabled", 0)
+    return {
+        "researcher": {
+            "reachable": researcher_auto is not None,
+            "on": bool(((researcher_auto or {}).get("config") or {}).get("enabled")),
+            "interval_seconds": ((researcher_auto or {}).get("config") or {}).get("interval_seconds"),
+        },
+        "analyser": {
+            "reachable": analyser_cycle is not None,
+            "on": bool(analyser_cycle and not analyser_cycle.get("paused")),
+            "next_in_seconds": (analyser_cycle or {}).get("next_in_seconds"),
+        },
+        "bot": {
+            "reachable": True,
+            "on": accts_enabled > 0,
+            "accounts_enabled": accts_enabled,
+        },
+    }
+
+
+@app.post("/maintenance/tree_on")
+async def maintenance_tree_on() -> dict:
+    """ONE click → wake the whole tree. Starts the researcher's autonomous
+    gather + resumes the analyser's strategy cycle + primes a bot peer-watch
+    so recommendations start flowing immediately. The bot's actual trading
+    still respects per-account enable + the goal_status rails — this just
+    turns the production engines on."""
+    import asyncio, httpx
+    s = get_settings()
+    a_url = s.analyser_url.rstrip("/")
+    r_url = _researcher_url().rstrip("/")
+    results: dict = {}
+
+    async def _post(client, url):
+        try:
+            r = await client.post(url, timeout=8.0); r.raise_for_status(); return r.json()
+        except Exception as exc:
+            return {"error": repr(exc)[:160]}
+
+    async with httpx.AsyncClient() as client:
+        researcher_on, analyser_on = await asyncio.gather(
+            _post(client, f"{r_url}/autonomous/start") if r_url else _post(client, ""),
+            _post(client, f"{a_url}/cycle/resume"),
+        )
+    results["researcher"] = researcher_on
+    results["analyser"] = analyser_on
+    # Prime a bot peer-watch so the maintenance log fills with fresh chatter.
+    try:
+        from app import productivity as _bot_prod
+        results["bot_peer_watch"] = await _bot_prod.peer_watch(write_recommendations=True)
+    except Exception as exc:
+        results["bot_peer_watch"] = {"error": repr(exc)[:160]}
+    return {"powered_on": True, "results": results}
+
+
 @app.get("/cycle/status")
 async def cycle_status_proxy() -> dict:
     """Proxy the Analyser's 30-min strategy-cycle status so the Bot dashboard can

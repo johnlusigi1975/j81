@@ -350,6 +350,11 @@
   .maint-foot{margin-top:8px;font-size:10.5px;color:var(--faint)}
   .maint-copied{color:var(--good);font-size:11px;margin-left:8px;opacity:0;transition:opacity .25s}
   .maint-copied.show{opacity:1}
+  .maint-tree .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--bd);border-radius:999px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:11px;text-transform:capitalize}
+  .maint-tree .pill .ld{width:7px;height:7px;border-radius:50%;background:var(--bad);box-shadow:0 0 6px var(--bad)}
+  .maint-tree .pill.on .ld{background:var(--good);box-shadow:0 0 6px var(--good);animation:obs-blink 1.6s ease-in-out infinite}
+  .maint-tree .pill.off{opacity:.7}
+  .maint-tree .pill.unreach{border-style:dashed;color:var(--faint)}
 
   /* ---- Perf hints: GPU compositing for animated bits + offscreen paint deferral ---- */
   /* will-change tells the browser to hoist these to their own composite layer so the
@@ -666,11 +671,13 @@
         <div class="maint-title" id="maint-title">researcher ↔ analyser ↔ bot — what each one needs to work better</div>
       </div>
       <div class="maint-actions">
+        <button class="btn" id="maint-power" type="button" title="Wake the whole tree — researcher gather + analyser cycle + prime a bot peer-watch">🌳 Power on the tree</button>
         <button class="btn ghost" id="maint-prime" type="button" title="Push a fresh peer-watch right now">⟳ prime</button>
         <button class="btn ghost" id="maint-copy" type="button" title="Copy the conversation as plain text">📋 copy all</button>
         <span class="maint-copied" id="maint-copied">copied ✓</span>
       </div>
     </div>
+    <div class="maint-tree" id="maint-tree" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px"></div>
     <div class="maint-prods" id="maint-prods"></div>
     <div class="maint-log" id="maint-log"><div class="maint-empty">listening for tree chatter…</div></div>
     <div class="maint-foot" id="maint-foot">updates every 30 s · paste the copy-all into Claude to fix what they're asking for</div>
@@ -1340,6 +1347,23 @@ function _maintRows(d){
     '</div>';
   }).join("");
 }
+function _maintTree(t){
+  const wrap = $("maint-tree"); if(!wrap) return;
+  if(!t){ wrap.innerHTML=""; return; }
+  const apps = [
+    {k:"researcher", lbl:"researcher", hint:"24/7 web gather"},
+    {k:"analyser",   lbl:"analyser",   hint:"30-min strategy cycle"},
+    {k:"bot",        lbl:"bot",        hint:"trading loop + accounts"},
+  ];
+  wrap.innerHTML = apps.map(function(a){
+    const s = t[a.k] || {};
+    const cls = !s.reachable ? "unreach" : (s.on ? "on" : "off");
+    const state = !s.reachable ? "unreachable" : (s.on ? "on" : "off");
+    return '<span class="pill '+cls+'" title="'+esc(a.hint)+'">'+
+      '<span class="ld"></span>'+esc(a.lbl)+' · '+esc(state)+'</span>';
+  }).join("");
+}
+
 async function loadMaintenance(){
   const card = $("maint-card"); if(!card) return;
   const pulse = $("maint-pulse");
@@ -1350,17 +1374,25 @@ async function loadMaintenance(){
       if(pulse) pulse.classList.add("offline");
       $("maint-title").textContent = "analyser unreachable — chatter paused";
       $("maint-log").innerHTML = '<div class="maint-empty">analyser cold-starting? the conversation resumes as soon as the hub responds.</div>';
-      return;
+    } else {
+      if(pulse) pulse.classList.remove("offline");
+      const sysN = (d.productivity && d.productivity.systems) ? d.productivity.systems.length : 0;
+      const issN = (d.issues || []).length;
+      const recN = (d.recommendations || []).length;
+      $("maint-title").textContent = sysN > 0
+        ? sysN+" systems reporting · "+recN+" recent recommendations · "+issN+" open issues"
+        : "warming up — waiting for the first peer-watch heartbeat";
+      _maintProds(d.productivity);
+      _maintRows(d);
     }
-    if(pulse) pulse.classList.remove("offline");
-    const sysN = (d.productivity && d.productivity.systems) ? d.productivity.systems.length : 0;
-    const issN = (d.issues || []).length;
-    const recN = (d.recommendations || []).length;
-    $("maint-title").textContent = sysN > 0
-      ? sysN+" systems reporting · "+recN+" recent recommendations · "+issN+" open issues"
-      : "warming up — waiting for the first peer-watch heartbeat";
-    _maintProds(d.productivity);
-    _maintRows(d);
+    // Tree on/off badges live next to the heading.
+    try{
+      const t = await api("/maintenance/tree_status");
+      _maintTree(t);
+      // Once the tree is fully on, soften the power button.
+      const btn = $("maint-power"); const allOn = t && t.researcher && t.researcher.on && t.analyser && t.analyser.on;
+      if(btn) btn.textContent = allOn ? "🌳 tree is on" : "🌳 Power on the tree";
+    } catch(_){ _maintTree(null); }
   } catch(_){
     if(pulse) pulse.classList.add("offline");
     $("maint-title").textContent = "chatter unavailable";
@@ -1424,6 +1456,15 @@ function _maintCopyText(){
     try{ await api("/maintenance/peer_watch", {method:"POST"}); }catch(_){}
     await loadMaintenance();
     p.disabled = false; p.textContent = "⟳ prime";
+  });
+  const pw=$("maint-power");
+  if(pw) pw.addEventListener("click", async function(){
+    pw.disabled = true; const orig = pw.textContent; pw.textContent = "🌳 powering on…";
+    try{ await api("/maintenance/tree_on", {method:"POST", timeout:15000}); }catch(_){}
+    await loadMaintenance();
+    pw.disabled = false;
+    // Title text comes from loadMaintenance — but in case the call failed silently, restore.
+    if(pw.textContent === "🌳 powering on…") pw.textContent = orig;
   });
   // Auto-refresh every 30 s while the home view is visible.
   setInterval(function(){
