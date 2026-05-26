@@ -144,6 +144,117 @@ DERIV_STANCE: dict[str, Any] = {
     ],
 }
 
+TRADING_DISCIPLINE: dict[str, Any] = {
+    # Synthesized from: CFA Institute trader-behaviour research; Mark Douglas,
+    # "Trading in the Zone" (probabilistic thinking, pre-commit to risk);
+    # Investopedia + BabyPips on risk management; Trader-psychology research
+    # (FOMO, revenge trading, hesitation). Sources at the bottom.
+    "summary": (
+        "Industry consensus: ~80% of retail traders lose money due to poor discipline, "
+        "not bad strategy. Discipline = a written plan + hard risk caps + emotional rules, "
+        "followed mechanically. The plan beats the trader."
+    ),
+    "principles": [
+        {
+            "name": "Risk-per-trade cap",
+            "rule": "Never risk more than 1–2% of your trading bankroll on a single trade.",
+            "why": "One bad streak at 10% per trade ruins the account; at 1% it's recoverable.",
+            "source": "Mark Douglas; widely-cited 1% rule across CFA / Investopedia",
+            "j81_support": "Stake field, $0.35 minimum, account max_stake_per_trade cap, DRY_RUN master switch.",
+        },
+        {
+            "name": "Predefine the exit BEFORE entry",
+            "rule": "Set stop-loss and take-profit BEFORE clicking. Accept the worst-case loss in advance.",
+            "why": "Douglas: 'If a loss feels painful, your position was too big.' Pain = sizing error.",
+            "source": "Mark Douglas — Trading in the Zone",
+            "j81_support": "Stop-at-LOSS and Stop-at-WIN inputs; goal_status auto-disables on hit.",
+        },
+        {
+            "name": "Daily loss limit",
+            "rule": "Hard $/% cap on losses per session. Hit it → stop trading for the day.",
+            "why": "Stops revenge spirals; preserves capital for tomorrow.",
+            "source": "Industry standard (prop-firm rules + CFA risk research)",
+            "j81_support": "daily_loss_limit per account; bot auto-disables auto-modes when reached.",
+        },
+        {
+            "name": "Trade plan in writing",
+            "rule": "Define entry trigger, exit rules, position size, and risk BEFORE the session.",
+            "why": "Removes in-the-moment improvisation, which is where emotion takes over.",
+            "source": "CFA Institute trader-behaviour research; Investopedia 'Day Trader's Rules'",
+            "j81_support": "Proven-strategy store (durable, contract params + win-rate + EV); acceptance bar.",
+        },
+        {
+            "name": "Trade journal",
+            "rule": "Log every trade — setup, size, reason, exit, outcome, and emotional state.",
+            "why": "Patterns only become visible when written down. Self-awareness compounds.",
+            "source": "Trader-psychology research; Brett Steenbarger writings",
+            "j81_support": "trades table records each trade; Live Results strip; new /trade_stats + scoreboard.",
+        },
+        {
+            "name": "Probabilistic thinking",
+            "rule": "Treat each trade as one sample. Your edge (if any) plays out over series, not individual results.",
+            "why": "Outcomes of single trades are noise. Judging strategy by one trade = misreading randomness.",
+            "source": "Mark Douglas — Trading in the Zone (the central thesis)",
+            "j81_support": "60%×100 J81 goal is sample-based, not single-trade; cycle's 5×100 acceptance.",
+        },
+        {
+            "name": "Process over outcome",
+            "rule": "Don't change strategy after one loss. Evaluate the PROCESS, not individual outcomes.",
+            "why": "Even a winning system has losing trades. Outcome bias destroys good systems.",
+            "source": "Mark Douglas; CFA Institute behaviour research",
+            "j81_support": "Cycle's 5×100×60% acceptance gates strategies on sample evidence, not single trades.",
+        },
+        {
+            "name": "No revenge trading, no FOMO",
+            "rule": "Walk away after a loss. Skip trades you missed. Both are losing patterns.",
+            "why": "Revenge trades = oversized + emotional. FOMO trades = chasing = bad entry.",
+            "source": "Trader-psychology research (FOMO + revenge are the two most-cited traps)",
+            "j81_support": "Manual buttons fire-and-forget; loss-limit forced pause; no 'place again' temptation.",
+        },
+        {
+            "name": "Edge first, size second",
+            "rule": "Trade only positive-EV setups, then size with risk-per-trade cap.",
+            "why": "Sizing a losing strategy bigger = losing money faster.",
+            "source": "Kelly criterion + Investopedia risk management",
+            "j81_support": "EV strip on every trade; cycle requires net P/L > 0; library's break-even pct.",
+        },
+        {
+            "name": "Honest accounting",
+            "rule": "Track REAL win-rate AND realized P/L — both, not just one.",
+            "why": "DIFFERS wins 90% and loses money. Win-rate alone lies; the scoreboard is money.",
+            "source": "Built-in fact of payout asymmetry on Deriv synthetics",
+            "j81_support": "Scoreboard card on home (win-rate + net P/L + goal flags); /trade_stats endpoint.",
+        },
+    ],
+    "psychological_pitfalls": [
+        {"name": "FOMO", "what": "Chasing a move after it's already gone", "fix": "Skip it. The next setup will come."},
+        {"name": "Revenge trading", "what": "Sizing up after a loss to 'get it back'", "fix": "Walk away. Loss-limit hits = done for the day."},
+        {"name": "Hesitation on winners", "what": "Closing early or skipping a valid signal", "fix": "Trust the predefined exit; let the plan execute."},
+        {"name": "Anchoring to entry", "what": "Holding a losing trade because 'it'll come back'", "fix": "Stop-loss is non-negotiable. Click set, then leave it."},
+        {"name": "Overtrading", "what": "Forcing trades because you 'should be doing something'", "fix": "No setup → no trade. Boredom is a feature, not a bug."},
+        {"name": "Position-size creep", "what": "Gradually risking more per trade as you get comfortable", "fix": "Pre-commit a cap; the bot enforces it via max_stake_per_trade."},
+        {"name": "Outcome bias", "what": "Judging a good decision badly because the trade lost", "fix": "Evaluate process. A coin-flip on a +EV setup that loses is still a good decision."},
+    ],
+    "sources_consulted": [
+        "https://www.investopedia.com — search results on trading psychology + risk management",
+        "Mark Douglas — Trading in the Zone (the trader-psychology canon)",
+        "CFA Institute research (cited across multiple secondary sources finding ~80% retail-trader loss attributable to discipline)",
+        "https://www.mindmathmoney.com/articles/the-psychology-of-trading-why-traders-lose-money-mark-douglass-insights",
+        "https://tradethatswing.com/the-1-risk-rule-for-day-trading-and-swing-trading/",
+        "https://www.heygotrade.com/en/blog/trading-psychology-why-it-matters/",
+        "https://shopforexea.com/trading-discipline/",
+        "https://www.barchart.com/story/news/33203995/foundations-of-trading-consistency-principles-of-discipline-and-risk-management",
+        "Brett Steenbarger — research on trade journaling and self-awareness",
+    ],
+    "honest_note": (
+        "These principles are necessary but not sufficient on Deriv synthetics: an RNG market "
+        "has no exploitable predictive edge, so discipline alone cannot manufacture positive EV. "
+        "What discipline DOES guarantee: smaller drawdowns, longer survival, no blow-up trades, "
+        "and a real shot at the one structural edge on offer (Even/Odd payout selection)."
+    ),
+}
+
+
 J81_GOAL: dict[str, Any] = {
     "stance": "Competitive. Deriv plays to win; J81 plays to win. We measure ourselves head-to-head.",
     "win_target": {
@@ -287,6 +398,7 @@ def library() -> dict[str, Any]:
         "honest_notes": HONEST_NOTES,
         "deriv_stance": DERIV_STANCE,
         "j81_goal": J81_GOAL,
+        "trading_discipline": TRADING_DISCIPLINE,
         "live": _LIVE,
     }
 

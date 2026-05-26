@@ -503,6 +503,15 @@ def deriv_library_markets() -> list[dict]:
     return deriv_lib.MARKETS
 
 
+@app.get("/deriv/library/discipline")
+def deriv_library_discipline() -> dict:
+    """Trading discipline principles — synthesized from Mark Douglas / CFA /
+    Investopedia / trader-psychology research. Each principle is mapped to a
+    concrete J81 feature so the systems can use it."""
+    from app import deriv_lib
+    return deriv_lib.TRADING_DISCIPLINE
+
+
 @app.post("/deriv/library/refresh")
 async def deriv_library_refresh() -> dict:
     """Pull real payouts from Deriv for every (market, contract) we track.
