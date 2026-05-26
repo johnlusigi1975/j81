@@ -468,6 +468,15 @@ def cycle_resume() -> dict:
     return cycle.resume()
 
 
+@app.get("/cycle/history")
+def cycle_history(limit: int = 20) -> dict:
+    """Durable audit trail of recent cycle runs — survives the auto-clear.
+    The tree's memory of what it has tried, what's passed, what's near-missed."""
+    store = get_store()
+    return {"recent": store.list_cycle_reports(limit=limit),
+            "summary": store.cycle_history_summary(limit=200)}
+
+
 # ---------------------------------------------------------------------------
 # Deriv Trade-Type Library — single source of truth for the four contract
 # types the tree trades (Rise/Fall, Even/Odd, Over/Under, Matches/Differs).

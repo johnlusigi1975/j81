@@ -536,6 +536,71 @@ class BotStore:
             self._conn.commit()
         return sid
 
+    def trade_stats(self, *, account_id: str | None = None, window: int = 100,
+                    include_practice: bool = True) -> dict[str, Any]:
+        """The J81 goal scoreboard: over the last N settled trades, returns
+        wins/total/win-rate/net P/L, whether the 60% bar is met, whether net
+        P/L is positive, and breakdowns by trade-type and market.
+
+        Real settled trades only (outcome won/lost). dry_run is excluded by
+        default since it doesn't carry money."""
+        outcomes = "('won','lost')" if include_practice else "('won','lost')"
+        params: list[Any] = []
+        clauses = [f"outcome IN {outcomes}"]
+        if account_id:
+            clauses.append("account_id=?"); params.append(account_id)
+        if not include_practice:
+            clauses.append("is_dry_run=0")
+        where = " AND ".join(clauses)
+        params.append(max(1, min(int(window), 1000)))
+        rows = self._conn.execute(
+            f"SELECT outcome, profit, symbol, trade_type, is_dry_run, created_at "
+            f"FROM trades WHERE {where} ORDER BY created_at DESC LIMIT ?", params
+        ).fetchall()
+        n = len(rows)
+        wins = sum(1 for r in rows if r["outcome"] == "won")
+        losses = n - wins
+        net_pnl = round(sum(float(r["profit"] or 0) for r in rows), 2)
+        win_rate = round(100.0 * wins / n, 1) if n else 0.0
+        # by trade_type + by market
+        by_type: dict[str, dict[str, Any]] = {}
+        by_market: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            for bucket, key in ((by_type, r["trade_type"] or "?"), (by_market, r["symbol"] or "?")):
+                b = bucket.setdefault(key, {"key": key, "trades": 0, "wins": 0, "net_pnl": 0.0})
+                b["trades"] += 1
+                b["wins"] += 1 if r["outcome"] == "won" else 0
+                b["net_pnl"] = round(b["net_pnl"] + float(r["profit"] or 0), 2)
+        for b in list(by_type.values()) + list(by_market.values()):
+            b["win_rate"] = round(100.0 * b["wins"] / b["trades"], 1) if b["trades"] else 0.0
+        # J81 goal: ≥60% wins AND positive net P/L
+        goal_met = (n >= window) and (win_rate >= 60.0)
+        pnl_positive = net_pnl > 0
+        if n < window:
+            line = f"Building sample · {n}/{window} settled trades — need more data"
+            state = "warming"
+        elif goal_met and pnl_positive:
+            line = f"✓ {wins}/{n} wins ({win_rate}%) · +${net_pnl} — beating the house"
+            state = "winning"
+        elif goal_met and not pnl_positive:
+            line = f"⚠ {wins}/{n} wins ({win_rate}%) but net ${net_pnl:+.2f} — win-rate high, payouts too low"
+            state = "win_high_pnl_negative"
+        elif pnl_positive:
+            line = f"~ {wins}/{n} wins ({win_rate}%) · net ${net_pnl:+.2f} — profitable but below 60% bar"
+            state = "pnl_positive_winrate_low"
+        else:
+            line = f"✗ {wins}/{n} wins ({win_rate}%) · ${net_pnl:+.2f} — below the goal"
+            state = "below_goal"
+        return {
+            "window": window, "trades": n, "wins": wins, "losses": losses,
+            "win_rate_pct": win_rate, "net_pnl": net_pnl,
+            "goal_winrate_pct": 60.0, "goal_met": goal_met,
+            "pnl_positive": pnl_positive, "is_winning_now": goal_met and pnl_positive,
+            "state": state, "scoreboard": line,
+            "by_type": sorted(by_type.values(), key=lambda b: -b["trades"]),
+            "by_market": sorted(by_market.values(), key=lambda b: -b["trades"]),
+        }
+
     def list_proven_strategies(self, *, limit: int = 200) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             "SELECT * FROM proven_strategies ORDER BY updated_at DESC LIMIT ?",

@@ -201,6 +201,22 @@ class AnalyserStore:
                 CREATE INDEX IF NOT EXISTS ix_study_app ON study(app, kind, status, created_at DESC);
 
                 /* Small key/value store for runtime flags like priority_mode. */
+                -- Durable cycle audit trail: one row per completed 30-min
+                -- cycle. NOT cleared by reset_working_data, so the tree
+                -- remembers what it tried even across auto-clears.
+                CREATE TABLE IF NOT EXISTS cycle_reports (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    started         TEXT NOT NULL,
+                    finished        TEXT,
+                    tested          INTEGER DEFAULT 0,
+                    proven_count    INTEGER DEFAULT 0,
+                    pushed_to_bot   INTEGER DEFAULT 0,
+                    top_json        TEXT,          -- best near-misses (compact)
+                    proven_json     TEXT,          -- proven strategies (compact)
+                    bar             TEXT
+                );
+                CREATE INDEX IF NOT EXISTS ix_cycle_started ON cycle_reports(started DESC);
+
                 CREATE TABLE IF NOT EXISTS app_state (
                     k          TEXT PRIMARY KEY,
                     v          TEXT,
@@ -910,6 +926,59 @@ class AnalyserStore:
                 self._conn.commit()
         except sqlite3.Error:
             pass
+
+    # ----------------------------------------------------- cycle audit trail
+    def record_cycle_report(self, report: dict[str, Any], *, keep_last: int = 200) -> int:
+        """Persist one cycle's report durably (survives reset_working_data) so
+        the tree has memory of what it has tried. Auto-prunes to keep the last
+        `keep_last` rows."""
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO cycle_reports(started, finished, tested, proven_count, "
+                "pushed_to_bot, top_json, proven_json, bar) VALUES (?,?,?,?,?,?,?,?)",
+                (report.get("started"), report.get("finished"),
+                 int(report.get("tested") or 0), int(report.get("proven_count") or 0),
+                 int(report.get("pushed_to_bot") or 0),
+                 json.dumps((report.get("top") or [])[:12], default=str),
+                 json.dumps((report.get("proven") or []), default=str),
+                 report.get("bar")),
+            )
+            # prune older rows beyond keep_last
+            self._conn.execute(
+                "DELETE FROM cycle_reports WHERE id NOT IN ("
+                "SELECT id FROM cycle_reports ORDER BY id DESC LIMIT ?)",
+                (max(1, int(keep_last)),))
+            self._conn.commit()
+            return cur.lastrowid or 0
+
+    def list_cycle_reports(self, *, limit: int = 20) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT id, started, finished, tested, proven_count, pushed_to_bot, "
+            "top_json, proven_json, bar FROM cycle_reports ORDER BY id DESC LIMIT ?",
+            (max(1, min(int(limit), 500)),)).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try: d["top"] = json.loads(d.pop("top_json") or "[]")
+            except ValueError: d["top"] = []
+            try: d["proven"] = json.loads(d.pop("proven_json") or "[]")
+            except ValueError: d["proven"] = []
+            out.append(d)
+        return out
+
+    def cycle_history_summary(self, *, limit: int = 100) -> dict[str, Any]:
+        """Aggregate stats across the last `limit` cycles for the UI summary."""
+        rows = self._conn.execute(
+            "SELECT tested, proven_count, pushed_to_bot FROM cycle_reports "
+            "ORDER BY id DESC LIMIT ?", (max(1, int(limit)),)).fetchall()
+        n = len(rows)
+        return {
+            "cycles": n,
+            "total_tested": sum(int(r["tested"] or 0) for r in rows),
+            "total_proven": sum(int(r["proven_count"] or 0) for r in rows),
+            "total_pushed_to_bot": sum(int(r["pushed_to_bot"] or 0) for r in rows),
+            "any_proven": any(int(r["proven_count"] or 0) > 0 for r in rows),
+        }
 
     # ----------------------------------------------------------------- helpers
 

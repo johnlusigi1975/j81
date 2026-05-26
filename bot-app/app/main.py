@@ -1097,6 +1097,18 @@ async def priority_set(body: PriorityToggle) -> dict:
         raise HTTPException(502, f"could not reach the hub to set priority: {exc!r}")
 
 
+@app.get("/cycle/history")
+async def cycle_history_proxy(limit: int = 20) -> dict:
+    """Proxy the analyser's durable cycle audit trail so the UI can render it."""
+    import httpx
+    url = get_settings().analyser_url.rstrip("/") + f"/cycle/history?limit={int(limit)}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception:
+        return {"recent": [], "summary": {"cycles": 0, "any_proven": False}, "unreachable": True}
+
+
 @app.get("/cycle/status")
 async def cycle_status_proxy() -> dict:
     """Proxy the Analyser's 30-min strategy-cycle status so the Bot dashboard can
@@ -1116,6 +1128,16 @@ async def cycle_status_proxy() -> dict:
 @app.get("/trades")
 def trades_list(account_id: str | None = None, limit: int = 100) -> list[dict]:
     return get_store().list_trades(account_id=account_id, limit=limit)
+
+
+@app.get("/trade_stats")
+def trade_stats(account_id: str | None = None, window: int = 100,
+                include_practice: bool = True) -> dict:
+    """The J81 goal scoreboard over the last `window` settled trades:
+    wins / total / win-rate / net P/L, with goal flags (≥60% AND net>0) and
+    a per-type / per-market breakdown."""
+    return get_store().trade_stats(account_id=account_id, window=window,
+                                   include_practice=include_practice)
 
 
 class ProvenStrategies(BaseModel):

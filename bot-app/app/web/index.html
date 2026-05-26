@@ -270,6 +270,25 @@
   .engines-tip.dismissed{display:none}
   @keyframes tip-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
 
+  /* J81 vs Deriv scoreboard — the live 60%×100 goal tracker on the home view. */
+  .goal-card{border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(212,184,122,.08),rgba(70,207,158,.04));transition:border-color .3s,box-shadow .3s}
+  .goal-card.winning{border-color:rgba(70,207,158,.5);box-shadow:0 0 24px -6px rgba(70,207,158,.35)}
+  .goal-card.below{border-color:rgba(229,72,77,.45);box-shadow:0 0 24px -6px rgba(229,72,77,.25)}
+  .goal-card.warming{border-color:rgba(212,184,122,.35)}
+  .goal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+  .goal-eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+  .goal-title{font-family:var(--serif);font-size:22px;font-weight:800;margin-top:4px}
+  .goal-stats{display:flex;gap:18px}
+  .goal-stats > div{text-align:right}
+  .goal-stats .n{font-family:var(--mono);font-size:22px;font-weight:800;line-height:1}
+  .goal-stats .l{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+  .goal-bar{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--bd);overflow:hidden}
+  .goal-bar i{display:block;height:100%;width:0;border-radius:6px;transition:width .8s ease,background .35s;background:linear-gradient(90deg,#e08585,#e0b066 50%,var(--amber))}
+  .goal-card.winning .goal-bar i{background:linear-gradient(90deg,var(--amber),#46cf9e)}
+  .goal-bar .mark{position:absolute;left:60%;top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.55}
+  .goal-foot{margin-top:10px;font-size:12.5px;color:var(--dim)}
+  .goal-card.winning .goal-foot{color:var(--good)} .goal-card.below .goal-foot{color:var(--bad)}
+
   /* ---- Perf hints: GPU compositing for animated bits + offscreen paint deferral ---- */
   /* will-change tells the browser to hoist these to their own composite layer so the
      animations are smoother and don't repaint the page on every frame. */
@@ -541,7 +560,24 @@
     <div id="home-mode"></div>
   </div>
 
-  <div class="statstrip" style="margin-top:18px">
+  <!-- The J81 scoreboard — Deriv vs J81 over the last 100 settled trades. -->
+  <div id="goal-card" class="goal-card" style="margin-top:18px">
+    <div class="goal-head">
+      <div>
+        <div class="goal-eyebrow">J81 vs Deriv · last 100 trades</div>
+        <div class="goal-title" id="goal-title">Building sample…</div>
+      </div>
+      <div class="goal-stats">
+        <div><div class="n" id="goal-wins">—</div><div class="l">wins</div></div>
+        <div><div class="n" id="goal-rate">—</div><div class="l">win-rate</div></div>
+        <div><div class="n" id="goal-pnl">—</div><div class="l">net P/L</div></div>
+      </div>
+    </div>
+    <div class="goal-bar"><i id="goal-bar-fill"></i><span class="mark" title="J81 goal · 60%"></span></div>
+    <div class="goal-foot" id="goal-line">Waiting for settled trades — your last 100 will appear here.</div>
+  </div>
+
+  <div class="statstrip" style="margin-top:14px">
     <div class="stat good"><div class="n" id="s-profit">—</div><div class="l">profit today</div></div>
     <div class="stat"><div class="n" id="s-wins">—</div><div class="l">wins / settled</div></div>
     <div class="stat"><div class="n" id="s-trades">—</div><div class="l">trades</div></div>
@@ -588,6 +624,9 @@
       <div class="stat"><div class="n" id="home-cy-state" style="font-size:15px">—</div><div class="l">cycle</div></div>
     </div>
     <div id="home-proven"><div class="empty">no proven strategies yet — the analyser cycle runs every 30 min and only keeps strategies that hit J81's goal: ≥60% wins across 5×100 trades AND positive net P/L (rare on RNG, by design)</div></div>
+    <!-- Durable cycle audit trail — what the tree has tried, what passed, near-misses. -->
+    <div class="sec-title" style="margin:18px 0 6px;font-size:11.5px">Cycle history <span class="faint" id="hist-sum" style="text-transform:none;letter-spacing:0"></span></div>
+    <div id="hist-list" class="faint" style="font-size:12px">no cycle history yet</div>
   </div>
 </div>
 
@@ -1054,8 +1093,60 @@ async function loadHome(){
   }catch(_){}
   if(CUR) loadBalance(CUR.id).then(b=>{ const el=$("s-acct"); if(el&&b&&b.balance!=null) el.textContent=fmtMoney(b.balance,b.currency); });
   loadHomeCycle();
+  loadGoal();
+  loadCycleHistory();
 }
 function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
+
+// ---- J81 vs Deriv scoreboard (60% × 100 + net P/L > 0) ----
+async function loadGoal(){
+  const card=$("goal-card"); if(!card) return;
+  try{
+    const url = CUR ? "/trade_stats?account_id="+encodeURIComponent(CUR.id) : "/trade_stats";
+    const d = await api(url);
+    const total=d.trades||0, wins=d.wins||0, wr=Number(d.win_rate_pct||0);
+    const pnl=Number(d.net_pnl||0);
+    $("goal-wins").textContent = total ? (wins+"/"+total) : "—";
+    $("goal-rate").textContent = total ? (wr.toFixed(1)+"%") : "—";
+    const p=$("goal-pnl"); if(p){ p.textContent=(pnl>=0?"+$":"-$")+Math.abs(pnl).toFixed(2); p.style.color = pnl>=0?"var(--good)":"var(--bad)"; }
+    // bar fill = win-rate / 100 (capped to 100%), reference mark at 60% (set in CSS)
+    const fill=$("goal-bar-fill"); if(fill) fill.style.width = Math.max(0,Math.min(100,wr))+"%";
+    // state-driven copy + card colour
+    card.classList.remove("winning","below","warming");
+    if(d.state==="winning") card.classList.add("winning");
+    else if(d.state==="below_goal" || d.state==="win_high_pnl_negative") card.classList.add("below");
+    else if(d.state==="warming") card.classList.add("warming");
+    const titles = {
+      warming: "Warming up", winning: "Beating the house",
+      win_high_pnl_negative: "Wins high · money still negative",
+      pnl_positive_winrate_low: "Profitable · below 60% bar",
+      below_goal: "Below the goal",
+    };
+    $("goal-title").textContent = titles[d.state] || "Tracking…";
+    $("goal-line").textContent = d.scoreboard || "";
+  }catch(_){
+    $("goal-title").textContent="Tracking offline"; $("goal-line").textContent="";
+  }
+}
+
+// ---- Cycle audit trail (durable, what the tree has tried) ----
+async function loadCycleHistory(){
+  const list=$("hist-list"), sum=$("hist-sum"); if(!list) return;
+  try{
+    const d=await api("/cycle/history?limit=10");
+    const s=d.summary||{};
+    if(sum) sum.textContent = s.cycles ? (s.cycles+" cycles · "+s.total_tested+" candidates tested · "+s.total_proven+" proven") : "";
+    const rows=d.recent||[];
+    if(!rows.length){ list.innerHTML='<div class="empty">no cycle history yet</div>'; return; }
+    list.innerHTML = rows.map(function(r){
+      const dt = r.finished || r.started || ""; const tm = (dt||"").replace("T"," ").slice(0,16);
+      const proven = (r.proven_count||0) > 0;
+      const best = (r.top && r.top[0]) ? (r.top[0].label+" · "+(r.top[0].avg_win_rate||0)+"%") : "—";
+      const col = proven?"var(--good)":"var(--faint)";
+      return '<div style="display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--bd);font-size:12px"><span class="faint" style="font-family:var(--mono);font-size:11px">'+esc(tm)+'</span><span>tested <b>'+(r.tested||0)+'</b></span><span style="color:'+col+'">proven <b>'+(r.proven_count||0)+'</b></span><span class="faint" style="margin-left:auto">best near-miss: '+esc(best)+'</span></div>';
+    }).join("");
+  }catch(_){ list.innerHTML='<div class="empty">cycle history unavailable</div>'; }
+}
 async function loadHomeCycle(){
   // 30-min strategy cycle status (proxied from the analyser)
   try{ const c=await api("/cycle/status");

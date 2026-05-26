@@ -131,6 +131,11 @@ async def run_cycle(push: bool = True) -> dict:
         "bar": f"{int(WIN_BAR)}% win each of {SAMPLES}×{TRADES_PER} trades + net P/L > 0",
     }
     _set_last(report)
+    # Durable audit trail (survives reset_working_data) — the tree remembers.
+    try:
+        get_store().record_cycle_report(report)
+    except Exception:
+        pass
     return report
 
 
