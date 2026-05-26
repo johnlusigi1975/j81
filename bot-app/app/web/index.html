@@ -229,6 +229,53 @@
   .tbtn.even{background:linear-gradient(135deg,#fff0c2,#f0c64a 60%,#cf9e2a);color:#241d05;box-shadow:0 16px 36px -16px rgba(240,200,90,.7)}
   .tbtn.odd{background:linear-gradient(135deg,#eef0f5,#aab0bd 60%,#7c8290);color:#15151c;box-shadow:0 16px 36px -16px rgba(170,176,189,.6)}
   .tbtn.sug{outline:2px solid rgba(255,255,255,.9);outline-offset:3px;animation:sug 1.5s ease-in-out infinite}
+  /* EVEN/ODD trio layout: two manual calls + one AUTO [mix] beside them. */
+  .tgrid.eo3{grid-template-columns:1fr 1fr 1.05fr}
+  @media(max-width:560px){.tgrid.eo3{grid-template-columns:1fr 1fr;gap:10px} .tgrid.eo3 .tbtn.auto{grid-column:1/-1}}
+  .tbtn.auto{background:linear-gradient(135deg,#1a2236 0%,#262f4a 55%,#3a4768);color:#f0e7c8;border:1px solid rgba(212,184,122,.35);box-shadow:0 16px 36px -16px rgba(60,80,140,.55), inset 0 1px 0 rgba(255,255,255,.06)}
+  .tbtn.auto .big{display:flex;align-items:center;justify-content:center;gap:9px}
+  .tbtn.auto .mix{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#241c0a;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);padding:3px 9px 2px;border-radius:6px;box-shadow:0 0 0 1px rgba(0,0,0,.18) inset, 0 4px 10px -3px rgba(212,184,122,.45);position:relative;top:-1px}
+  .tbtn.auto.on{background:linear-gradient(135deg,#0f2c1a 0%,#13502c 55%,#1c6e3c);color:#e8ffe9;border-color:rgba(70,207,158,.45);box-shadow:0 16px 36px -14px rgba(45,220,130,.5), inset 0 1px 0 rgba(255,255,255,.12)}
+  .tbtn.auto.on .mix{background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a);color:#04200f;animation:eo-mix-pulse 1.4s ease-in-out infinite}
+  @keyframes eo-mix-pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,207,158,.7)}50%{box-shadow:0 0 0 6px rgba(70,207,158,0)}}
+  .tbtn.auto .sub{font-size:10.5px;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.04em;margin-top:2px}
+
+  /* Dedicated Even/Odd auto-trade control panel. */
+  .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(54,214,200,.06),rgba(212,184,122,.04));position:relative}
+  .eo-auto h5{margin:0 0 4px;font-family:var(--serif);font-size:15px;font-weight:800;letter-spacing:.01em}
+  .eo-auto .sub{font-size:11.5px;color:var(--dim);margin-bottom:12px}
+  .eo-auto .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+  @media(max-width:560px){.eo-auto .grid{grid-template-columns:1fr}}
+  .eo-auto .f{display:flex;flex-direction:column;gap:4px}
+  .eo-auto .f .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700}
+  .eo-auto .f input[type=number]{width:100%;padding:9px 11px;background:rgba(0,0,0,.28);border:1px solid var(--bd);border-radius:9px;color:var(--text);font-family:var(--mono);font-size:14px}
+  .eo-auto .f input[type=number]:focus{outline:none;border-color:var(--amber);background:rgba(0,0,0,.42)}
+  .eo-auto .ticks{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:9px 11px;border:1px dashed rgba(255,255,255,.10);border-radius:10px;background:rgba(0,0,0,.18)}
+  .eo-auto .ticks .seg{display:inline-flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+  .eo-auto .ticks .seg button{padding:7px 12px;font-size:12px;background:transparent;color:var(--dim);border:0;cursor:pointer;font-weight:700}
+  .eo-auto .ticks .seg button.on{background:var(--amber);color:#241c0a}
+  .eo-auto .ticks input[type=number]{width:70px;padding:6px 9px}
+  .eo-auto .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.08)}
+  .eo-auto .status{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+  .eo-auto .status b{color:var(--text)}
+  .eo-auto .pnl{margin-left:auto;font-family:var(--mono);font-size:14px;font-weight:800}
+  .eo-auto .pnl.up{color:var(--good)} .eo-auto .pnl.dn{color:var(--bad)}
+  .eo-auto .meter{margin-top:10px;height:6px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;position:relative}
+  .eo-auto .meter i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));border-radius:3px;transition:width .35s ease}
+
+  /* Congratulations / take-profit popup overlay */
+  .pop-wrap{position:fixed;inset:0;background:rgba(6,10,16,.74);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100;animation:popfade .22s ease}
+  @keyframes popfade{from{opacity:0}to{opacity:1}}
+  .pop{max-width:420px;width:calc(100% - 28px);border:1px solid var(--bd);border-radius:18px;background:linear-gradient(180deg,rgba(28,38,52,.96),rgba(12,18,28,.96));padding:24px 22px;text-align:center;box-shadow:0 30px 80px -20px rgba(0,0,0,.7)}
+  .pop.win{border-color:rgba(70,207,158,.6);box-shadow:0 0 0 1px rgba(70,207,158,.3) inset, 0 30px 80px -20px rgba(70,207,158,.35)}
+  .pop.stop{border-color:rgba(255,120,140,.55);box-shadow:0 0 0 1px rgba(255,120,140,.25) inset, 0 30px 80px -20px rgba(255,120,140,.3)}
+  .pop .ic{font-size:42px;margin-bottom:8px}
+  .pop h3{margin:0 0 6px;font-family:var(--serif);font-size:24px;font-weight:800}
+  .pop .msg{color:var(--dim);font-size:13px;line-height:1.5;margin-bottom:14px}
+  .pop .pnl-big{font-family:var(--mono);font-size:28px;font-weight:800;margin:6px 0 14px}
+  .pop .pnl-big.up{color:var(--good)} .pop .pnl-big.dn{color:var(--bad)}
+  .pop button{padding:10px 22px;border-radius:10px;border:0;background:var(--amber);color:#241c0a;font-weight:800;cursor:pointer;font-size:13px}
+  .pop button:hover{filter:brightness(1.07)}
   .tbtn.firing{animation:fire .4s ease-out}
   @keyframes fire{0%{transform:scale(.93);filter:brightness(1.5)}100%{transform:scale(1);filter:brightness(1)}}
   /* compact, bank-style buttons (Rise/Fall) — small + decent, not a game */
@@ -724,6 +771,53 @@
     <div class="tgrid" id="trade-buttons"></div>
     <!-- result shows RIGHT under the buttons so a tap visibly does something -->
     <div id="t-result" style="margin-top:12px"></div>
+
+    <!-- Dedicated Even/Odd auto-trade panel (shown only when GAME==="even_odd").
+         Self-contained: take-profit, stop-loss, loss-streak limit, signal
+         threshold, ticks (auto or manual), session P/L meter, congrats popup. -->
+    <div id="eo-auto" class="eo-auto" hidden>
+      <h5>🎯 Even/Odd auto-trader</h5>
+      <div class="sub">Set your targets, pick a signal threshold, hit start. The desk fires EVEN or ODD trades for you on this market — mixing sides based on the live read — and stops the moment you hit your win or loss line.</div>
+      <div class="grid">
+        <div class="f">
+          <div class="l">Take profit ($)</div>
+          <input id="eo-tp" type="number" min="0" step="0.5" placeholder="e.g. 10"/>
+        </div>
+        <div class="f">
+          <div class="l">Stop loss ($)</div>
+          <input id="eo-sl" type="number" min="0" step="0.5" placeholder="e.g. 5"/>
+        </div>
+        <div class="f">
+          <div class="l">Stake per trade ($)</div>
+          <input id="eo-stake" type="number" min="0.35" step="0.05" placeholder="0.35"/>
+        </div>
+        <div class="f">
+          <div class="l">Stop after N losses in a row</div>
+          <input id="eo-streak" type="number" min="1" max="50" value="11"/>
+        </div>
+        <div class="f">
+          <div class="l">Signal threshold (%)</div>
+          <input id="eo-thr" type="number" min="50" max="95" value="58"/>
+        </div>
+        <div class="f">
+          <div class="l">Ticks per trade</div>
+          <div class="ticks">
+            <div class="seg" id="eo-tick-seg">
+              <button type="button" class="on" data-mode="auto">Auto</button>
+              <button type="button" data-mode="manual">Manual</button>
+            </div>
+            <input id="eo-ticks" type="number" min="1" max="10" value="1" disabled/>
+            <span class="faint" style="font-size:11px">desk picks 1–5 ticks based on the signal strength when on Auto</span>
+          </div>
+        </div>
+      </div>
+      <div class="meter"><i id="eo-meter" style="width:0%"></i></div>
+      <div class="actions">
+        <button class="btn" id="eo-go" type="button">▶ Start auto-trading</button>
+        <div class="status" id="eo-status">idle — fill in your targets and press start</div>
+        <div class="pnl" id="eo-pnl">+$0.00</div>
+      </div>
+    </div>
 
     <!-- M Pro scanner (only for the scanner game) -->
     <div id="mpro-extra" hidden>
@@ -1470,7 +1564,10 @@ const LiveWS=(function(){
   }
   return {
     start(sym){ want=sym; emptyMsg(); open(); resub(); },
-    stop(){ want=null; if(ws&&sub&&ws.readyState===1){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} } if(ws){ try{ws.close()}catch(_){} } ws=null; sub=null; }
+    stop(){ want=null; if(ws&&sub&&ws.readyState===1){ try{ws.send(JSON.stringify({forget:sub}))}catch(_){} } if(ws){ try{ws.close()}catch(_){} } ws=null; sub=null; },
+    // Read-only snapshot for consumers (e.g., the Even/Odd auto-trader).
+    digits(){ return digits.slice(); },
+    prices(){ return prices.slice(); },
   };
 })();
 
@@ -1553,7 +1650,8 @@ async function openTrade(game){
       <button class="tbtn down" data-tt="rise_fall" data-dir="down"><span class="big">▼ FALL</span><span class="pay" id="pay-b">—</span></button>`;
   } else if(game==="even_odd"){
     $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="even_odd" data-pred="even"><span class="big">EVEN</span><span class="pay" id="pay-a">—</span></button>
-      <button class="tbtn odd" data-tt="even_odd" data-pred="odd"><span class="big">ODD</span><span class="pay" id="pay-b">—</span></button>`;
+      <button class="tbtn odd" data-tt="even_odd" data-pred="odd"><span class="big">ODD</span><span class="pay" id="pay-b">—</span></button>
+      <button class="tbtn auto" id="eo-mix-btn" type="button" title="Auto-mix: the desk picks EVEN or ODD each trade based on the live read"><span class="big">AUTO <span class="mix">mix</span></span><span class="sub">smart EVEN ↔ ODD</span></button>`;
   } else if(game==="over_under"){
     $("trade-buttons").innerHTML=`<button class="tbtn up" data-tt="over_under" data-dir="over"><span class="big">▲ OVER</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn down" data-tt="over_under" data-dir="under"><span class="big">▼ UNDER</span><span class="pay" id="pay-b">—</span></button>`;
@@ -1567,8 +1665,14 @@ async function openTrade(game){
   if($("eo-flow")) $("eo-flow").hidden = !isEO;
   if($("eo-read")) $("eo-read").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
+  if($("eo-auto")) $("eo-auto").hidden = !isEO;
   if(isEO) loadEvenOddPayouts();
-  $("trade-buttons").className = "tgrid" + (game==="rise_fall" ? " compact" : "");
+  $("trade-buttons").className = "tgrid"
+    + (game==="rise_fall" ? " compact" : "")
+    + (isEO ? " eo3" : "");          // 3-column layout when EVEN/ODD/AUTO trio is present
+  // Stop the EO auto-trader on game switch so leaving the page never leaves
+  // it firing trades in the background.
+  if(!isEO && window.EOAuto && window.EOAuto.running) window.EOAuto.stop("game changed");
   if(game==="rise_fall") RFScan.start(); else RFScan.stop();
   $("t-symbol").disabled = (game==="rise_fall" && window.AUTO_VOL!==false);   // auto-volatility controls the market
   // markets
@@ -1627,6 +1731,175 @@ async function refreshLive(){
 }
 // after a trade, poll a few times so the WON/LOST + new balance show as it settles
 function pollSettle(){ [2500,8000,15000].forEach(ms=>setTimeout(()=>{ try{refreshLive();}catch(_){ } },ms)); }
+
+// ----------------------- Congrats / stop popup -----------------------
+function showPop({kind, icon, title, msg, pnl}){
+  // kind: "win" (TP hit) | "stop" (SL or loss-streak hit)
+  const wrap = document.createElement("div"); wrap.className = "pop-wrap";
+  const box = document.createElement("div"); box.className = "pop " + (kind||"");
+  const pnlClass = (pnl!=null && pnl < 0) ? "dn" : "up";
+  const pnlTxt = (pnl!=null) ? ((pnl>=0?"+$":"-$") + Math.abs(pnl).toFixed(2)) : "";
+  box.innerHTML =
+    '<div class="ic">'+(icon||"🎉")+'</div>'+
+    '<h3>'+esc(title||"")+'</h3>'+
+    (pnlTxt ? '<div class="pnl-big '+pnlClass+'">'+pnlTxt+'</div>' : '')+
+    '<div class="msg">'+esc(msg||"")+'</div>'+
+    '<button type="button">OK · close</button>';
+  wrap.appendChild(box);
+  const close = ()=>{ try{wrap.remove();}catch(_){ } };
+  box.querySelector("button").addEventListener("click", close);
+  wrap.addEventListener("click", e=>{ if(e.target===wrap) close(); });
+  document.body.appendChild(wrap);
+}
+
+// ----------------------- Even/Odd auto-trader -----------------------
+// Self-contained client-side controller for the Even/Odd auto panel.
+// On each tick of the loop: reads the live digit stream LiveWS keeps, asks
+// whether EVEN or ODD is leaning above the user's signal threshold, and (if
+// it is) fires a /trade/manual with that side. Stops the moment any of
+// take-profit, stop-loss, or consecutive-loss limit is reached and shows
+// the appropriate popup. Pauses on signal too weak — never blind-fires.
+window.EOAuto = (function(){
+  const S = { running:false, timer:null, sess:{pnl:0, wins:0, losses:0, streak:0, trades:0}, busy:false };
+  const $g = id => document.getElementById(id);
+  function _setStatus(t){ const el=$g("eo-status"); if(el) el.textContent=t; }
+  function _setPnl(){ const p=$g("eo-pnl"); if(!p) return; const v=S.sess.pnl;
+    p.textContent = (v>=0?"+$":"-$")+Math.abs(v).toFixed(2);
+    p.className = "pnl " + (v>=0?"up":"dn");
+  }
+  function _setMeter(){
+    const m=$g("eo-meter"); if(!m) return;
+    const tp = parseFloat(($g("eo-tp")||{}).value)||0;
+    if(tp<=0){ m.style.width = "0%"; return; }
+    const pct = Math.max(0, Math.min(100, (S.sess.pnl/tp)*100));
+    m.style.width = pct.toFixed(0)+"%";
+  }
+  function _resetBtn(){
+    const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
+    const go=$g("eo-go"); if(go) go.textContent="▶ Start auto-trading";
+  }
+  function _liveDigits(){ try{ return (typeof LiveWS!=="undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
+  // Decide EVEN / ODD / SKIP from the live read + threshold.
+  function _decide(threshold){
+    const d = _liveDigits(); if(d.length < 20) return {side:null, why:"reading the tape — need at least 20 ticks"};
+    const last20 = d.slice(-20);
+    const ev = last20.filter(x=>x%2===0).length;
+    const evp = Math.round(ev/last20.length*100), odp = 100-evp;
+    if(evp >= threshold) return {side:"even", evp, odp, why:"EVEN at "+evp+"% over last 20 ≥ "+threshold+"%"};
+    if(odp >= threshold) return {side:"odd",  evp, odp, why:"ODD at "+odp+"% over last 20 ≥ "+threshold+"%"};
+    return {side:null, evp, odp, why:"no side ≥ "+threshold+"% threshold (EVEN "+evp+" / ODD "+odp+")"};
+  }
+  function _autoTicks(decision){
+    // Auto-ticks: stronger lean → fewer ticks (less time for randomness to revert).
+    const lead = Math.max(decision.evp||0, decision.odp||0);
+    if(lead >= 75) return 1;
+    if(lead >= 65) return 2;
+    return 3;
+  }
+  async function _fireOnce(){
+    if(!S.running || S.busy) return;
+    const cfg = {
+      tp:    parseFloat(($g("eo-tp")||{}).value)||0,
+      sl:    parseFloat(($g("eo-sl")||{}).value)||0,
+      stake: Math.max(0.35, parseFloat(($g("eo-stake")||{}).value)||0.35),
+      maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||58)),
+      ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
+      ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
+    };
+    const d = _decide(cfg.threshold);
+    if(!d.side){ _setStatus("⏸ holding — "+d.why); return; }
+    const ticks = (cfg.ticksMode==="auto") ? _autoTicks(d) : cfg.ticksMode==="manual" ? cfg.ticksMode : 1;
+    const dur = (cfg.ticksMode==="auto") ? _autoTicks(d) : cfg.ticksManual;
+    if(!CUR){ S.stop("connect an account first"); return; }
+    S.busy = true;
+    _setStatus("📤 firing "+d.side.toUpperCase()+" · "+dur+" tick(s) · "+d.why);
+    try{
+      const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
+        account_id: CUR.id, trade_type:"even_odd", symbol: $g("t-symbol").value,
+        stake: cfg.stake, duration: dur, duration_unit: "t", prediction: d.side,
+      })});
+      const profit = (typeof r.profit === "number") ? r.profit : 0;
+      const outcome = r.outcome || "pending";
+      S.sess.trades += 1;
+      if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; }
+      else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; }
+      // (dry_run / pending: no scoring change)
+      _setPnl(); _setMeter();
+      _setStatus(`${outcome.toUpperCase()} · session ${S.sess.wins}/${S.sess.trades} · streak ${S.sess.streak}`);
+      // Stop conditions — check AFTER each settled trade.
+      if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){
+        S.stop("take-profit hit");
+        showPop({kind:"win", icon:"🎉", title:"Take-profit hit!",
+                 msg:"You reached your target. Banked the win and stopped the auto-trader so the house doesn't claw it back.",
+                 pnl: S.sess.pnl});
+        return;
+      }
+      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){
+        S.stop("stop-loss hit");
+        showPop({kind:"stop", icon:"🛑", title:"Stop-loss hit — desk paused.",
+                 msg:"You reached your daily loss line. Stepping away is the win here — come back fresh.",
+                 pnl: S.sess.pnl});
+        return;
+      }
+      if(S.sess.streak >= cfg.maxLossStreak){
+        S.stop(cfg.maxLossStreak+"-loss streak");
+        showPop({kind:"stop", icon:"⚠️", title:cfg.maxLossStreak+" losses in a row — desk paused.",
+                 msg:"The streak guard you set just kicked in. That's discipline working — review and adjust before restarting.",
+                 pnl: S.sess.pnl});
+        return;
+      }
+      pollSettle();
+    } catch(e){
+      _setStatus("error: "+(e&&e.message||"trade failed"));
+    } finally{
+      S.busy = false;
+    }
+  }
+  S.start = function(){
+    if(S.running) return;
+    if(!CUR){ showView("connect"); return; }
+    S.running = true;
+    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0};
+    _setPnl(); _setMeter();
+    _setStatus("running · reading the tape…");
+    const b=$g("eo-mix-btn"); if(b){ b.classList.add("on"); const sub=b.querySelector(".sub"); if(sub) sub.textContent="running · session 0/0"; }
+    const go=$g("eo-go"); if(go) go.textContent="■ Stop";
+    // ~6s cadence between trade attempts — gives time for one to settle even
+    // on multi-tick durations without overlapping orders.
+    _fireOnce();
+    S.timer = setInterval(_fireOnce, 6000);
+  };
+  S.stop = function(reason){
+    if(!S.running && !S.timer) return;
+    S.running = false;
+    if(S.timer){ clearInterval(S.timer); S.timer=null; }
+    _resetBtn();
+    _setStatus("stopped — "+(reason||"manual stop")+" · session "+S.sess.wins+"/"+S.sess.trades+" · "+
+               ((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
+  };
+  S.toggle = function(){ S.running ? S.stop("manual stop") : S.start(); };
+  return S;
+})();
+
+(function(){
+  // Wire the controls: ticks segment, mix button, start/stop, tp meter on input.
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#eo-tick-seg button");
+    if(!t) return;
+    document.querySelectorAll("#eo-tick-seg button").forEach(b=>b.classList.toggle("on", b===t));
+    const manual = t.dataset.mode === "manual";
+    const inp = document.getElementById("eo-ticks"); if(inp) inp.disabled = !manual;
+  });
+  const go = document.getElementById("eo-go"); if(go) go.addEventListener("click", ()=>window.EOAuto.toggle());
+  const mix = document.getElementById("eo-mix-btn"); if(mix) mix.addEventListener("click", ()=>window.EOAuto.toggle());
+  const tp = document.getElementById("eo-tp"); if(tp) tp.addEventListener("input", ()=>{
+    const m=document.getElementById("eo-meter"); if(!m) return;
+    const v=parseFloat(tp.value)||0;
+    const pnl = window.EOAuto && window.EOAuto.sess ? window.EOAuto.sess.pnl : 0;
+    m.style.width = (v>0 ? Math.max(0,Math.min(100,(pnl/v)*100)) : 0).toFixed(0)+"%";
+  });
+})();
 
 async function placeTrade(btn){
   if(!CUR){ showView("connect"); return; }
