@@ -250,47 +250,103 @@
   .eo-band-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin:6px 0 6px}
   .eo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
   @media(max-width:560px){.eo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  .eo-cell{padding:7px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(0,0,0,.22);cursor:pointer;transition:transform .12s,border-color .2s,box-shadow .2s;display:flex;flex-direction:column;gap:5px;min-height:64px}
-  .eo-cell:hover{transform:translateY(-1px);border-color:var(--bd2)}
-  .eo-cell.here{border-color:var(--amber);box-shadow:0 0 0 1px rgba(212,184,122,.25) inset, 0 8px 22px -12px rgba(212,184,122,.55)}
-  .eo-cell.strong{border-color:rgba(70,207,158,.55);box-shadow:0 0 0 1px rgba(70,207,158,.18) inset}
-  .eo-cell.firm{border-color:rgba(240,200,90,.4)}
-  .eo-cell.warm{opacity:.7}
-  .eo-cell .top{display:flex;align-items:center;justify-content:space-between;gap:4px;font-family:var(--mono);font-size:10.5px;font-weight:700}
-  .eo-cell .sym{color:var(--text);letter-spacing:.04em}
-  .eo-cell .mark{font-size:11px;line-height:1}
-  .eo-cell .bar{position:relative;display:flex;height:16px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.04)}
+  .eo-cell{padding:10px 10px 9px;border:1px solid var(--bd);border-radius:11px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.32));cursor:pointer;transition:transform .12s ease,border-color .2s ease,box-shadow .2s ease;display:flex;flex-direction:column;gap:6px;min-height:88px;position:relative;overflow:hidden}
+  .eo-cell:hover{transform:translateY(-2px);border-color:var(--bd2);box-shadow:0 8px 22px -14px rgba(0,0,0,.6)}
+  .eo-cell.here{border-color:var(--amber);background:linear-gradient(180deg,rgba(212,184,122,.10),rgba(0,0,0,.38));box-shadow:0 0 0 1px rgba(212,184,122,.3) inset, 0 12px 28px -14px rgba(212,184,122,.55)}
+  .eo-cell.strong.lean-even{border-color:rgba(240,200,90,.55);box-shadow:0 0 0 1px rgba(240,200,90,.20) inset}
+  .eo-cell.strong.lean-odd{border-color:rgba(170,176,189,.55);box-shadow:0 0 0 1px rgba(170,176,189,.20) inset}
+  .eo-cell.firm{border-color:rgba(240,200,90,.32)}
+  .eo-cell.warm{opacity:.62}
+  .eo-cell.strong::before{content:"";position:absolute;inset:-1px;border-radius:11px;pointer-events:none;animation:eo-cell-pulse 2.4s ease-in-out infinite}
+  .eo-cell.strong.lean-even::before{box-shadow:0 0 0 0 rgba(240,200,90,.4) inset}
+  .eo-cell.strong.lean-odd::before{box-shadow:0 0 0 0 rgba(170,176,189,.35) inset}
+  @keyframes eo-cell-pulse{0%,100%{opacity:.0}50%{opacity:.55}}
+  .eo-cell .top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+  .eo-cell .sym{font-family:var(--serif);font-size:13px;font-weight:800;letter-spacing:.01em;color:var(--text)}
+  .eo-cell .mark{font-size:13px;line-height:1}
+  .eo-cell .big{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:-1px}
+  .eo-cell .big .side{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);font-weight:700}
+  .eo-cell .big .pct{font-family:var(--serif);font-size:24px;font-weight:800;line-height:1;letter-spacing:-.01em}
+  .eo-cell.lean-even .big .pct{color:#f0c64a}
+  .eo-cell.lean-odd .big .pct{color:#dfe2eb}
+  .eo-cell .bar{position:relative;display:flex;height:7px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.05)}
   .eo-cell .bar .even{background:linear-gradient(135deg,#fff0c2 0%,#f0c64a 60%,#cf9e2a 100%);transition:width .35s ease}
   .eo-cell .bar .odd{background:linear-gradient(135deg,#eef0f5 0%,#aab0bd 60%,#7c8290 100%);transition:width .35s ease}
-  .eo-cell .pct{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.02em}
-  .eo-cell .pct .e{color:#f0c64a}
-  .eo-cell .pct .o{color:#aab0bd}
+  .eo-cell .meta{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.04em;font-weight:600}
+  .eo-cell .meta .z{color:var(--text)} .eo-cell .meta .z.warn{color:var(--amber)}
   .eo-cell.warm .bar{background:rgba(255,255,255,.04)}
-  .eo-cell.warm .warming{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(54,214,200,.18),rgba(54,214,200,.45));transition:width .4s ease}
-  .eo-cell.warm .pct{color:var(--faint);font-weight:600}
+  .eo-cell.warm .warming{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(54,214,200,.18),rgba(54,214,200,.55));border-radius:4px;transition:width .4s ease}
+  .eo-cell.warm .big .pct{font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.06em}
+  .eo-cell.warm .big .side{color:var(--faint);opacity:.7}
+  .eo-cell.warm .meta{color:var(--faint);opacity:.7}
 
-  /* Dedicated Even/Odd auto-trade control panel. */
-  .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(54,214,200,.06),rgba(212,184,122,.04));position:relative}
-  .eo-auto h5{margin:0 0 4px;font-family:var(--serif);font-size:15px;font-weight:800;letter-spacing:.01em}
-  .eo-auto .sub{font-size:11.5px;color:var(--dim);margin-bottom:12px}
-  .eo-auto .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
-  @media(max-width:560px){.eo-auto .grid{grid-template-columns:1fr}}
-  .eo-auto .f{display:flex;flex-direction:column;gap:4px}
-  .eo-auto .f .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700}
-  .eo-auto .f input[type=number]{width:100%;padding:9px 11px;background:rgba(0,0,0,.28);border:1px solid var(--bd);border-radius:9px;color:var(--text);font-family:var(--mono);font-size:14px}
-  .eo-auto .f input[type=number]:focus{outline:none;border-color:var(--amber);background:rgba(0,0,0,.42)}
-  .eo-auto .ticks{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:9px 11px;border:1px dashed rgba(255,255,255,.10);border-radius:10px;background:rgba(0,0,0,.18)}
-  .eo-auto .ticks .seg{display:inline-flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
-  .eo-auto .ticks .seg button{padding:7px 12px;font-size:12px;background:transparent;color:var(--dim);border:0;cursor:pointer;font-weight:700}
-  .eo-auto .ticks .seg button.on{background:var(--amber);color:#241c0a}
-  .eo-auto .ticks input[type=number]{width:70px;padding:6px 9px}
-  .eo-auto .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.08)}
-  .eo-auto .status{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
-  .eo-auto .status b{color:var(--text)}
-  .eo-auto .pnl{margin-left:auto;font-family:var(--mono);font-size:14px;font-weight:800}
-  .eo-auto .pnl.up{color:var(--good)} .eo-auto .pnl.dn{color:var(--bad)}
-  .eo-auto .meter{margin-top:10px;height:6px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;position:relative}
-  .eo-auto .meter i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));border-radius:3px;transition:width .35s ease}
+  /* Dedicated Even/Odd auto-trade control surface — premium look. */
+  .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:16px;padding:16px 18px 18px;background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.10),transparent 55%),radial-gradient(120% 100% at 100% 0%,rgba(212,184,122,.08),transparent 55%),linear-gradient(180deg,rgba(20,28,40,.55),rgba(10,14,22,.55));position:relative;box-shadow:0 26px 60px -28px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05)}
+  .eo-auto-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .eo-auto-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700}
+  .eo-auto h5{margin:4px 0 0;font-family:var(--serif);font-size:17px;font-weight:800;letter-spacing:.01em}
+  .eo-auto-pnl-wrap{text-align:right}
+  .eo-auto-pnl{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:.02em}
+  .eo-auto-pnl.up{color:var(--good)} .eo-auto-pnl.dn{color:var(--bad)}
+  .eo-auto-pnl-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin-top:2px}
+
+  .eo-auto .eo-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+  @media(max-width:560px){.eo-auto .eo-row{grid-template-columns:1fr}}
+  .eo-tile{padding:11px 12px;border:1px solid var(--bd);border-radius:13px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.18));position:relative;overflow:hidden}
+  .eo-tile.target-tp{border-color:rgba(70,207,158,.32)}
+  .eo-tile.target-sl{border-color:rgba(255,120,140,.32)}
+  .eo-tile-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px}
+  .eo-tile-lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--text);font-weight:700}
+  .eo-tile-hint{font-size:10.5px;color:var(--faint)}
+  .eo-tile-hint b{color:var(--amber);font-family:var(--mono);font-weight:800}
+
+  /* Stepper: [−] value [+] */
+  .eo-stepper{display:flex;align-items:stretch;gap:0;border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:rgba(0,0,0,.32)}
+  .eo-stepper.compact{margin-top:8px}
+  .eo-stepper button{width:38px;background:rgba(255,255,255,.04);border:0;color:var(--text);font-size:18px;font-weight:800;cursor:pointer;transition:background .15s ease}
+  .eo-stepper button:hover{background:var(--amber);color:#241c0a}
+  .eo-stepper button:active{transform:scale(.94)}
+  .eo-stepper .cur{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;font-family:var(--mono);font-size:18px;font-weight:800;color:var(--text);padding:0 6px;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
+  .eo-stepper input{flex:1;min-width:0;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:center;padding:8px 0;outline:none}
+  .eo-stepper input::-webkit-outer-spin-button,.eo-stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .eo-stepper input[type=number]{-moz-appearance:textfield}
+
+  /* Progress fill bar under TP/SL */
+  .eo-fill{margin-top:9px;height:5px;border-radius:3px;background:rgba(255,255,255,.05);overflow:hidden;position:relative}
+  .eo-fill i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#3a4a6e,#46cf9e);border-radius:3px;transition:width .35s ease;width:0%}
+  .eo-fill.danger i{background:linear-gradient(90deg,#3a4a6e,#ff6b81)}
+
+  /* Slider (signal threshold) */
+  .eo-slider-wrap{padding:4px 4px 0}
+  .eo-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(255,255,255,.06) 0%,rgba(212,184,122,.55) 100%);outline:none;cursor:pointer}
+  .eo-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);border:2px solid #241c0a;cursor:pointer;box-shadow:0 4px 14px -3px rgba(212,184,122,.6)}
+  .eo-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);border:2px solid #241c0a;cursor:pointer}
+  .eo-slider-marks{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.06em}
+
+  /* Chip segment (ticks AUTO/1/2/3/5) */
+  .eo-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .eo-chips button{flex:1;min-width:44px;padding:9px 6px;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.04em;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:9px;cursor:pointer;transition:all .15s ease}
+  .eo-chips button:hover{border-color:var(--bd2);color:var(--text)}
+  .eo-chips button.on{background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;border-color:transparent;box-shadow:0 6px 16px -6px rgba(212,184,122,.6)}
+
+  /* Loss-streak guard dots */
+  .eo-dots{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;margin-bottom:2px}
+  .eo-dots .d{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);transition:all .25s ease}
+  .eo-dots .d.lit{background:linear-gradient(135deg,#ff8aa0,#e23a52);border-color:transparent;box-shadow:0 0 10px rgba(255,80,110,.55)}
+
+  /* Live session stat cards */
+  .eo-session{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 12px}
+  .eo-stat{padding:10px 8px;text-align:center;border:1px solid var(--bd);border-radius:10px;background:rgba(0,0,0,.28)}
+  .eo-stat .n{font-family:var(--mono);font-size:20px;font-weight:800;line-height:1}
+  .eo-stat .l{font-size:9px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin-top:5px;font-weight:700}
+
+  /* Big start button + status footer */
+  .eo-go{width:100%;padding:14px;border:0;border-radius:13px;font-family:var(--serif);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;box-shadow:0 18px 46px -16px rgba(212,184,122,.65);transition:transform .12s,filter .12s}
+  .eo-go:hover{filter:brightness(1.06)} .eo-go:active{transform:scale(.985)}
+  .eo-go.running{background:linear-gradient(135deg,#13502c 0%,#46cf9e 55%,#1f8a5a);color:#04200f;box-shadow:0 18px 46px -14px rgba(70,207,158,.55);animation:eo-go-pulse 1.6s ease-in-out infinite}
+  @keyframes eo-go-pulse{0%,100%{box-shadow:0 18px 46px -14px rgba(70,207,158,.45)}50%{box-shadow:0 18px 54px -10px rgba(70,207,158,.75)}}
+  .eo-status{margin-top:11px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+  .eo-status b{color:var(--text)}
 
   /* Congratulations / take-profit popup overlay */
   .pop-wrap{position:fixed;inset:0;background:rgba(6,10,16,.74);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100;animation:popfade .22s ease}
@@ -804,51 +860,93 @@
     <!-- result shows RIGHT under the buttons so a tap visibly does something -->
     <div id="t-result" style="margin-top:12px"></div>
 
-    <!-- Dedicated Even/Odd auto-trade panel (shown only when GAME==="even_odd").
-         Self-contained: take-profit, stop-loss, loss-streak limit, signal
-         threshold, ticks (auto or manual), session P/L meter, congrats popup. -->
+    <!-- Dedicated Even/Odd auto-trader (shown only when GAME==="even_odd"). -->
     <div id="eo-auto" class="eo-auto" hidden>
-      <h5>🎯 Even/Odd auto-trader</h5>
-      <div class="sub">Set your targets, pick a signal threshold, hit start. The desk fires EVEN or ODD trades for you on this market — mixing sides based on the live read — and stops the moment you hit your win or loss line.</div>
-      <div class="grid">
-        <div class="f">
-          <div class="l">Take profit ($)</div>
-          <input id="eo-tp" type="number" min="0" step="0.5" placeholder="e.g. 10"/>
+      <div class="eo-auto-head">
+        <div>
+          <div class="eo-auto-eyebrow">⚙ Auto-trader · the desk takes the next moves</div>
+          <h5>Even / Odd · session controls</h5>
         </div>
-        <div class="f">
-          <div class="l">Stop loss ($)</div>
-          <input id="eo-sl" type="number" min="0" step="0.5" placeholder="e.g. 5"/>
+        <div class="eo-auto-pnl-wrap">
+          <div class="eo-auto-pnl" id="eo-pnl">+$0.00</div>
+          <div class="eo-auto-pnl-lab">session P/L</div>
         </div>
-        <div class="f">
-          <div class="l">Stake per trade ($)</div>
-          <input id="eo-stake" type="number" min="0.35" step="0.05" placeholder="0.35"/>
+      </div>
+
+      <!-- TARGETS ROW: take-profit + stop-loss with stepper buttons and progress fills -->
+      <div class="eo-row">
+        <div class="eo-tile target-tp">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Take profit</span><span class="eo-tile-hint">stops at this win</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-1" data-tgt="eo-tp">−</button>
+            <span class="cur">$<input id="eo-tp" type="number" min="0" step="0.5" placeholder="10"/></span>
+            <button type="button" data-step="+1" data-tgt="eo-tp">+</button>
+          </div>
+          <div class="eo-fill"><i id="eo-tp-fill"></i></div>
         </div>
-        <div class="f">
-          <div class="l">Stop after N losses in a row</div>
-          <input id="eo-streak" type="number" min="1" max="50" value="11"/>
+        <div class="eo-tile target-sl">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stop loss</span><span class="eo-tile-hint">stops at this loss</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-1" data-tgt="eo-sl">−</button>
+            <span class="cur">$<input id="eo-sl" type="number" min="0" step="0.5" placeholder="5"/></span>
+            <button type="button" data-step="+1" data-tgt="eo-sl">+</button>
+          </div>
+          <div class="eo-fill danger"><i id="eo-sl-fill"></i></div>
         </div>
-        <div class="f">
-          <div class="l">Signal threshold (%)</div>
-          <input id="eo-thr" type="number" min="50" max="95" value="58"/>
+      </div>
+
+      <!-- STAKE + SIGNAL THRESHOLD slider -->
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-0.5" data-tgt="eo-stake">−</button>
+            <span class="cur">$<input id="eo-stake" type="number" min="0.35" step="0.05" placeholder="0.35"/></span>
+            <button type="button" data-step="+0.5" data-tgt="eo-stake">+</button>
+          </div>
         </div>
-        <div class="f">
-          <div class="l">Ticks per trade</div>
-          <div class="ticks">
-            <div class="seg" id="eo-tick-seg">
-              <button type="button" class="on" data-mode="auto">Auto</button>
-              <button type="button" data-mode="manual">Manual</button>
-            </div>
-            <input id="eo-ticks" type="number" min="1" max="10" value="1" disabled/>
-            <span class="faint" style="font-size:11px">desk picks 1–5 ticks based on the signal strength when on Auto</span>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="eo-thr-hint">fires when one side leads ≥ <b id="eo-thr-display">58</b>%</span></div>
+          <div class="eo-slider-wrap">
+            <input id="eo-thr" type="range" min="50" max="90" value="58" class="eo-slider"/>
+            <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
       </div>
-      <div class="meter"><i id="eo-meter" style="width:0%"></i></div>
-      <div class="actions">
-        <button class="btn" id="eo-go" type="button">▶ Start auto-trading</button>
-        <div class="status" id="eo-status">idle — fill in your targets and press start</div>
-        <div class="pnl" id="eo-pnl">+$0.00</div>
+
+      <!-- TICKS chips + LOSS-STREAK dots -->
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint">how long the contract runs</span></div>
+          <div class="eo-chips" id="eo-tick-seg">
+            <button type="button" class="on" data-mode="auto">AUTO</button>
+            <button type="button" data-mode="manual" data-val="1">1</button>
+            <button type="button" data-mode="manual" data-val="2">2</button>
+            <button type="button" data-mode="manual" data-val="3">3</button>
+            <button type="button" data-mode="manual" data-val="5">5</button>
+          </div>
+          <input id="eo-ticks" type="hidden" value="1"/>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Loss-streak guard</span><span class="eo-tile-hint">stops after <b id="eo-streak-display">11</b> losses in a row</span></div>
+          <div class="eo-dots" id="eo-streak-dots"></div>
+          <div class="eo-stepper compact">
+            <button type="button" data-step="-1" data-tgt="eo-streak">−</button>
+            <span class="cur"><input id="eo-streak" type="number" min="1" max="20" value="11"/></span>
+            <button type="button" data-step="+1" data-tgt="eo-streak">+</button>
+          </div>
+        </div>
       </div>
+
+      <!-- LIVE SESSION STAT BLOCKS + START BUTTON -->
+      <div class="eo-session">
+        <div class="eo-stat"><div class="n" id="eo-stat-wins">0</div><div class="l">wins</div></div>
+        <div class="eo-stat"><div class="n" id="eo-stat-losses">0</div><div class="l">losses</div></div>
+        <div class="eo-stat"><div class="n" id="eo-stat-streak">0</div><div class="l">streak</div></div>
+        <div class="eo-stat"><div class="n" id="eo-stat-trades">0</div><div class="l">trades</div></div>
+      </div>
+      <button class="eo-go" id="eo-go" type="button">▶ Start auto-trading</button>
+      <div class="eo-status" id="eo-status">⌗ idle — set your targets and press start</div>
     </div>
 
     <!-- M Pro scanner (only for the scanner game) -->
@@ -1426,13 +1524,16 @@ const _EO_BAND_FAST     = ["1HZ10V","1HZ25V","1HZ50V","1HZ75V","1HZ100V"];
 
 function _eoCellHTML(m, bestPayoutSym, currentSym){
   if(!m){
-    return '<div class="eo-cell warm" style="opacity:.35;cursor:default"><div class="top"><span class="sym">—</span></div></div>';
+    return '<div class="eo-cell warm" style="opacity:.3;cursor:default"><div class="top"><span class="sym">—</span></div></div>';
   }
   const evp = (m.even_pct != null) ? Math.round(m.even_pct) : null;
   const odp = (evp != null) ? 100 - evp : null;
+  const z   = (m.eo_z != null) ? Number(m.eo_z) : 0;
   const lean = (evp != null) ? Math.abs(evp - 50) : 0;
   const tier = lean >= 10 ? "strong" : lean >= 5 ? "firm" : "calm";
   const ready = !!m.ready;
+  const leanEven = (evp != null && evp >= 50);
+  const leanClass = ready ? (leanEven ? " lean-even" : " lean-odd") : "";
   const isHere = (currentSym && m.symbol === currentSym);
   const isBestPayout = (bestPayoutSym && m.symbol === bestPayoutSym);
   // Compact name: drop the "Vol " prefix for tighter cells (Vol 100 → 100).
@@ -1440,17 +1541,25 @@ function _eoCellHTML(m, bestPayoutSym, currentSym){
   const mark = isHere ? '<span class="mark" title="trading here">✓</span>'
               : isBestPayout ? '<span class="mark" title="best payout">💰</span>'
               : '';
+  // The dominant side + its % — big serif number is the "headline" read.
+  const sideLab = ready ? (leanEven ? "EVEN" : "ODD") : "WARM";
+  const sidePct = ready ? (leanEven ? evp : odp) : (m.ticks||0);
+  const sideHtml = ready
+    ? '<div class="big"><span class="side">'+sideLab+'</span><span class="pct">'+sidePct+'%</span></div>'
+    : '<div class="big"><span class="side">WARMING</span><span class="pct">'+(m.ticks||0)+'/30</span></div>';
   const bar = ready
     ? '<div class="bar"><span class="even" style="width:'+evp+'%"></span><span class="odd" style="width:'+odp+'%"></span></div>'
     : '<div class="bar"><span class="warming" style="width:'+Math.min(100,Math.round((m.ticks||0)/30*100))+'%"></span></div>';
-  const pct = ready
-    ? '<div class="pct"><span class="e">E '+evp+'%</span><span class="o">'+odp+'% O</span></div>'
-    : '<div class="pct"><span>warming</span><span>'+(m.ticks||0)+'/30</span></div>';
+  const zClass = Math.abs(z) >= 2 ? "z warn" : "z";
+  const meta = ready
+    ? '<div class="meta"><span class="'+zClass+'">z '+(z>=0?'+':'')+z.toFixed(1)+'</span><span>'+(m.payout_pct!=null?Number(m.payout_pct).toFixed(1)+'%':'—')+'</span></div>'
+    : '<div class="meta"><span>collecting</span><span>'+(m.ticks||0)+' ticks</span></div>';
   return ''
-    +'<div class="eo-cell '+tier+(ready?' ready':' warm')+(isHere?' here':'')+'" data-sym="'+esc(m.symbol)+'" title="'+esc(m.name||m.symbol)+'">'
+    +'<div class="eo-cell '+tier+(ready?' ready':' warm')+leanClass+(isHere?' here':'')+'" data-sym="'+esc(m.symbol)+'" title="'+esc(m.name||m.symbol)+'">'
     +'  <div class="top"><span class="sym">'+esc(shortName)+'</span>'+mark+'</div>'
+    +    sideHtml
     +    bar
-    +    pct
+    +    meta
     +'</div>';
 }
 
@@ -1823,21 +1932,35 @@ function showPop({kind, icon, title, msg, pnl}){
 window.EOAuto = (function(){
   const S = { running:false, timer:null, sess:{pnl:0, wins:0, losses:0, streak:0, trades:0}, busy:false };
   const $g = id => document.getElementById(id);
-  function _setStatus(t){ const el=$g("eo-status"); if(el) el.textContent=t; }
-  function _setPnl(){ const p=$g("eo-pnl"); if(!p) return; const v=S.sess.pnl;
+  function _setStatus(t){ const el=$g("eo-status"); if(el) el.innerHTML=t; }
+  function _setPnl(){
+    const p=$g("eo-pnl"); if(!p) return; const v=S.sess.pnl;
     p.textContent = (v>=0?"+$":"-$")+Math.abs(v).toFixed(2);
-    p.className = "pnl " + (v>=0?"up":"dn");
+    p.className = "eo-auto-pnl " + (v>=0?"up":"dn");
   }
-  function _setMeter(){
-    const m=$g("eo-meter"); if(!m) return;
+  function _setFills(){
     const tp = parseFloat(($g("eo-tp")||{}).value)||0;
-    if(tp<=0){ m.style.width = "0%"; return; }
-    const pct = Math.max(0, Math.min(100, (S.sess.pnl/tp)*100));
-    m.style.width = pct.toFixed(0)+"%";
+    const sl = parseFloat(($g("eo-sl")||{}).value)||0;
+    const v = S.sess.pnl;
+    const tpEl=$g("eo-tp-fill"); if(tpEl){ const pct = tp>0 ? Math.max(0,Math.min(100,(v/tp)*100)) : 0; tpEl.style.width = pct.toFixed(0)+"%"; }
+    const slEl=$g("eo-sl-fill"); if(slEl){ const pct = sl>0 ? Math.max(0,Math.min(100,(-v/sl)*100)) : 0; slEl.style.width = pct.toFixed(0)+"%"; }
+  }
+  function _renderDots(){
+    const wrap=$g("eo-streak-dots"); if(!wrap) return;
+    const max = Math.max(1, Math.min(20, parseInt(($g("eo-streak")||{}).value)||11));
+    const lit = Math.min(max, S.sess.streak||0);
+    let html=""; for(let i=0;i<max;i++) html += '<span class="d'+(i<lit?' lit':'')+'"></span>';
+    wrap.innerHTML = html;
+  }
+  function _renderStats(){
+    const w=$g("eo-stat-wins"); if(w) w.textContent = S.sess.wins;
+    const l=$g("eo-stat-losses"); if(l) l.textContent = S.sess.losses;
+    const sr=$g("eo-stat-streak"); if(sr) sr.textContent = S.sess.streak;
+    const tr=$g("eo-stat-trades"); if(tr) tr.textContent = S.sess.trades;
   }
   function _resetBtn(){
     const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
-    const go=$g("eo-go"); if(go) go.textContent="▶ Start auto-trading";
+    const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
   }
   function _liveDigits(){ try{ return (typeof LiveWS!=="undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
   // Decide EVEN / ODD / SKIP from the live read + threshold.
@@ -1869,12 +1992,11 @@ window.EOAuto = (function(){
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
     };
     const d = _decide(cfg.threshold);
-    if(!d.side){ _setStatus("⏸ holding — "+d.why); return; }
-    const ticks = (cfg.ticksMode==="auto") ? _autoTicks(d) : cfg.ticksMode==="manual" ? cfg.ticksMode : 1;
+    if(!d.side){ _setStatus("⌗ holding — "+esc(d.why)); return; }
     const dur = (cfg.ticksMode==="auto") ? _autoTicks(d) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
-    _setStatus("📤 firing "+d.side.toUpperCase()+" · "+dur+" tick(s) · "+d.why);
+    _setStatus("⌗ firing <b>"+d.side.toUpperCase()+"</b> · "+dur+" tick · "+esc(d.why));
     try{
       const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
         account_id: CUR.id, trade_type:"even_odd", symbol: $g("t-symbol").value,
@@ -1885,9 +2007,9 @@ window.EOAuto = (function(){
       S.sess.trades += 1;
       if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; }
       else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; }
-      // (dry_run / pending: no scoring change)
-      _setPnl(); _setMeter();
-      _setStatus(`${outcome.toUpperCase()} · session ${S.sess.wins}/${S.sess.trades} · streak ${S.sess.streak}`);
+      _setPnl(); _setFills(); _renderDots(); _renderStats();
+      const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
+      _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak);
       // Stop conditions — check AFTER each settled trade.
       if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){
         S.stop("take-profit hit");
@@ -1922,12 +2044,10 @@ window.EOAuto = (function(){
     if(!CUR){ showView("connect"); return; }
     S.running = true;
     S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0};
-    _setPnl(); _setMeter();
-    _setStatus("running · reading the tape…");
+    _setPnl(); _setFills(); _renderDots(); _renderStats();
+    _setStatus("⌗ <b>running</b> — reading the tape…");
     const b=$g("eo-mix-btn"); if(b){ b.classList.add("on"); const sub=b.querySelector(".sub"); if(sub) sub.textContent="running · session 0/0"; }
-    const go=$g("eo-go"); if(go) go.textContent="■ Stop";
-    // ~6s cadence between trade attempts — gives time for one to settle even
-    // on multi-tick durations without overlapping orders.
+    const go=$g("eo-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
     _fireOnce();
     S.timer = setInterval(_fireOnce, 6000);
   };
@@ -1936,30 +2056,58 @@ window.EOAuto = (function(){
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer=null; }
     _resetBtn();
-    _setStatus("stopped — "+(reason||"manual stop")+" · session "+S.sess.wins+"/"+S.sess.trades+" · "+
+    _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+
                ((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
   };
+  // Expose for external bindings (input handlers update fills + dots live).
+  S._setFills = _setFills;
+  S._renderDots = _renderDots;
   S.toggle = function(){ S.running ? S.stop("manual stop") : S.start(); };
   return S;
 })();
 
 (function(){
-  // Wire the controls: ticks segment, mix button, start/stop, tp meter on input.
+  // -- Tick chips (AUTO / 1 / 2 / 3 / 5) --
   document.addEventListener("click", function(ev){
     const t = ev.target.closest && ev.target.closest("#eo-tick-seg button");
     if(!t) return;
     document.querySelectorAll("#eo-tick-seg button").forEach(b=>b.classList.toggle("on", b===t));
-    const manual = t.dataset.mode === "manual";
-    const inp = document.getElementById("eo-ticks"); if(inp) inp.disabled = !manual;
+    const ticks = document.getElementById("eo-ticks");
+    if(ticks) ticks.value = t.dataset.val || "1";
   });
-  const go = document.getElementById("eo-go"); if(go) go.addEventListener("click", ()=>window.EOAuto.toggle());
+  // -- Stepper +/- buttons (TP, SL, stake, streak) --
+  document.addEventListener("click", function(ev){
+    const b = ev.target.closest && ev.target.closest(".eo-stepper button[data-step]");
+    if(!b) return;
+    const inp = document.getElementById(b.dataset.tgt); if(!inp) return;
+    const step = parseFloat(b.dataset.step)||1;
+    const min = inp.min !== "" ? parseFloat(inp.min) : -Infinity;
+    const max = inp.max !== "" ? parseFloat(inp.max) :  Infinity;
+    let v = parseFloat(inp.value);
+    if(!isFinite(v)){ v = parseFloat(inp.placeholder)||0; }
+    v = Math.max(min, Math.min(max, v + step));
+    // Keep tidy formatting: stakes/$ to 2dp, integers stay integers.
+    inp.value = (b.dataset.tgt === "eo-stake") ? v.toFixed(2)
+              : (b.dataset.tgt === "eo-streak") ? String(Math.round(v))
+              : (v % 1 === 0 ? String(v) : v.toFixed(2));
+    inp.dispatchEvent(new Event("input", {bubbles:true}));
+  });
+  // -- Slider: threshold display --
+  const thr = document.getElementById("eo-thr");
+  function _syncThr(){ const d=document.getElementById("eo-thr-display"); if(d) d.textContent = thr.value; }
+  if(thr){ thr.addEventListener("input", _syncThr); _syncThr(); }
+  // -- Live updates from input edits --
+  ["eo-tp","eo-sl"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener("input", () => { try{ window.EOAuto._setFills(); }catch(_){} });
+  });
+  const streak = document.getElementById("eo-streak");
+  function _syncStreak(){ const d=document.getElementById("eo-streak-display"); if(d) d.textContent = streak.value;
+                          try{ window.EOAuto._renderDots(); }catch(_){} }
+  if(streak){ streak.addEventListener("input", _syncStreak); _syncStreak(); }
+  // -- Big start button + the AUTO mix button on the trio --
+  const go  = document.getElementById("eo-go");      if(go)  go.addEventListener("click",  ()=>window.EOAuto.toggle());
   const mix = document.getElementById("eo-mix-btn"); if(mix) mix.addEventListener("click", ()=>window.EOAuto.toggle());
-  const tp = document.getElementById("eo-tp"); if(tp) tp.addEventListener("input", ()=>{
-    const m=document.getElementById("eo-meter"); if(!m) return;
-    const v=parseFloat(tp.value)||0;
-    const pnl = window.EOAuto && window.EOAuto.sess ? window.EOAuto.sess.pnl : 0;
-    m.style.width = (v>0 ? Math.max(0,Math.min(100,(pnl/v)*100)) : 0).toFixed(0)+"%";
-  });
 })();
 
 async function placeTrade(btn){
