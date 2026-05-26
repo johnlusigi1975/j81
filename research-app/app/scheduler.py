@@ -20,6 +20,7 @@ from app.sharing import send_to_analyser
 
 _IDLE_POLL_SECONDS = 15
 SYSTEM_CHECK_SECONDS = 600  # 10-minute peer-watch heartbeat (brother's keeper)
+SELF_STUDY_SECONDS  = 1800  # 30-min self-study cadence — heavier (Gemini calls), much rarer than peer-watch
 
 
 def _now() -> datetime:
@@ -244,6 +245,7 @@ class AutonomousScheduler:
         import time
         from app import comms_client
         last_peer_watch = 0.0
+        last_self_study = 0.0
         while True:
             try:
                 messages = await comms_client.inbox()
@@ -259,6 +261,8 @@ class AutonomousScheduler:
                         await _prod.peer_watch(write_recommendations=True)
                     except Exception:
                         pass
+                if now - last_self_study >= SELF_STUDY_SECONDS:
+                    last_self_study = now
                     try:
                         from app import self_study
                         await self_study.study_once()

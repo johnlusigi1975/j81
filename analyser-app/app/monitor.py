@@ -22,7 +22,9 @@ from app.store import get_store
 
 TICK_SECONDS = 30                   # self-report every 30s so the maintenance panel stays live
 SYSTEM_CHECK_SECONDS = 300          # advise peers + refresh every 5 min (was 10) — steady chatter without spam
+SELF_STUDY_SECONDS  = 1800          # self-study every 30 min — heavier (burns Gemini quota), much rarer than refresh
 _TICKS_PER_CHECK = max(1, SYSTEM_CHECK_SECONDS // TICK_SECONDS)
+_TICKS_PER_STUDY = max(1, SELF_STUDY_SECONDS  // TICK_SECONDS)
 _MAX_REFRESH_SYMBOLS = 12           # cover all common synthetics so none stay untested
 
 
@@ -55,14 +57,16 @@ class Monitor:
                 self._self_report()
                 self.status["ticks"] += 1
                 self.status["last_run"] = _now()
-                # Every ~10 minutes: advise peers + refresh to produce info.
+                # Every ~5 minutes: advise peers + refresh to produce info.
                 if self.status["ticks"] % _TICKS_PER_CHECK == 0:
                     self.status["last_recommendations_written"] = (
                         productivity.write_peer_recommendations()
                     )
                     await self._produce_refresh()
-                    await self._self_study()
                     get_store().prune_comms()  # keep the bus lean for big runs
+                # Every ~30 minutes: self-study (heavier, burns Gemini quota).
+                if self.status["ticks"] % _TICKS_PER_STUDY == 0:
+                    await self._self_study()
                 self.status["last_error"] = None
             except asyncio.CancelledError:
                 self.status["loop_alive"] = False

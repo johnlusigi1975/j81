@@ -21,6 +21,7 @@ from app.store import get_store
 
 _IDLE_POLL_SECONDS = 15
 SYSTEM_CHECK_SECONDS = 60   # 1-min peer-watch heartbeat → live tree chatter in the maintenance panel
+SELF_STUDY_SECONDS  = 1800  # 30-min self-study cadence — heavier (burns Gemini quota), so much rarer than peer-watch
 
 
 def _now() -> datetime:
@@ -305,16 +306,20 @@ class TradingLoop:
 
     async def _peer_watch(self) -> None:
         """~5% of effort: self-report productivity every cycle (keeps the
-        dashboard live) and advise the other systems on a steady 10-minute
-        cadence (smooth, not spammy) — the bot being a 'brother's keeper'."""
+        dashboard live), advise peers on a 1-min cadence (deduped, so the
+        bus only sees state changes), and run self-study far less often
+        (every 30 min) since each study burns Gemini quota."""
         import time
         now = time.monotonic()
-        due = now - getattr(self, "_last_rec_ts", 0.0) >= SYSTEM_CHECK_SECONDS
+        due_recs  = now - getattr(self, "_last_rec_ts", 0.0)   >= SYSTEM_CHECK_SECONDS
+        due_study = now - getattr(self, "_last_study_ts", 0.0) >= SELF_STUDY_SECONDS
         try:
             from app import productivity
-            await productivity.peer_watch(write_recommendations=due)
-            if due:
+            await productivity.peer_watch(write_recommendations=due_recs)
+            if due_recs:
                 self._last_rec_ts = now
+            if due_study:
+                self._last_study_ts = now
                 try:
                     from app import self_study
                     await self_study.study_once()
