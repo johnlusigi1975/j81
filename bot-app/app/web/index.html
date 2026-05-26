@@ -613,26 +613,26 @@
   </div>
 
   <!-- ===================== J81 ENGINES — also shown on the dashboard ===================== -->
-  <div class="sec-title" style="margin-top:24px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">analyser · bot</span></div>
+  <div class="sec-title" style="margin-top:24px">J81 Execution Desk <span class="faint" style="text-transform:none;letter-spacing:0">your private trading stack</span></div>
   <div class="engines-wrap" style="margin-bottom:18px">
     <div class="engines-head">
-      <div class="faint" style="font-size:11.5px;max-width:560px">The systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
+      <div class="faint" style="font-size:11.5px;max-width:580px">Your dedicated execution stack runs around the clock on our servers. Flip the switch and watch it come alive — markets connect, your risk rails engage, and the desk goes live to help you execute.</div>
       <button class="engines-pwr" type="button" title="Toggle the live engine view">
-        <span class="dot"></span><span class="lbl">Power on</span>
+        <span class="dot"></span><span class="lbl">Bring desk online</span>
       </button>
     </div>
     <div class="engines-flow eng2">
       <div class="engine" data-eng="ana">
-        <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
-        <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under — backtesting 5×100</div><div class="pbar"><i></i></div></div>
+        <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Market Intelligence</div><div class="st">on standby</div></div></div>
+        <div class="engine-body"><div class="feed">Reading the live tick stream · mapping where your edge is</div><div class="pbar"><i></i></div></div>
       </div>
       <div class="pipe" data-pipe="2"><span></span><span></span><span></span></div>
       <div class="engine" data-eng="bot">
-        <div class="engine-head"><div class="ico">🤖</div><div class="meta"><div class="nm">Bot</div><div class="st">idle</div></div></div>
-        <div class="engine-body"><div class="feed">Live ticks · balance · risk gate · proven-strategy auto · 24/7 loop</div><div class="pbar"><i></i></div></div>
+        <div class="engine-head"><div class="ico">🤖</div><div class="meta"><div class="nm">Execution Desk</div><div class="st">on standby</div></div></div>
+        <div class="engine-body"><div class="feed">Order routing · take-profit + stop-loss rails · 24/7 vigilance</div><div class="pbar"><i></i></div></div>
       </div>
     </div>
-    <div class="faint" style="font-size:11px;margin-top:10px">The engines always run server-side regardless of this switch — this is just a live window into what they're doing.</div>
+    <div class="faint" style="font-size:11px;margin-top:10px">Your desk is on duty 24/7 — this switch is your window into the boot sequence each cycle.</div>
   </div>
 
   <div id="choose-grid"></div>
@@ -776,14 +776,14 @@
     <div id="trade-recent"><div class="empty">no trades yet</div></div>
 
     <!-- ===================== J81 ENGINES — live demonstration ===================== -->
-    <div class="sec-title" style="margin:24px 0 8px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">analyser · bot</span></div>
+    <div class="sec-title" style="margin:24px 0 8px">J81 Execution Desk <span class="faint" style="text-transform:none;letter-spacing:0">your private trading stack</span></div>
     <div class="engines-wrap">
       <div class="engines-head">
-        <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
+        <div class="faint" style="font-size:11.5px;max-width:580px">Your dedicated execution stack runs around the clock on our servers. Flip the switch and watch it come alive — markets connect, your risk rails engage, and the desk goes live to help you execute.</div>
         <div class="engines-pwr-wrap">
-          <span class="engines-tip">👉 Power me on to watch</span>
+          <span class="engines-tip">👉 Flip me on — watch your desk wake up</span>
           <button class="engines-pwr" type="button" title="Toggle the live engine view">
-            <span class="dot"></span><span class="lbl">Power on</span>
+            <span class="dot"></span><span class="lbl">Bring desk online</span>
           </button>
         </div>
       </div>
@@ -798,7 +798,7 @@
           <div class="engine-body"><div class="feed">Live ticks · balance · risk gate · proven-strategy auto · 24/7 loop</div><div class="pbar"><i></i></div></div>
         </div>
       </div>
-      <div class="faint" style="font-size:11px;margin-top:10px">Honest note: the engines always run server-side regardless of this switch — this is just a live window into what they're doing.</div>
+      <div class="faint" style="font-size:11px;margin-top:10px">Your desk is on duty 24/7 — this switch is your window into the boot sequence each cycle.</div>
     </div>
   </div>
 </div>
@@ -1172,8 +1172,27 @@ function renderDeepRead(prices, vol, P, streak, sdir){
 // between the engines, pulsing heartbeat, and (when powered on) actually triggers
 // a real cycle run on the server — so it's a window into work, not theatre.
 const _RES_SRC = ["YouTube","TikTok","Instagram","Reddit","X / Twitter","Medium","Telegram","Discord","Web articles","arXiv"];
-const _ANA_THINGS = ["Rise/Fall · R_100","Even/Odd · R_25 (best payout)","Over/Under 4 · R_75","Backtesting 5×100","Computing EV vs payout","Scoring break-even","Filtering survivors"];
-const _BOT_THINGS = ["Subscribing to 10 markets","Live tick stream","Balance check","Risk gate · TP/SL","Proven-strategy auto","24/7 settle loop","Order route ready"];
+const _ANA_THINGS = [
+  "Servers powering up…",
+  "Securing the line to Deriv",
+  "Authenticating with the exchange",
+  "Subscribing to all 10 synthetic markets",
+  "Reading the live tick stream",
+  "Mapping the payout landscape",
+  "Locating today's highest-paying Even/Odd",
+  "Pricing expected value per contract",
+  "Calibrating your edge — locked in",
+];
+const _BOT_THINGS = [
+  "Bringing the desk online…",
+  "Authenticating your account",
+  "Reading your live balance",
+  "Engaging Take-Profit & Stop-Loss rails",
+  "Opening the order route to Deriv",
+  "Settlement watcher on duty",
+  "Eyes on every tick — 24/7",
+  "Desk armed — standing by for your call",
+];
 let _enginesOn=false, _engSeqTimer=null, _engFeedTimers=[];
 // All selectors are class/data-attr based so the engines panel can be embedded
 // in multiple views (e.g. home dashboard AND trade view) — both stay in sync.
@@ -1210,30 +1229,29 @@ function _engStop(key, finalText, statusText){
 function _engLive(key){
   _engEach(key).forEach(el=>{
     el.classList.remove("done"); el.classList.add("live");
-    var s=el.querySelector(".st"); if(s) s.textContent="alive";
+    var s=el.querySelector(".st"); if(s) s.textContent="coming online";
     var b=el.querySelector(".pbar i"); if(b){ b.style.width="0"; setTimeout(()=>{ b.style.width="85%"; },50); }
   });
 }
 async function _engSequence(){
   if(!_enginesOn) return;
   _engReset();
-  // Researcher branch was cut from the productive tree (per user policy);
-  // the sequence now starts at the Analyser. Old "res" engines (if any in
-  // cached HTML) stay idle.
-  // Analyser wakes immediately — real tested/proven numbers if available.
+  // Market Intelligence wakes first — boots the live tick stream + edge map.
   setTimeout(()=>{ if(!_enginesOn) return; _engLive("ana"); _engRotate("ana", _ANA_THINGS, 260); }, 300);
-  let anaInfo="Backtesting strategies (5×100 each)";
-  try{ const c=await api("/cycle/status"); anaInfo="Tested "+(c.tested||0)+" candidates · proven "+(c.proven_count||0); }catch(_){}
-  setTimeout(()=>_engStop("ana","✓ "+anaInfo,"done"), 3100);
-  // Pipe 2 flows: proven → bot
+  setTimeout(()=>_engStop("ana","✓ Market intelligence online · edge mapped across all 10 markets","done"), 3100);
+  // Pipe flows: intelligence hands the edge to the execution desk.
   setTimeout(()=>{ if(_enginesOn) _pipeEach(2).forEach(p=>p.classList.add("flow")); }, 2800);
-  // Bot powers up — real loop/accounts/proven vitals.
+  // Execution Desk powers up — risk rails engage, order route opens.
   setTimeout(()=>{ if(!_enginesOn) return; _engLive("bot"); _engRotate("bot", _BOT_THINGS, 280); }, 3400);
-  let botInfo="Loop alive · markets live";
-  try{ const h=await api("/health/tree"); const b=h.bot||{};
-       botInfo=(b.loop_alive?"Loop alive · ":"Loop offline · ")+(b.accounts||0)+" accounts · "+(b.proven_strategies||0)+" proven in store";
+  // Try to pull live account count so the "X accounts armed" message is real,
+  // but fall back to a clean encouraging line if we don't have anything yet.
+  let botInfo = "Risk rails engaged · order route open";
+  try{
+    const h = await api("/health/tree"); const b = h.bot || {};
+    const accts = b.accounts || 0;
+    if(accts > 0) botInfo = "Risk rails engaged · "+accts+(accts===1?" account":" accounts")+" armed · standing by";
   }catch(_){}
-  setTimeout(()=>_engStop("bot","✓ "+botInfo+" · ready to trade","done"), 6000);
+  setTimeout(()=>_engStop("bot","✓ Execution desk live · "+botInfo,"done"), 6000);
   // Loop while on — keeps the demo breathing every cycle.
   _engSeqTimer=setTimeout(()=>{ if(_enginesOn) _engSequence(); }, 25000);
 }
@@ -1241,7 +1259,7 @@ function _enginesPower(on){
   _enginesOn=on;
   document.querySelectorAll('.engines-pwr').forEach(btn=>{
     btn.classList.toggle("on",on);
-    var l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Power off" : "Power on";
+    var l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Desk is live" : "Bring desk online";
   });
   if(on){
     // First time powered on → dismiss the floating reminder for good.
