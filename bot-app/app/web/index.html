@@ -1060,10 +1060,18 @@ function runLoading(done){
 }
 
 // ---------- home ----------
+// Three precision instruments — each a distinct trading philosophy. The desk
+// only trades these three. Pick the one whose read of the market you trust.
 const GAMES=[
-  {id:"rise_fall",ic:"↗↘",name:"Rise / Fall",d:"Will the price tick up or down?",status:"live",grp:"Quick trades"},
-  {id:"even_odd",ic:"E·O",name:"Even / Odd",d:"Will the last digit be even or odd?",status:"live",grp:"Quick trades"},
-  {id:"over_under",ic:"7▲",name:"Over / Under",d:"Will the last digit land over or under your pick?",status:"live",grp:"Quick trades"},
+  {id:"rise_fall", ic:"↗↘", name:"Rise / Fall",
+   d:"Directional play · take a side on the next tick's direction. The trader's classic — read the momentum, place the call.",
+   status:"live", grp:"Three precision instruments"},
+  {id:"even_odd",  ic:"E·O", name:"Even / Odd",
+   d:"Parity play · pure 50/50 on the last digit. The one real edge is the payout — the desk auto-picks the highest-paying market for you.",
+   status:"live", grp:"Three precision instruments"},
+  {id:"over_under",ic:"7▲", name:"Over / Under",
+   d:"Threshold play · stake whether the last digit lands above or below your chosen number. Sharper conviction, sharper payouts.",
+   status:"live", grp:"Three precision instruments"},
 ];
 function renderGames(){
   const groups=[...new Set(GAMES.map(g=>g.grp))];
