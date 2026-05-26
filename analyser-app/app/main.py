@@ -78,6 +78,13 @@ async def lifespan(_: FastAPI):
         _asyncio.create_task(deriv_lib.refresh_payouts())
     except Exception:
         pass
+    # Start the 24/7 Live Market Observer — passive WS to Deriv watching all 10
+    # markets, computing rolling stats, flagging statistical anomalies.
+    try:
+        from app.observer import observer
+        observer.ensure_running()
+    except Exception:
+        pass
     yield
 
 
@@ -466,6 +473,22 @@ def cycle_pause() -> dict:
 def cycle_resume() -> dict:
     from app import cycle
     return cycle.resume()
+
+
+@app.get("/observer/status")
+def observer_status() -> dict:
+    """Live Market Observer — 24/7 WS to Deriv watching all 10 markets.
+    Returns rolling stats per market + flagged statistical anomalies + tick count."""
+    from app import observer
+    return observer.snapshot()
+
+
+@app.get("/observer/patterns")
+def observer_patterns(limit: int = 30) -> list[dict]:
+    """Recent flagged statistical patterns. Each carries an honest note —
+    these are descriptive RNG observations, NOT trading signals."""
+    from app import observer
+    return observer.patterns(limit=limit)
 
 
 @app.get("/cycle/history")

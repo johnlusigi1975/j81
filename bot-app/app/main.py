@@ -1099,6 +1099,29 @@ async def priority_set(body: PriorityToggle) -> dict:
         raise HTTPException(502, f"could not reach the hub to set priority: {exc!r}")
 
 
+@app.get("/observer/status")
+async def observer_status_proxy() -> dict:
+    """Proxy the analyser's live market observer status (24/7 WS to Deriv)."""
+    import httpx
+    url = get_settings().analyser_url.rstrip("/") + "/observer/status"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception:
+        return {"unreachable": True, "markets": []}
+
+
+@app.get("/observer/patterns")
+async def observer_patterns_proxy(limit: int = 30) -> list:
+    import httpx
+    url = get_settings().analyser_url.rstrip("/") + f"/observer/patterns?limit={int(limit)}"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception:
+        return []
+
+
 @app.get("/cycle/history")
 async def cycle_history_proxy(limit: int = 20) -> dict:
     """Proxy the analyser's durable cycle audit trail so the UI can render it."""

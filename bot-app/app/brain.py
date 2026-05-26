@@ -18,9 +18,11 @@ import httpx
 
 from app.config import get_settings
 
-# ---- Library cache (the analyser is the authoritative source) ----------------
+# ---- Library + observer cache (the analyser is the authoritative source) -----
 _LIB_CACHE: dict[str, Any] = {"at": 0.0, "data": None}
 _LIB_TTL = 300.0   # 5 min — the static parts barely change; live payouts refresh ~hourly
+_OBS_CACHE: dict[str, Any] = {"at": 0.0, "data": None}
+_OBS_TTL = 30.0    # 30 s — observer state is live; reasonable freshness for advice
 
 
 async def _get_library() -> dict[str, Any]:
@@ -36,10 +38,24 @@ async def _get_library() -> dict[str, Any]:
             _LIB_CACHE["data"] = r.json(); _LIB_CACHE["at"] = now
             return _LIB_CACHE["data"]
     except Exception:
-        # Skeleton so the rules engine still works without the live payouts.
         return _LIB_CACHE.get("data") or {
             "live": {}, "j81_goal": {"win_target": {"threshold_pct": 60, "sample_size": 100}},
         }
+
+
+async def _get_observer() -> dict[str, Any]:
+    """Fetch /observer/status from the analyser, cached 30s. Soft-fails."""
+    now = time.monotonic()
+    if _OBS_CACHE["data"] and (now - _OBS_CACHE["at"]) < _OBS_TTL:
+        return _OBS_CACHE["data"]
+    url = get_settings().analyser_url.rstrip("/") + "/observer/status"
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as c:
+            r = await c.get(url); r.raise_for_status()
+            _OBS_CACHE["data"] = r.json(); _OBS_CACHE["at"] = now
+            return _OBS_CACHE["data"]
+    except Exception:
+        return {"unreachable": True, "markets": [], "flagged": []}
 
 
 # ---- The advisor ------------------------------------------------------------
@@ -57,6 +73,7 @@ async def advise(*, account: dict | None, balance: dict | None,
     Each rec carries the principle that backs it — so the user (or a downstream
     system) can audit the reasoning."""
     lib = await _get_library()
+    obs = await _get_observer()
     recs: list[dict[str, Any]] = []
     notes: list[str] = []
 
@@ -146,6 +163,18 @@ async def advise(*, account: dict | None, balance: dict | None,
         "A 7-loss streak forces a 128× stake just to recover the original. Unbounded streak risk on RNG = blow-up.",
         "RISK_MANAGEMENT → Martingale warning", severity="danger"))
 
+    # --- 5.5. Live observer findings — recent statistical anomalies on Deriv -
+    flagged = (obs or {}).get("flagged") or []
+    if flagged:
+        top = flagged[0]   # most recent / most notable
+        sym = top.get("symbol") or "?"
+        kind = top.get("kind") or "anomaly"
+        note = top.get("note") or ""
+        recs.append(_rec(
+            f"Observer flagged {kind.replace('_', ' ')} on {sym}",
+            note + " — descriptive only; the brain does not act on it.",
+            "Observer → live RNG monitoring", severity="info"))
+
     # --- 6. Scripture-grounded reminder (BIBLE_FINANCIAL_WISDOM) --------------
     recs.append(_rec(
         "Trade only what you can afford to lose",
@@ -167,6 +196,12 @@ async def advise(*, account: dict | None, balance: dict | None,
         "bankroll": bank, "currency": currency, "is_demo": is_demo,
         "goal": {"target_pct": target_pct, "sample": target_n},
         "best_market": best,
+        "observer": {
+            "ticks_seen": (obs or {}).get("ticks_seen"),
+            "markets_ready": (obs or {}).get("markets_ready"),
+            "flagged_count": len((obs or {}).get("flagged") or []),
+            "unreachable": bool((obs or {}).get("unreachable")),
+        },
         "recommendations": recs,
         "principles_applied": [r["principle"] for r in recs],
         "notes": notes,
