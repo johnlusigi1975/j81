@@ -877,8 +877,10 @@ def strategies() -> dict:
 async def scan_local() -> dict:
     """Live Even/Odd scan over the 10 synthetic markets. Reads the local
     observer's rolling snapshot — no analyser call needed (single-bot edition).
-    Returns a compact rank-by-payout view derived from the library + observer
-    so the UI can render the trade-type selector unchanged."""
+    Returns one row per synthetic market with the live EVEN/ODD confidence
+    rates from the observer plus payout (if known). The observer is the
+    canonical source — the UI scanner needs all 10 rows even when the payout
+    table is still warming up after a fresh boot."""
     try:
         from app import library as _lib
         from app import observer as _obs
@@ -886,19 +888,38 @@ async def scan_local() -> dict:
         obs = _obs.observer_snapshot_safe()
     except Exception as exc:
         raise HTTPException(502, f"scan unavailable: {exc!r}")
-    by_sym = {m["symbol"]: m for m in (obs.get("markets") or []) if m.get("symbol")}
-    out = []
-    payouts = ((lib or {}).get("live") or {}).get("even_odd_payouts_by_market") or {}
-    for sym, info in payouts.items():
-        st = by_sym.get(sym) or {}
-        out.append({
-            "symbol": sym, "name": info.get("name") or sym,
-            "payout_pct": info.get("payout_pct"),
-            "even_pct": st.get("even_pct"), "odd_pct": st.get("odd_pct"),
-            "eo_z": st.get("eo_z"), "ticks": st.get("ticks") or 0,
+    payouts_by_sym = ((lib or {}).get("live") or {}).get("even_odd_payouts_by_market") or {}
+    # Pretty-name lookup from the observer's symbol list (R_100 → "Vol 100").
+    SYMBOL_NAMES = dict(_obs.SCAN_SYMBOLS)
+    rows: list[dict] = []
+    for m in obs.get("markets") or []:
+        sym = m.get("symbol")
+        if not sym:
+            continue
+        po = payouts_by_sym.get(sym) or {}
+        rows.append({
+            "symbol": sym,
+            "name": po.get("name") or SYMBOL_NAMES.get(sym, sym),
+            "even_pct": m.get("even_pct"),
+            "odd_pct": m.get("odd_pct"),
+            "eo_z": m.get("eo_z"),
+            "ticks": m.get("ticks") or 0,
+            "ready": bool(m.get("ready")),
+            "payout_pct": po.get("payout_pct"),
         })
-    out.sort(key=lambda x: (x.get("payout_pct") or 0), reverse=True)
-    return {"markets": out, "best": (out[0] if out else None)}
+    def _lean(r):
+        ep = r.get("even_pct")
+        return abs(ep - 50) if ep is not None else -1
+    ready_rows = [r for r in rows if r["ready"]]
+    best_lean = max(ready_rows, key=_lean, default=None) if ready_rows else None
+    payout_rows = [r for r in rows if r.get("payout_pct")]
+    best_payout = max(payout_rows, key=lambda r: r["payout_pct"] or 0, default=None) if payout_rows else None
+    return {
+        "markets": rows,
+        "best_payout": best_payout,
+        "best_lean": best_lean,
+        "best": best_payout,           # legacy field — older UI code still expected `best`
+    }
 
 
 @app.get("/deriv/library")

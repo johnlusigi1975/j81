@@ -240,6 +240,36 @@
   @keyframes eo-mix-pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,207,158,.7)}50%{box-shadow:0 0 0 6px rgba(70,207,158,0)}}
   .tbtn.auto .sub{font-size:10.5px;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.04em;margin-top:2px}
 
+  /* Even/Odd multi-market confidence scanner — visual at-a-glance read. */
+  .eo-scan-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  .eo-scan-title{font-family:var(--serif);font-size:14.5px;font-weight:800}
+  .eo-scan-meta{font-size:11px}
+  .eo-row{padding:9px 11px 10px;border:1px solid var(--bd);border-radius:11px;margin-bottom:7px;background:linear-gradient(135deg,rgba(255,255,255,.02),rgba(255,255,255,0));cursor:pointer;transition:transform .15s ease,border-color .2s ease,box-shadow .2s ease}
+  .eo-row:hover{transform:translateY(-1px);border-color:var(--bd2)}
+  .eo-row.here{border-color:var(--amber);box-shadow:0 0 0 1px rgba(212,184,122,.25) inset, 0 10px 30px -16px rgba(212,184,122,.55)}
+  .eo-row.strong{border-color:rgba(70,207,158,.55);box-shadow:0 0 0 1px rgba(70,207,158,.18) inset, 0 10px 30px -16px rgba(70,207,158,.45)}
+  .eo-row.firm{border-color:rgba(240,200,90,.4)}
+  .eo-row.warm{opacity:.85}
+  .eo-row-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .eo-sym{font-family:var(--serif);font-size:13.5px;font-weight:800}
+  .eo-tags{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .eo-tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--bd);border-radius:999px;color:var(--dim);background:rgba(0,0,0,.22);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  .eo-tag.best{border-color:rgba(212,184,122,.55);color:#241c0a;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a)}
+  .eo-tag.here{border-color:rgba(70,207,158,.55);color:#04200f;background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a)}
+  .eo-tag.pay{color:var(--text)}
+  .eo-tag.z{color:var(--dim)}
+  .eo-tag.ticks{color:var(--faint)}
+  .eo-tag.faint{opacity:.55}
+  .eo-row-bar{position:relative;display:flex;height:22px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.04)}
+  .eo-row-bar .even{background:linear-gradient(135deg,#fff0c2 0%,#f0c64a 60%,#cf9e2a 100%);color:#241d05;font-family:var(--mono);font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:flex-start;padding:0 8px;letter-spacing:.04em;transition:width .35s ease;white-space:nowrap;overflow:hidden}
+  .eo-row-bar .odd{background:linear-gradient(135deg,#eef0f5 0%,#aab0bd 60%,#7c8290 100%);color:#15151c;font-family:var(--mono);font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:flex-end;padding:0 8px;letter-spacing:.04em;transition:width .35s ease;white-space:nowrap;overflow:hidden}
+  .eo-row-bar.warming{justify-content:flex-start;background:rgba(255,255,255,.04)}
+  .eo-row-bar .warming-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(54,214,200,.18),rgba(54,214,200,.45));border-radius:7px;transition:width .4s ease}
+  .eo-row-bar .warming-lbl{position:relative;z-index:1;padding:0 10px;display:flex;align-items:center;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
+  .eo-lean{margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
+  .eo-lean.lean-even{color:#f0c64a}
+  .eo-lean.lean-odd{color:#aab0bd}
+
   /* Dedicated Even/Odd auto-trade control panel. */
   .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(54,214,200,.06),rgba(212,184,122,.04));position:relative}
   .eo-auto h5{margin:0 0 4px;font-family:var(--serif);font-size:15px;font-weight:800;letter-spacing:.01em}
@@ -751,10 +781,8 @@
         <div class="faint" id="live-evenodd" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
       <div class="dbar" id="live-digits"></div>
-      <!-- EVEN/ODD live digit flow (most recent sequence, newest on the right) -->
-      <div id="eo-flow" hidden style="margin-top:12px"></div>
-      <!-- EVEN/ODD deeper read — multi-window bias, streak, randomness, hot/cold -->
-      <div id="eo-read" hidden style="margin-top:12px"></div>
+      <!-- EVEN/ODD multi-market scanner — confidence rates across all 10 volatilities. -->
+      <div id="eo-scan" hidden style="margin-top:12px"></div>
       <!-- the one real edge: best-payout market (auto-pick) -->
       <div id="eo-payout" hidden style="margin-top:10px"></div>
     </div>
@@ -942,7 +970,7 @@ function showView(v){
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display="none";   // beach theme: ocean body gradient is the backdrop (no gold bars)
-  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} }   // stop live sockets when leaving the trade view
+  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
   // Remember the section so a refresh lands the user right back here.
@@ -1383,55 +1411,84 @@ document.querySelectorAll('.engines-pwr').forEach(b=>b.addEventListener("click",
 // Hide the floating tip on load if the user already powered the engines on once before.
 try{ if(localStorage.getItem("j81_eng_tip_dismissed")) document.querySelectorAll('.engines-tip').forEach(t=>t.classList.add('dismissed')); }catch(_){}
 
-// ---------- Even/Odd deeper read (honest: digit observations, not a prediction) ----------
-function _eoChip(lab,val,col){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:54px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:'+(col||'var(--text)')+'">'+val+'</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">'+lab+'</span></span>'; }
-function _evenPct(arr){ if(!arr.length) return 50; var e=0; for(var i=0;i<arr.length;i++) if(arr[i]%2===0)e++; return Math.round(e/arr.length*100); }
-function renderEoFlow(digits){
-  var fl=$("eo-flow"); if(!fl) return;
-  if(GAME!=="even_odd"){ fl.hidden=true; return; }
-  fl.hidden=false;
-  var seq=digits.slice(-26);
-  fl.innerHTML='<div class="lab" style="font-size:10px;margin-bottom:5px">Live digit flow <span class="faint" style="letter-spacing:0">(newest →)</span></div>'+
-    '<div style="display:flex;gap:3px;flex-wrap:wrap">'+seq.map(function(d,i){ var even=d%2===0, newest=i===seq.length-1;
-      return '<span style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px;font-weight:800;font-family:var(--mono);'+
-        (even?'background:linear-gradient(180deg,#ffe49a,#cf9e2a);color:#241d05':'background:linear-gradient(180deg,#eef0f5,#8c93a1);color:#15151c')+
-        (newest?';outline:2px solid var(--text);outline-offset:1px':'')+'">'+d+'</span>'; }).join("")+'</div>';
+// ---------- Even/Odd multi-market scanner ----------
+// Replaces the old single-market digit-shift chart with a live confidence
+// scan across all 10 synthetic volatilities. Each row shows EVEN% and ODD%
+// over the last 100 ticks (the observer's rolling sample) as a split bar,
+// the z-score lean, and the live payout. Strong leans float to the top.
+let _eoScanTimer = null;
+function _eoScanRowHTML(m, bestPayoutSym, currentSym){
+  const evp = (m.even_pct != null) ? Math.round(m.even_pct) : null;
+  const odp = (evp != null) ? 100 - evp : null;
+  const z   = (m.eo_z != null) ? Number(m.eo_z) : 0;
+  const lean = (evp != null) ? Math.abs(evp - 50) : 0;
+  const sideLeft = (evp != null && evp >= 50);
+  // strength tier from the lean (% off 50). 0–4 light, 5–9 firm, 10+ strong.
+  const tier = lean >= 10 ? "strong" : lean >= 5 ? "firm" : "calm";
+  const ready = !!m.ready;
+  const isHere = (currentSym && m.symbol === currentSym);
+  const isBestPayout = (bestPayoutSym && m.symbol === bestPayoutSym);
+  const payoutBadge = (m.payout_pct != null)
+    ? '<span class="eo-tag pay">payout '+Number(m.payout_pct).toFixed(1)+'%</span>'
+    : '<span class="eo-tag pay faint">payout —</span>';
+  const bestBadge = isBestPayout ? '<span class="eo-tag best">💰 best payout</span>' : '';
+  const hereBadge = isHere ? '<span class="eo-tag here">✓ trading here</span>' : '';
+  const tickBadge = '<span class="eo-tag ticks">'+(m.ticks||0)+' ticks</span>';
+  const zBadge = ready ? '<span class="eo-tag z">z '+(z>=0?'+':'')+z.toFixed(1)+'</span>' : '';
+  // Confidence bar: EVEN side left (gold), ODD side right (silver). Width = %.
+  const bar = ready
+    ? '<div class="eo-row-bar"><span class="even" style="width:'+evp+'%">EVEN '+evp+'%</span><span class="odd"  style="width:'+odp+'%">'+odp+'% ODD</span></div>'
+    : '<div class="eo-row-bar warming"><span class="warming-fill" style="width:'+Math.min(100,(m.ticks||0))+'%"></span><span class="warming-lbl">warming up · '+(m.ticks||0)+'/30 ticks</span></div>';
+  return ''
+    +'<div class="eo-row '+tier+(ready?' ready':' warm')+(isHere?' here':'')+'" data-sym="'+esc(m.symbol)+'">'
+    +'  <div class="eo-row-head">'
+    +'    <span class="eo-sym">'+esc(m.name || m.symbol)+'</span>'
+    +'    <span class="eo-tags">'+bestBadge+hereBadge+payoutBadge+zBadge+tickBadge+'</span>'
+    +'  </div>'
+    +    bar
+    +(ready ? '<div class="eo-lean '+(sideLeft?'lean-even':'lean-odd')+'">lean '+(sideLeft?'EVEN':'ODD')+' · '+lean+'% off fair-50 · '+tier+'</div>' : '')
+    +'</div>';
 }
-function renderEvenOddRead(digits){
-  renderEoFlow(digits);
-  var el=$("eo-read"); if(!el) return;
-  if(GAME!=="even_odd"){ el.hidden=true; return; }
-  el.hidden=false;
-  var n=digits.length; if(n<12){ el.innerHTML='<div class="faint" style="font-size:11px">collecting ticks…</div>'; return; }
-  var last=digits.slice(-100), nn=last.length;
-  var ev=0; for(var i=0;i<nn;i++) if(last[i]%2===0)ev++; var od=nn-ev;
-  var e20=_evenPct(digits.slice(-20)), e50=_evenPct(digits.slice(-50)), e100=_evenPct(last);
-  // current parity streak + longest run in the sample
-  var lp=last[nn-1]%2, sl=1; for(var i=nn-2;i>=0;i--){ if(last[i]%2===lp)sl++; else break; }
-  var maxRun=1,cur=1; for(var i=1;i<nn;i++){ if(last[i]%2===last[i-1]%2){cur++; if(cur>maxRun)maxRun=cur;} else cur=1; }
-  // randomness checks: even/odd z + chi-square across the 10 digits (df=9, 16.92 ≈ p.05)
-  var z=(2*ev-nn)/Math.sqrt(nn);
-  var freq=[0,0,0,0,0,0,0,0,0,0]; for(var i=0;i<nn;i++) freq[last[i]]++; var exp=nn/10, chi=0;
-  for(var d=0;d<10;d++){ chi+=(freq[d]-exp)*(freq[d]-exp)/exp; }
-  var fair = Math.abs(z)<2 && chi<16.92;
-  var ec=function(v){ return v>=55?'var(--good)':v<=45?'var(--bad)':'var(--faint)'; };
-  el.innerHTML=
-    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
-      '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:70px;padding:6px 10px;border:1px solid var(--bd2);border-radius:10px"><b style="font-size:15px">'+e100+'% / '+(100-e100)+'%</b><span style="font-size:9px;color:var(--faint);letter-spacing:.04em">EVEN / ODD (100)</span></span>'+
-      _eoChip('20t even',e20+'%',ec(e20))+_eoChip('50t even',e50+'%',ec(e50))+
-      _eoChip('streak',sl+(lp===0?' E':' O'),lp===0?'var(--good)':'var(--bad)')+
-      _eoChip('longest',maxRun,'var(--amber)')+
-      _eoChip('even/odd z',(z>=0?'+':'')+z.toFixed(1),Math.abs(z)>=2?'var(--amber)':'var(--faint)')+
-      _eoChip('randomness',fair?'fair':'skewed',fair?'var(--good)':'var(--amber)')+
-    '</div>'+
-    '<div class="faint" style="font-size:10.5px;margin-top:6px">'+esc(_eoReadMsg(e20,e50,e100,sl,lp,fair,chi))+'</div>';
+async function loadEoScan(){
+  const el = $("eo-scan"); if(!el) return;
+  if(GAME !== "even_odd"){ el.hidden = true; return; }
+  el.hidden = false;
+  try{
+    const d = await api("/scan");
+    const markets = (d.markets || []).slice();
+    // Sort by readiness first, then by absolute lean (strongest signal up top).
+    markets.sort(function(a,b){
+      const aReady = !!a.ready, bReady = !!b.ready;
+      if(aReady !== bReady) return bReady - aReady;
+      const aL = a.even_pct!=null ? Math.abs(a.even_pct - 50) : -1;
+      const bL = b.even_pct!=null ? Math.abs(b.even_pct - 50) : -1;
+      return bL - aL;
+    });
+    const bestPayoutSym = (d.best_payout || d.best || {}).symbol || null;
+    const cur = ($("t-symbol")||{}).value || null;
+    const readyCount = markets.filter(m=>m.ready).length;
+    const head = ''
+      +'<div class="eo-scan-head">'
+      +'  <div class="eo-scan-title">📡 Even / Odd confidence scanner <span class="faint">live across all 10 volatilities</span></div>'
+      +'  <div class="eo-scan-meta faint">'+readyCount+' / '+markets.length+' markets ready · strongest leans float to the top · click any row to jump there</div>'
+      +'</div>';
+    el.innerHTML = head + markets.map(m => _eoScanRowHTML(m, bestPayoutSym, cur)).join("");
+    // Click a row to switch the active market.
+    el.querySelectorAll(".eo-row").forEach(r => r.addEventListener("click", () => {
+      const sym = r.dataset.sym; if(!sym) return;
+      const s = $("t-symbol"); if(s && s.value !== sym){ s.value = sym; s.dispatchEvent(new Event("change")); }
+    }));
+  } catch(_){
+    el.innerHTML = '<div class="faint" style="font-size:11px;padding:8px 0">scanner warming up — give it a few seconds…</div>';
+  }
 }
-function _eoReadMsg(e20,e50,e100,streak,lp,fair,chi){
-  var side=lp===0?'even':'odd';
-  var lean = (e20>=58&&e50>=54)?'recent EVEN lean' : (e20<=42&&e50<=46)?'recent ODD lean' : (e20>=58)?'very-recent even burst' : (e20<=42)?'very-recent odd burst' : 'balanced ~50/50';
-  var note = fair ? 'distribution looks fair (RNG) — no real edge'
-                  : 'distribution is skewed right now (χ²='+chi.toFixed(1)+') — likely noise, not a signal';
-  return 'Read: '+lean+'; '+streak+' '+side+' in a row. '+note+'. Digits are an audited 50/50 RNG — use this to read, not predict.';
+function startEoScan(){
+  if(_eoScanTimer) clearInterval(_eoScanTimer);
+  loadEoScan();
+  _eoScanTimer = setInterval(loadEoScan, 4000);
+}
+function stopEoScan(){
+  if(_eoScanTimer){ clearInterval(_eoScanTimer); _eoScanTimer = null; }
 }
 // The ONE genuine Even/Odd edge: trade the highest-PAYOUT market (auto-pick).
 async function loadEvenOddPayouts(){
@@ -1499,7 +1556,7 @@ const LiveWS=(function(){
     el.innerHTML=cnt.map((c,d)=>{ const h=Math.round(c/mx*46)+2, pc=n?Math.round(c/n*100):0;
       const hot=n>=20&&c===mx?' hot':'', cold=n>=20&&c===mn?' cold':'';   // most/least frequent
       return `<div class="col ${d%2?'odd':''}${hot}${cold}"><div class="bar" style="height:${h}px"></div><div class="d">${d}</div><div class="n">${pc}%</div></div>`; }).join("");
-    if(GAME==="even_odd") renderEvenOddRead(digits);
+    // (Even/Odd panel is now the multi-market scanner; it polls /scan separately.)
     const ev=digits.filter(x=>x%2===0).length;
     const z = n ? (2*ev-n)/Math.sqrt(n) : 0;     // how far the even/odd split is from fair
     let sl=0, side=""; if(n){ const lp=digits[n-1]%2; sl=1; for(let i=n-2;i>=0;i--){ if(digits[i]%2===lp) sl++; else break; } side=lp===0?"E":"O"; }
@@ -1660,13 +1717,12 @@ async function openTrade(game){
   $("live-panel").hidden = (game==="m_pro" || game==="rise_fall");
   $("rf-panel").hidden = (game!=="rise_fall");
   $("rf-scan-panel").hidden = (game!=="rise_fall");
-  // Even/Odd deeper read + best-payout edge (only on even_odd)
+  // Even/Odd: live multi-market confidence scanner + best-payout edge + auto-trader
   const isEO = (game==="even_odd");
-  if($("eo-flow")) $("eo-flow").hidden = !isEO;
-  if($("eo-read")) $("eo-read").hidden = !isEO;
+  if($("eo-scan")) $("eo-scan").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
   if($("eo-auto")) $("eo-auto").hidden = !isEO;
-  if(isEO) loadEvenOddPayouts();
+  if(isEO){ loadEvenOddPayouts(); startEoScan(); } else { stopEoScan(); }
   $("trade-buttons").className = "tgrid"
     + (game==="rise_fall" ? " compact" : "")
     + (isEO ? " eo3" : "");          // 3-column layout when EVEN/ODD/AUTO trio is present
