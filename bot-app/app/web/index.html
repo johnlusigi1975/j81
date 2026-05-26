@@ -420,7 +420,7 @@
   <div class="glass connect-card">
     <div id="enc-setup"></div>
     <h2 style="margin:0 0 4px;font-size:18px">Connect your Deriv account</h2>
-    <p class="lede" style="margin:0 0 14px">One tap signs you in on Deriv, then you choose <b>Real</b> or <b>Practice</b> — and J81 trades on that account.</p>
+    <p class="lede" style="margin:0 0 14px">One tap signs you in on Deriv, then you choose <b>Real account</b> or <b>Demo account</b> — and J81 trades on that account.</p>
 
     <!-- Primary: one-tap Deriv OAuth -->
     <a href="/oauth/start" style="text-decoration:none"><button class="btn big" type="button" style="width:100%">Connect with Deriv →</button></a>
@@ -839,7 +839,7 @@ function openAccounts(){ showView("accounts"); }
 function updateNav(){
   if(!CUR) return;
   $("nav-acct").hidden=false;
-  const base=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL");
+  const base=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo account":"real account");
   $("nav-acct-txt").textContent=base;
   loadBalance(CUR.id).then(b=>{ if(b&&b.balance!=null&&CUR) $("nav-acct-txt").textContent=base+" · "+fmtMoney(b.balance,b.currency); });
 }
@@ -854,7 +854,7 @@ async function loadAccounts(){
     const cur=esc(a.currency||""), sub=demo?"virtual funds — no risk":"real funds — real profit &amp; loss";
     const active=(CUR&&CUR.id===a.id)?'style="outline:2px solid var(--amber)"':'';
     return `<div class="gcard" data-acct="${esc(a.id)}" ${active} style="cursor:pointer">
-      <div style="font-size:12px;font-weight:800;letter-spacing:.6px;color:${col}">${demo?"PRACTICE":"REAL MONEY"}</div>
+      <div style="font-size:12px;font-weight:800;letter-spacing:.6px;color:${col}">${demo?"DEMO ACCOUNT":"REAL ACCOUNT"}</div>
       <div style="font-size:26px;font-weight:800;margin:8px 0 2px" id="bal-${esc(a.id)}"><span class="faint" style="font-size:13px">balance…</span></div>
       <div class="faint" style="font-size:12.5px">${esc(a.deriv_account_id)} · ${cur}</div>
       <button class="btn" type="button" style="margin-top:12px;width:100%">Trade on this →</button>
@@ -918,12 +918,12 @@ function renderGames(){
 }
 async function loadHome(){
   renderGames();
-  if(CUR){ $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL"); }
+  if(CUR){ $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo account":"real account"); }
   $("home-mode").innerHTML = DRY?'<span class="pill warn"><span class="dot" style="background:var(--warn)"></span>practice mode</span>':'<span class="pill bad"><span class="dot" style="background:var(--bad)"></span>REAL MONEY</span>';
   try{ const s=await api("/assistant/summary"); const p=Number(s.profit_today||0);
     const pe=$("s-profit"); pe.textContent=(p>=0?"+$":"-$")+Math.abs(p).toFixed(2); pe.style.color=p>=0?"var(--good)":"var(--bad)";
     $("s-wins").textContent=s.settled?`${s.wins}/${s.settled}`:"0/0"; $("s-trades").textContent=s.trades_total;
-    $("s-acct").textContent=CUR?(CUR.is_demo?"demo":"REAL"):"—";
+    $("s-acct").textContent=CUR?(CUR.is_demo?"demo account":"real account"):"—";
   }catch(_){}
   if(CUR) loadBalance(CUR.id).then(b=>{ const el=$("s-acct"); if(el&&b&&b.balance!=null) el.textContent=fmtMoney(b.balance,b.currency); });
   try{ const t=await api("/trades?limit=6"); const el=$("trades-mini");
@@ -1317,9 +1317,9 @@ function showBalance(b){
   if(!(b&&b.balance!=null)) return;
   const m=fmtMoney(b.balance,b.currency);
   const top=$("trade-bal-top"); if(top) top.textContent=m;
-  const k=$("trade-bal-kind"); if(k) k.textContent="· "+(CUR.is_demo?"demo":"REAL");
+  const k=$("trade-bal-kind"); if(k) k.textContent="· "+(CUR.is_demo?"demo account":"real account");
   const tb=$("trade-bal"); if(tb) tb.textContent="Balance: "+m;
-  const nv=$("nav-acct-txt"); if(nv) nv.textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo":"REAL")+" · "+m;
+  const nv=$("nav-acct-txt"); if(nv) nv.textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo account":"real account")+" · "+m;
 }
 async function refreshLive(){
   if(!CUR) return;
