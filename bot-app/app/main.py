@@ -318,14 +318,18 @@ async def health_tree() -> dict:
         except Exception as exc:
             return {"configured": True, "ok": False, "error": str(exc)[:80]}
 
-    analyser = await _ping(s.analyser_url)
-    cycle = {}
-    if analyser.get("ok"):
+    # Parallel pings + cycle fetch — cuts the worst-case wait roughly in half.
+    import asyncio as _asyncio
+    async def _cycle():
         try:
             async with httpx.AsyncClient(timeout=6.0) as c:
-                cycle = (await c.get(s.analyser_url.rstrip("/") + "/cycle/status")).json()
+                return (await c.get(s.analyser_url.rstrip("/") + "/cycle/status")).json()
         except Exception:
-            cycle = {}
+            return {}
+    analyser, researcher, cycle = await _asyncio.gather(
+        _ping(s.analyser_url), _ping(_researcher_url()), _cycle())
+    if not (analyser or {}).get("ok"):
+        cycle = {}
     return {
         "bot": {"ok": True, "version": APP_VERSION, "dry_run": s.dry_run,
                 "loop_alive": trading_loop.status.get("loop_alive"),
@@ -334,7 +338,7 @@ async def health_tree() -> dict:
                 "accounts": len(accts), "enabled": len(enabled),
                 "proven_strategies": len(proven)},
         "analyser": analyser,
-        "researcher": await _ping(_researcher_url()),
+        "researcher": researcher,
         "cycle": {"tested": cycle.get("tested"), "proven": cycle.get("proven_count"),
                   "next_in_seconds": cycle.get("next_in_seconds")},
     }
@@ -767,6 +771,10 @@ def _structural_winprob(trade_type: str | None, direction: str | None,
     return 0.5
 
 
+_QUOTE_CACHE: dict[tuple, tuple[float, dict]] = {}
+_QUOTE_TTL = 6.0  # short cache so the trade-math strip stays snappy across keystrokes
+
+
 @app.get("/quote")
 async def quote(
     symbol: str = "R_100",
@@ -779,7 +787,14 @@ async def quote(
 ) -> dict:
     """Real Deriv price quote — NO account, NO token, NO trade placed.
     Shows what a contract would pay out and the markup you'd earn, so you
-    can sanity-check the economics before ever going live."""
+    can sanity-check the economics before ever going live. Cached for 6s per
+    param-set so the trade-math strip and rapid changes stay instant."""
+    import time as _time
+    key = (symbol, trade_type, direction, prediction, duration, duration_unit, round(float(stake), 2))
+    _now = _time.monotonic()
+    hit = _QUOTE_CACHE.get(key)
+    if hit and (_now - hit[0]) < _QUOTE_TTL:
+        return hit[1]
     try:
         q = await get_proposal(
             symbol=symbol,
@@ -821,6 +836,7 @@ async def quote(
             "edge_pct": round((wp - be) * 100, 2),
             "verdict": "positive EV" if ev > 0 else "negative EV — house edge",
         })
+    _QUOTE_CACHE[key] = (_now, out)
     return out
 
 

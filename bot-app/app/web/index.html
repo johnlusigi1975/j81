@@ -269,6 +269,19 @@
   .engines-tip::after{content:"";position:absolute;left:100%;top:50%;width:0;height:0;border-style:solid;border-width:6px 0 6px 7px;border-color:transparent transparent transparent #d4b87a;transform:translateY(-50%)}
   .engines-tip.dismissed{display:none}
   @keyframes tip-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
+
+  /* ---- Perf hints: GPU compositing for animated bits + offscreen paint deferral ---- */
+  /* will-change tells the browser to hoist these to their own composite layer so the
+     animations are smoother and don't repaint the page on every frame. */
+  .engines-pwr .dot::before, .engines-pwr.on .dot::before,
+  .pipe span, .engine.live, .engine.live .ico, .engines-tip{ will-change: transform, opacity; }
+  #rf-chart{ will-change: contents; }
+  /* Defer paint work for big offscreen sections (browser skips rendering until they
+     scroll into view). Saves real CPU on long pages, especially on mobile. */
+  .engines-wrap, #trade-recent, #home-proven, #cy-top, #lab-feed, #rf-scan{
+    content-visibility: auto;
+    contain-intrinsic-size: auto 220px;
+  }
   .engines-flow{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;align-items:stretch;gap:6px}
   @media(max-width:720px){.engines-flow{grid-template-columns:1fr;gap:8px} .pipe{transform:rotate(90deg);height:28px;width:60px;margin:0 auto}}
   .engine{position:relative;border:1px solid var(--bd);border-radius:12px;padding:11px;background:rgba(0,0,0,.18);transition:all .35s;overflow:hidden}
@@ -1300,8 +1313,11 @@ const LiveWS=(function(){
     const sp=$("term-spot"); if(sp){ sp.innerHTML='<small>spot price</small>'+s; sp.classList.remove("up","down"); if(lastQ!=null&&q!==lastQ) sp.classList.add(q>lastQ?"up":"down"); }
     lastQ=q; digits.push(d); if(digits.length>240) digits.shift();   // keep enough for 100-tick windows
     prices.push(q); if(prices.length>140) prices.shift();
-    render();
+    scheduleRender();   // RAF-coalesce — multiple rapid ticks paint once per frame
   }
+  // Coalesce paint work into the browser's animation frame for smoother updates.
+  let _rendScheduled=false;
+  function scheduleRender(){ if(_rendScheduled) return; _rendScheduled=true; requestAnimationFrame(()=>{ _rendScheduled=false; render(); }); }
   function render(){
     if(GAME==="rise_fall"){ renderChart(); return; }   // price chart instead of digit bars
     const el=$("live-digits"); if(!el) return;
