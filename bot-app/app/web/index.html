@@ -485,7 +485,7 @@
     <div class="stat good"><div class="n" id="s-profit">—</div><div class="l">profit today</div></div>
     <div class="stat"><div class="n" id="s-wins">—</div><div class="l">wins / settled</div></div>
     <div class="stat"><div class="n" id="s-trades">—</div><div class="l">trades</div></div>
-    <div class="stat"><div class="n" id="s-acct">—</div><div class="l">balance</div></div>
+    <div class="stat"><div class="n" id="s-acct">—</div><div class="l" id="s-acct-label">balance</div></div>
   </div>
 
   <!-- Strategy cycle + proven store, visible without opening a trade -->
@@ -919,7 +919,15 @@ function renderGames(){
 async function loadHome(){
   renderGames();
   if(CUR){ $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo account":"real account"); }
-  $("home-mode").innerHTML = DRY?'<span class="pill warn"><span class="dot" style="background:var(--warn)"></span>practice mode</span>':'<span class="pill bad"><span class="dot" style="background:var(--bad)"></span>REAL MONEY</span>';
+  // Label reflects the actual account you're on (not just the global DRY flag),
+  // so a demo account never shows "REAL MONEY".
+  const _isDemo = !!(CUR && CUR.is_demo);
+  const _lab=$("s-acct-label"); if(_lab) _lab.textContent = CUR ? (_isDemo ? "demo balance" : "real balance") : "balance";
+  $("home-mode").innerHTML = DRY
+    ? '<span class="pill warn"><span class="dot" style="background:var(--warn)"></span>practice mode</span>'
+    : (_isDemo
+        ? '<span class="pill warn"><span class="dot" style="background:var(--warn)"></span>demo account · virtual funds</span>'
+        : '<span class="pill bad"><span class="dot" style="background:var(--bad)"></span>REAL MONEY</span>');
   try{ const s=await api("/assistant/summary"); const p=Number(s.profit_today||0);
     const pe=$("s-profit"); pe.textContent=(p>=0?"+$":"-$")+Math.abs(p).toFixed(2); pe.style.color=p>=0?"var(--good)":"var(--bad)";
     $("s-wins").textContent=s.settled?`${s.wins}/${s.settled}`:"0/0"; $("s-trades").textContent=s.trades_total;
