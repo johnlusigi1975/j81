@@ -266,7 +266,9 @@
   .dbar .d{font-size:11px;font-weight:800} .dbar .n{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
   .dbar .col.hot .bar{background:linear-gradient(180deg,#6ff0a8,#12c46a);box-shadow:0 0 10px -2px rgba(45,220,130,.6)}
   .dbar .col.hot .d{color:var(--good)} .dbar .col.cold .bar{background:linear-gradient(180deg,#ff9aac,#e23a52)} .dbar .col.cold .d{color:var(--bad)}
-  .backbtn{font-family:inherit;font-size:13px;color:var(--dim);background:transparent;border:none;cursor:pointer;padding:0;margin-bottom:14px}
+  /* Inline back buttons are replaced by the sticky #nav-back in the nav so
+     the back action stays visible while scrolling. */
+  .backbtn{display:none}
   .backbtn:hover{color:var(--text)}
   footer{max-width:1080px;margin:0 auto;padding:24px 22px 50px;color:var(--faint);font-size:12px;border-top:1px solid var(--bd)}
 </style>
@@ -277,6 +279,7 @@
 
 <nav class="nav"><div class="nav-in">
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
+  <button class="navbtn" id="nav-back" hidden onclick="navBack()" title="Back" style="margin-left:6px;padding:6px 11px">← Back</button>
   <div class="nav-sp"></div>
   <span class="chip" id="nav-member" hidden title="Your membership" style="color:var(--amber);border-color:var(--bd2)"></span>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
@@ -664,11 +667,24 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const fmtMoney=(v,c)=>(v==null||isNaN(v))?"—":(((c||"USD")==="USD")?"$":(esc(c)+" "))+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 async function loadBalance(id){ try{ return await api("/accounts/"+encodeURIComponent(id)+"/balance"); }catch(_){ return null; } }
 const VIEWS=["landing","access","connect","loading","accounts","home","trade"];
+// Sticky nav-back: where each view goes "back" to.
+const _BACK_TARGETS = {
+  trade:"home", home:"landing", accounts:"landing",
+  connect:"landing", access:null,  // access uses dynamic target (accounts or landing)
+  landing:null, loading:null,
+};
+function navBack(){ var t=window._BACK_TO; if(t) showView(t); }
+
 function showView(v){
   // Paywall comes AFTER connecting Deriv + choosing Demo/Real: connect + the
   // account picker stay free; the desk itself (dashboard/trade) needs membership.
   if(window.REQUIRE_ACCESS && !window.LICENSED && (v==="home"||v==="trade")) v="access";
   VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
+  // Wire the sticky back button (in the nav) — visible on every view except the
+  // entry points (landing/loading). Access uses a dynamic target.
+  var bt = (v==="access") ? (HAS_ACCOUNTS?"accounts":"landing") : _BACK_TARGETS[v];
+  var nb = $("nav-back");
+  if(nb){ if(bt){ window._BACK_TO=bt; nb.hidden=false; } else { window._BACK_TO=null; nb.hidden=true; } }
   const inApp=(v==="accounts"||v==="home"||v==="trade");
   ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
