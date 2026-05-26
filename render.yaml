@@ -70,6 +70,24 @@ services:
       # Your referral link (public).
       - key: DERIV_REFERRAL_URL
         value: https://track.deriv.com/_6uqV-95nzXtZl7VyVw174GNd7ZgqdRLk/1/
+      # ---- Paid access (membership paywall) ----
+      # Master switch: keep "false" until Stripe + ADMIN_KEY are ready, then "true".
+      - key: REQUIRE_ACCESS
+        value: "false"
+      # Owner secret for the /owner code console + /admin/licenses. Set in the
+      # dashboard (never commit it).
+      - key: ADMIN_KEY
+        sync: false
+      # Stripe webhook signing secret (whsec_…) — set in the dashboard.
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # Your Stripe Payment Link (public URL). Set in the dashboard once created.
+      - key: ACCESS_BUY_URL
+        sync: false
+      - key: ACCESS_PRICE_LABEL
+        value: "$100"
+      - key: ACCESS_DAYS
+        value: "90"
 
   # ---------------- ANALYSER (brain + scanner + comms hub) ----------------
   - type: web
