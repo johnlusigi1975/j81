@@ -20,8 +20,8 @@ from datetime import datetime, timezone
 from app import productivity
 from app.store import get_store
 
-TICK_SECONDS = 60
-SYSTEM_CHECK_SECONDS = 600          # 10-minute auto system check + refresh
+TICK_SECONDS = 30                   # self-report every 30s so the maintenance panel stays live
+SYSTEM_CHECK_SECONDS = 300          # advise peers + refresh every 5 min (was 10) — steady chatter without spam
 _TICKS_PER_CHECK = max(1, SYSTEM_CHECK_SECONDS // TICK_SECONDS)
 _MAX_REFRESH_SYMBOLS = 12           # cover all common synthetics so none stay untested
 

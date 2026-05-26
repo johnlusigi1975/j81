@@ -20,7 +20,7 @@ from app.executor import execute_decision_for_account, get_decision
 from app.store import get_store
 
 _IDLE_POLL_SECONDS = 15
-SYSTEM_CHECK_SECONDS = 600  # 10-minute peer-watch heartbeat (brother's keeper)
+SYSTEM_CHECK_SECONDS = 60   # 1-min peer-watch heartbeat → live tree chatter in the maintenance panel
 
 
 def _now() -> datetime:

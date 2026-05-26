@@ -1134,6 +1134,97 @@ async def cycle_history_proxy(limit: int = 20) -> dict:
         return {"recent": [], "summary": {"cycles": 0, "any_proven": False}, "unreachable": True}
 
 
+@app.get("/maintenance/conversation")
+async def maintenance_conversation(limit: int = 30) -> dict:
+    """Live tree chatter — the three systems' running conversation about what
+    they need from each other to work better. Aggregates the comms bus,
+    cross-system recommendations, open maintenance issues, and every system's
+    latest productivity rate so the UI can show one combined panel that
+    refreshes every ~30 s and is ready to copy-paste."""
+    import asyncio
+    import httpx
+    base = get_settings().analyser_url.rstrip("/")
+    paths = [
+        f"{base}/comms/log?limit={int(limit)}",
+        f"{base}/comms/recommendations?limit={int(limit)}",
+        f"{base}/maintenance/issues?status=open&limit=50",
+        f"{base}/productivity",
+    ]
+
+    async def _g(client: httpx.AsyncClient, url: str):
+        try:
+            r = await client.get(url); r.raise_for_status(); return r.json()
+        except Exception:
+            return None
+
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        chatter, recs, issues, prod = await asyncio.gather(
+            *(_g(client, u) for u in paths)
+        )
+    unreachable = all(x is None for x in (chatter, recs, issues, prod))
+    # Self-report from bot so the panel reflects the bot's current view live.
+    try:
+        from app import productivity as _bot_prod, comms_client as _cc
+        me = _bot_prod.compute_self()
+        await _cc.report_productivity(me["score"], me["summary"], me["metrics"])
+    except Exception:
+        pass
+    return {
+        "unreachable": unreachable,
+        "chatter": chatter or [],
+        "recommendations": recs or [],
+        "issues": issues or [],
+        "productivity": prod or {"systems": [], "average": 0.0},
+    }
+
+
+@app.get("/maintenance/issues")
+async def maintenance_issues_proxy(status: str = "open", limit: int = 200) -> list:
+    import httpx
+    url = (get_settings().analyser_url.rstrip("/")
+           + f"/maintenance/issues?status={status}&limit={int(limit)}")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception:
+        return []
+
+
+@app.get("/comms/recommendations")
+async def comms_recommendations_proxy(limit: int = 50) -> list:
+    import httpx
+    url = (get_settings().analyser_url.rstrip("/")
+           + f"/comms/recommendations?limit={int(limit)}")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception:
+        return []
+
+
+@app.get("/comms/log")
+async def comms_log_proxy(limit: int = 100) -> list:
+    import httpx
+    url = (get_settings().analyser_url.rstrip("/")
+           + f"/comms/log?limit={int(limit)}")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(url); r.raise_for_status(); return r.json()
+    except Exception:
+        return []
+
+
+@app.post("/maintenance/peer_watch")
+async def maintenance_peer_watch() -> dict:
+    """Force the bot to push a fresh peer-watch + recommendations RIGHT NOW.
+    Lets the UI prime the conversation without waiting for the next cycle."""
+    try:
+        from app import productivity as _bot_prod
+        return await _bot_prod.peer_watch(write_recommendations=True)
+    except Exception as exc:
+        return {"ok": False, "error": repr(exc)}
+
+
 @app.get("/cycle/status")
 async def cycle_status_proxy() -> dict:
     """Proxy the Analyser's 30-min strategy-cycle status so the Bot dashboard can
