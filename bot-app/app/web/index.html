@@ -576,17 +576,23 @@
     <div id="home-mode"></div>
   </div>
 
-  <!-- J81 BRAIN — synthesises the shared library into live recommendations. -->
+  <!-- J81 BRAIN — synthesises the shared library into live recommendations + drives Brain Auto. -->
   <div id="brain-card" class="brain-card" style="margin-top:18px">
     <div class="brain-head">
       <div>
         <div class="brain-eyebrow">🧠 J81 Brain · live advice</div>
         <div class="brain-title" id="brain-title">Reading the library…</div>
       </div>
-      <button class="btn ghost" id="brain-refresh" type="button" style="padding:7px 12px;font-size:12px">↻ refresh</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="engines-pwr" id="brain-auto-toggle" type="button" title="Brain Auto: act on the brain's recommended Even/Odd every cycle">
+          <span class="dot"></span><span class="lbl">Brain Auto off</span>
+        </button>
+        <button class="btn ghost" id="brain-refresh" type="button" style="padding:7px 12px;font-size:12px">↻</button>
+      </div>
     </div>
     <div id="brain-recs" class="brain-recs">applying principles to your current state…</div>
-    <div class="faint" id="brain-foot" style="font-size:10.5px;margin-top:8px"></div>
+    <div id="brain-auto-status" class="faint" style="font-size:11px;margin-top:8px"></div>
+    <div class="faint" id="brain-foot" style="font-size:10.5px;margin-top:6px"></div>
   </div>
 
   <!-- The J81 scoreboard — Deriv vs J81 over the last 100 settled trades. -->
@@ -1125,6 +1131,7 @@ async function loadHome(){
   loadGoal();
   loadCycleHistory();
   loadBrain();
+  refreshBrainAutoUI();
 }
 function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
 
@@ -1160,6 +1167,33 @@ async function loadBrain(){
   }
 }
 (function(){ var b=$("brain-refresh"); if(b) b.addEventListener("click", loadBrain); })();
+
+// ---- Brain Auto — act on the brain's recommended Even/Odd every cycle ----
+async function brainAutoState(){
+  if(!CUR){ return false; }
+  try{ const a=(await api("/accounts")).find(x=>x.id===CUR.id); if(a){ CUR=a; return !!a.brain_auto; } }catch(_){}
+  return false;
+}
+async function refreshBrainAutoUI(){
+  const btn=$("brain-auto-toggle"), st=$("brain-auto-status");
+  const on = !!(CUR && CUR.brain_auto);
+  if(btn){ btn.classList.toggle("on",on); const l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Brain Auto on" : "Brain Auto off"; }
+  if(st) st.textContent = on
+    ? "✓ Brain Auto running: every cycle places ONE Even/Odd on the best-payout market at your stake cap. TP/SL still in force."
+    : "Brain Auto is off — flip the switch and the brain will take the trade each cycle (no fear-gates)." ;
+}
+(function(){ const b=$("brain-auto-toggle"); if(!b) return; b.addEventListener("click", async ()=>{
+  if(!CUR){ showView("connect"); return; }
+  const turningOn = !CUR.brain_auto;
+  const body = { brain_auto: turningOn, enabled: turningOn };
+  b.disabled = true;
+  try{
+    await api("/accounts/"+encodeURIComponent(CUR.id), {method:"PATCH", body: JSON.stringify(body)});
+    CUR.brain_auto = turningOn; CUR.enabled = turningOn;
+    await refreshBrainAutoUI(); loadBrain();
+  } catch(e){ const st=$("brain-auto-status"); if(st) st.textContent="couldn't toggle: "+e.message; }
+  finally{ b.disabled=false; }
+}); })();
 
 // ---- J81 vs Deriv scoreboard (60% × 100 + net P/L > 0) ----
 async function loadGoal(){

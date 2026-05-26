@@ -171,6 +171,7 @@ class BotStore:
             ("accounts", "proven_auto", "INTEGER"),    # 1 = auto-trade the analyser's PROVEN strategies
             ("accounts", "refresh_token", "BLOB"),     # Fernet-encrypted OAuth refresh token (new platform)
             ("accounts", "token_expires_at", "TEXT"),  # ISO time the access token expires (for proactive refresh)
+            ("accounts", "brain_auto", "INTEGER"),     # 1 = brain-driven auto: trades best-payout Even/Odd every cycle
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -288,7 +289,7 @@ class BotStore:
             "SELECT id, deriv_account_id, currency, label, enabled, "
             "max_stake_per_trade, max_trades_per_day, min_confidence, "
             "allowed_trade_types, allowed_symbols, take_profit, daily_loss_limit, "
-            "mpro_enabled, mpro_config, rf_config, proven_auto, platform, "
+            "mpro_enabled, mpro_config, rf_config, proven_auto, brain_auto, platform, "
             "token_expires_at, created_at, updated_at, last_trade_at FROM accounts "
         )
         if session_id is not None:
@@ -320,6 +321,7 @@ class BotStore:
             d["mpro_config"] = json.loads(d.get("mpro_config") or "null")
             d["rf_config"] = json.loads(d.get("rf_config") or "null")
             d["proven_auto"] = bool(d.get("proven_auto"))
+            d["brain_auto"] = bool(d.get("brain_auto"))
             d["platform"] = d.get("platform") or "legacy"
             out.append(d)
         return out
@@ -388,6 +390,7 @@ class BotStore:
         mpro_config: dict | None = None,
         rf_config: dict | None = None,
         proven_auto: bool | None = None,
+        brain_auto: bool | None = None,
     ) -> bool:
         sets: list[str] = []
         params: list[Any] = []
@@ -406,6 +409,7 @@ class BotStore:
         _add("daily_loss_limit", daily_loss_limit)
         _add("mpro_enabled", 1 if mpro_enabled else 0 if mpro_enabled is not None else None)
         _add("proven_auto", 1 if proven_auto else 0 if proven_auto is not None else None)
+        _add("brain_auto", 1 if brain_auto else 0 if brain_auto is not None else None)
         if mpro_config is not None:
             sets.append("mpro_config=?")
             params.append(json.dumps(mpro_config))

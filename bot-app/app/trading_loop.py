@@ -112,6 +112,11 @@ class TradingLoop:
             # Primary auto mode: trade the strategies the Analyser PROVED.
             if await self._run_proven_account(acct, summary):
                 continue
+            # Brain-driven auto: every cycle, trade the library's recommended
+            # setup (Even/Odd on the best-payout market) with no fear-based
+            # confidence gate. Safety still applies (TP/SL, daily cap).
+            if await self._run_brain_account(acct, summary):
+                continue
             # Server-side confidence-gated Rise/Fall runner (the "VPS" mode).
             if await self._run_rf_account(acct, summary):
                 continue
@@ -157,6 +162,57 @@ class TradingLoop:
         self.status["last_summary"] = summary
         await self._grade_the_brain(summary)
         await self._peer_watch()
+
+    async def _run_brain_account(self, acct: dict, summary: list) -> bool:
+        """Brain-driven auto: every cycle, place ONE Even/Odd trade on the
+        library's best-payout market, at the stake the user set (anti-martingale,
+        capped). No fear-based confidence gate — the system acts on the documented
+        EV lever (payout/market selection) and lets discipline (TP/SL/daily-cap)
+        be the only guardrail. Honest framing: this trades MORE, not better — but
+        with the one real edge applied and the safety rails intact."""
+        if not acct.get("brain_auto"):
+            return False
+        from app.executor import execute_manual_trade, goal_status
+        import httpx, random
+        store = get_store()
+        blocked, why = goal_status(acct)
+        if blocked:
+            store.update_account_settings(acct["id"], brain_auto=False, enabled=False)
+            summary.append({"account": acct["deriv_account_id"], "outcome": "stopped", "reason": why})
+            return True
+        # Best-payout market from the analyser library (cached server-side).
+        best_symbol = "R_25"  # safe default — historically high-payout for Even/Odd
+        try:
+            url = get_settings().analyser_url.rstrip("/") + "/deriv/library"
+            async with httpx.AsyncClient(timeout=8.0) as c:
+                lib = (await c.get(url)).json()
+            best = ((lib or {}).get("live") or {}).get("best_even_odd_market") or {}
+            if best.get("symbol"):
+                best_symbol = best["symbol"]
+        except Exception:
+            pass
+        # Stake = the user's per-trade ceiling (the bot already caps this).
+        stake = float(acct.get("max_stake_per_trade") or 0.35)
+        if stake < 0.35:
+            stake = 0.35
+        # Direction: random — odds are 50/50; momentum is gambler's fallacy on RNG.
+        side = random.choice(["even", "odd"])
+        try:
+            res = await execute_manual_trade(
+                acct, trade_type="even_odd", symbol=best_symbol,
+                direction=None, prediction=side, stake=stake,
+                duration=1, duration_unit="t")
+        except Exception as exc:
+            summary.append({"account": acct["deriv_account_id"], "outcome": "error", "reason": repr(exc)})
+            return True
+        if res.get("outcome") == "skipped":  # daily cap / goal reached → stop
+            store.update_account_settings(acct["id"], brain_auto=False, enabled=False)
+        summary.append({
+            "account": acct["deriv_account_id"], "symbol": best_symbol,
+            "outcome": res.get("outcome"), "reason": res.get("reason") or res.get("error"),
+            "strategy": f"brain_auto: best-payout Even/Odd · {side}",
+        })
+        return True
 
     async def _run_proven_account(self, acct: dict, summary: list) -> bool:
         """Trade the strategies the Analyser PROVED (≥70% win ×100 ×5 + net P/L>0)

@@ -697,6 +697,7 @@ class AccountPatch(BaseModel):
     mpro_config: dict | None = None
     rf_config: dict | None = None
     proven_auto: bool | None = None
+    brain_auto: bool | None = None
 
 
 def _require_own(request: Request, account_id: str) -> None:
@@ -724,6 +725,7 @@ def account_patch(account_id: str, body: AccountPatch, request: Request) -> dict
         mpro_config=body.mpro_config,
         rf_config=body.rf_config,
         proven_auto=body.proven_auto,
+        brain_auto=body.brain_auto,
     ):
         raise HTTPException(404, "account not found or no changes")
     return {"updated": account_id}
