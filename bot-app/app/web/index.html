@@ -800,7 +800,7 @@
 <div class="view wrap" id="view-trade" hidden>
   <button class="backbtn" onclick="showView('home')">← back to games</button>
   <div class="glass">
-    <div class="term-head">
+    <div class="term-head" id="trade-header">
       <div><div class="term-title" id="trade-kind">Trade</div><div class="term-market" id="term-market">—</div></div>
       <div class="spot" id="term-spot"><small>spot price</small>—</div>
     </div>
@@ -817,7 +817,7 @@
       <button class="btn ghost" id="assist-use" style="display:none">Use this call</button>
     </div>
 
-    <div class="row" style="margin-bottom:12px">
+    <div class="row" id="trade-params" style="margin-bottom:12px">
       <label class="field">Market<select id="t-symbol" style="min-width:150px"></select></label>
       <label class="field">Stake $<input id="t-stake" type="number" value="100" min="0.35" step="0.5" style="width:90px"></label>
       <label class="field">Ticks<input id="t-duration" type="number" value="1" min="1" max="10" style="width:70px"></label>
@@ -855,11 +855,10 @@
       <div id="rf-top"></div>
     </div>
 
-    <!-- LIVE market: real-time last-digit strength (browser → Deriv public WS, no auth) -->
+    <!-- LIVE market: real-time last-digit strength (browser → Deriv public WS, no auth).
+         Used on Over/Under only — on Even/Odd we hide the whole digit-strength
+         block in favour of the multi-market scanner placed lower down. -->
     <div id="live-panel" style="margin-bottom:14px">
-      <!-- 0-9 digit-strength bar — used on Over/Under. Hidden on Even/Odd (the
-           Deriv-style digit columns aren't needed there; the multi-market
-           scanner below replaces them). -->
       <div id="live-digit-strength">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px">
           <div class="lab" style="font-size:10px">Live last digits <span class="faint" id="live-count"></span></div>
@@ -867,10 +866,6 @@
         </div>
         <div class="dbar" id="live-digits"></div>
       </div>
-      <!-- EVEN/ODD multi-market scanner — 2×5 grid, no scroll, no digit-bar noise. -->
-      <div id="eo-scan" class="eo-scan" hidden></div>
-      <!-- the one real edge: best-payout market (auto-pick) -->
-      <div id="eo-payout" hidden style="margin-top:10px"></div>
     </div>
 
     <!-- digit picker (Over/Under only) -->
@@ -974,6 +969,13 @@
       <button class="eo-go" id="eo-go" type="button">▶ Start auto-trading</button>
       <div class="eo-status" id="eo-status">⌗ idle — set your targets and press start</div>
     </div>
+
+    <!-- ⤵ Confidence scanner — now positioned BELOW the auto-trader so the
+         control surface leads and the scanner sits underneath as the live
+         reference (tap any cell to switch the active market). -->
+    <div id="eo-scan" class="eo-scan" hidden style="margin-top:14px"></div>
+    <!-- best-payout edge banner — sits with the scanner -->
+    <div id="eo-payout" hidden style="margin-top:10px"></div>
 
     <!-- M Pro scanner (only for the scanner game) -->
     <div id="mpro-extra" hidden>
@@ -1862,6 +1864,12 @@ async function openTrade(game){
   if($("eo-scan")) $("eo-scan").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
   if($("eo-auto")) $("eo-auto").hidden = !isEO;
+  // On EO we hide the term-head (spot price + volatility name), the
+  // market/stake/ticks param row, and the J81 "analysing" read — the
+  // auto-trader panel above carries equivalent controls and a cleaner header.
+  if($("trade-header")) $("trade-header").hidden = isEO;
+  if($("trade-params")) $("trade-params").hidden = isEO;
+  document.querySelectorAll(".read").forEach(r => { if(r.querySelector("#assist-msg")) r.hidden = isEO; });
   if(isEO){ loadEvenOddPayouts(); startEoScan(); } else { stopEoScan(); }
   $("trade-buttons").className = "tgrid"
     + (game==="rise_fall" ? " compact" : "")
@@ -2189,7 +2197,15 @@ async function placeTrade(btn){
   if(!CUR){ showView("connect"); return; }
   btn.classList.add("firing"); setTimeout(()=>btn.classList.remove("firing"),400);   // instant tap feedback
   const tt=btn.dataset.tt, res=$("t-result");
-  const body={account_id:CUR.id,trade_type:tt,symbol:$("t-symbol").value,stake:parseFloat($("t-stake").value||"1"),duration:parseInt($("t-duration").value||"5",10),duration_unit:"t"};
+  // On Even/Odd the market/stake/ticks row is hidden — read stake from the
+  // auto-trader's eo-stake instead so manual EVEN/ODD presses still respect
+  // what the user set on the visible panel above. AUTO toggles EOAuto.
+  const isEO = tt==="even_odd";
+  const stakeFallback = isEO ? parseFloat(($("eo-stake")||{}).value||"") : NaN;
+  const stake = isFinite(stakeFallback) && stakeFallback > 0
+    ? Math.max(0.35, stakeFallback)
+    : parseFloat(($("t-stake")||{}).value||"1") || 1;
+  const body={account_id:CUR.id,trade_type:tt,symbol:$("t-symbol").value,stake,duration:parseInt(($("t-duration")||{}).value||"5",10),duration_unit:"t"};
   let call;
   if(tt==="rise_fall"){ body.direction=btn.dataset.dir; call=body.direction.toUpperCase(); }
   else if(tt==="even_odd"){ body.prediction=btn.dataset.pred; call=body.prediction.toUpperCase(); }
