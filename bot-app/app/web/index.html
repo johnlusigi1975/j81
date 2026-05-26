@@ -536,6 +536,34 @@
     <div id="home-proven"><div class="empty">no proven strategies yet — the analyser cycle runs every 30 min and only keeps 70%×100×5 winners with positive P/L (rare on RNG markets, by design)</div></div>
   </div>
 
+  <!-- ===================== J81 ENGINES — also shown on the dashboard ===================== -->
+  <div class="sec-title" style="margin-top:24px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">researcher · analyser · bot</span></div>
+  <div class="engines-wrap" style="margin-bottom:18px">
+    <div class="engines-head">
+      <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
+      <button class="engines-pwr" type="button" title="Toggle the live engine view">
+        <span class="dot"></span><span class="lbl">Power on</span>
+      </button>
+    </div>
+    <div class="engines-flow">
+      <div class="engine" data-eng="res">
+        <div class="engine-head"><div class="ico">🔭</div><div class="meta"><div class="nm">Researcher</div><div class="st">idle</div></div></div>
+        <div class="engine-body"><div class="feed">YouTube · TikTok · Instagram · Reddit · X · Medium · Web</div><div class="pbar"><i></i></div></div>
+      </div>
+      <div class="pipe" data-pipe="1"><span></span><span></span><span></span></div>
+      <div class="engine" data-eng="ana">
+        <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
+        <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
+      </div>
+      <div class="pipe" data-pipe="2"><span></span><span></span><span></span></div>
+      <div class="engine" data-eng="bot">
+        <div class="engine-head"><div class="ico">🤖</div><div class="meta"><div class="nm">Bot</div><div class="st">idle</div></div></div>
+        <div class="engine-body"><div class="feed">Live ticks · balance · risk gate · proven-strategy auto · 24/7 loop</div><div class="pbar"><i></i></div></div>
+      </div>
+    </div>
+    <div class="faint" style="font-size:11px;margin-top:10px">The engines always run server-side regardless of this switch — this is just a live window into what they're doing.</div>
+  </div>
+
   <div id="choose-grid"></div>
 </div>
 
@@ -678,30 +706,30 @@
 
     <!-- ===================== J81 ENGINES — live demonstration ===================== -->
     <div class="sec-title" style="margin:24px 0 8px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">researcher · analyser · bot</span></div>
-    <div id="engines" class="engines-wrap">
+    <div class="engines-wrap">
       <div class="engines-head">
         <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
-        <button id="engines-power" class="engines-pwr" type="button" title="Toggle the live engine view">
+        <button class="engines-pwr" type="button" title="Toggle the live engine view">
           <span class="dot"></span><span class="lbl">Power on</span>
         </button>
       </div>
       <div class="engines-flow">
-        <div class="engine" id="eng-res" data-name="Researcher">
+        <div class="engine" data-eng="res">
           <div class="engine-head"><div class="ico">🔭</div><div class="meta"><div class="nm">Researcher</div><div class="st">idle</div></div></div>
-          <div class="engine-body"><div class="feed" id="eng-res-feed">YouTube · TikTok · Instagram · Reddit · X · Medium · Web</div><div class="pbar"><i></i></div></div>
+          <div class="engine-body"><div class="feed">YouTube · TikTok · Instagram · Reddit · X · Medium · Web</div><div class="pbar"><i></i></div></div>
         </div>
-        <div class="pipe" id="pipe-1"><span></span><span></span><span></span></div>
-        <div class="engine" id="eng-ana" data-name="Analyser">
+        <div class="pipe" data-pipe="1"><span></span><span></span><span></span></div>
+        <div class="engine" data-eng="ana">
           <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
-          <div class="engine-body"><div class="feed" id="eng-ana-feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
+          <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
         </div>
-        <div class="pipe" id="pipe-2"><span></span><span></span><span></span></div>
-        <div class="engine" id="eng-bot" data-name="Bot">
+        <div class="pipe" data-pipe="2"><span></span><span></span><span></span></div>
+        <div class="engine" data-eng="bot">
           <div class="engine-head"><div class="ico">🤖</div><div class="meta"><div class="nm">Bot</div><div class="st">idle</div></div></div>
-          <div class="engine-body"><div class="feed" id="eng-bot-feed">Live ticks · balance · risk gate · proven-strategy auto · 24/7 loop</div><div class="pbar"><i></i></div></div>
+          <div class="engine-body"><div class="feed">Live ticks · balance · risk gate · proven-strategy auto · 24/7 loop</div><div class="pbar"><i></i></div></div>
         </div>
       </div>
-      <div class="faint" id="engines-note" style="font-size:11px;margin-top:10px">Honest note: the engines always run server-side regardless of this switch — this is just a live window into what they're doing.</div>
+      <div class="faint" style="font-size:11px;margin-top:10px">Honest note: the engines always run server-side regardless of this switch — this is just a live window into what they're doing.</div>
     </div>
   </div>
 </div>
@@ -1060,83 +1088,84 @@ const _RES_SRC = ["YouTube","TikTok","Instagram","Reddit","X / Twitter","Medium"
 const _ANA_THINGS = ["Rise/Fall · R_100","Even/Odd · R_25 (best payout)","Over/Under 4 · R_75","Matches/Differs · 1HZ100V","Backtesting 5×100","Computing EV vs payout","Scoring break-even","Filtering survivors"];
 const _BOT_THINGS = ["Subscribing to 10 markets","Live tick stream","Balance check","Risk gate · TP/SL","Proven-strategy auto","24/7 settle loop","Order route ready"];
 let _enginesOn=false, _engSeqTimer=null, _engFeedTimers=[];
-function _engEl(id){ return document.getElementById(id); }
+// All selectors are class/data-attr based so the engines panel can be embedded
+// in multiple views (e.g. home dashboard AND trade view) — both stay in sync.
+function _engEach(key){ return document.querySelectorAll('[data-eng="'+key+'"]'); }
+function _pipeEach(n){ return document.querySelectorAll('[data-pipe="'+n+'"]'); }
 function _engReset(){
   _engFeedTimers.forEach(clearInterval); _engFeedTimers=[];
-  ["eng-res","eng-ana","eng-bot"].forEach(id=>{ var e=_engEl(id); if(e){ e.classList.remove("live","done"); var s=e.querySelector(".st"); if(s) s.textContent="idle"; var b=e.querySelector(".pbar i"); if(b) b.style.width="0"; }});
-  ["pipe-1","pipe-2"].forEach(id=>{ var p=_engEl(id); if(p) p.classList.remove("flow"); });
+  ["res","ana","bot"].forEach(k=>_engEach(k).forEach(e=>{
+    e.classList.remove("live","done");
+    var s=e.querySelector(".st"); if(s) s.textContent="idle";
+    var b=e.querySelector(".pbar i"); if(b) b.style.width="0";
+  }));
+  [1,2].forEach(n=>_pipeEach(n).forEach(p=>p.classList.remove("flow")));
 }
-function _engRotate(engineId, items, intervalMs){
-  var el=document.querySelector("#"+engineId+" .feed"); if(!el) return;
-  var i=0; el.textContent=items[0];
-  var t=setInterval(()=>{ i=(i+1)%items.length; el.textContent=items[i]; }, intervalMs);
+function _engRotate(key, items, intervalMs){
+  var els=_engEach(key); if(!els.length) return;
+  var i=0; els.forEach(el=>{ var f=el.querySelector(".feed"); if(f) f.textContent=items[0]; });
+  var t=setInterval(()=>{
+    i=(i+1)%items.length;
+    els.forEach(el=>{ var f=el.querySelector(".feed"); if(f) f.textContent=items[i]; });
+  }, intervalMs);
   _engFeedTimers.push(t);
 }
-function _engStop(engineId, finalText, statusText){
-  var el=_engEl(engineId); if(!el) return;
-  var s=el.querySelector(".st"); if(s) s.textContent=statusText||"done";
-  var feed=el.querySelector(".feed"); if(feed && finalText) feed.textContent=finalText;
-  el.classList.remove("live"); el.classList.add("done");
-  var b=el.querySelector(".pbar i"); if(b) b.style.width="100%";
+function _engStop(key, finalText, statusText){
+  _engEach(key).forEach(el=>{
+    var s=el.querySelector(".st"); if(s) s.textContent=statusText||"done";
+    var feed=el.querySelector(".feed"); if(feed && finalText) feed.textContent=finalText;
+    el.classList.remove("live"); el.classList.add("done");
+    var b=el.querySelector(".pbar i"); if(b) b.style.width="100%";
+  });
 }
-function _engLive(engineId){
-  var el=_engEl(engineId); if(!el) return; el.classList.remove("done"); el.classList.add("live");
-  var s=el.querySelector(".st"); if(s) s.textContent="alive";
-  var b=el.querySelector(".pbar i"); if(b){ b.style.width="0"; setTimeout(()=>{ b.style.width="85%"; }, 50); }
+function _engLive(key){
+  _engEach(key).forEach(el=>{
+    el.classList.remove("done"); el.classList.add("live");
+    var s=el.querySelector(".st"); if(s) s.textContent="alive";
+    var b=el.querySelector(".pbar i"); if(b){ b.style.width="0"; setTimeout(()=>{ b.style.width="85%"; },50); }
+  });
 }
 async function _engSequence(){
   if(!_enginesOn) return;
   _engReset();
   // 1) Researcher wakes — flashes through social/web sources.
-  setTimeout(()=>{ if(!_enginesOn) return; _engLive("eng-res"); _engRotate("eng-res", _RES_SRC, 280); }, 200);
-  // pull a real "configured/asleep" hint from /health/tree
-  let researcherInfo = "Researcher gathering";
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("res"); _engRotate("res", _RES_SRC, 280); }, 200);
+  let researcherInfo="Researcher gathering";
   try{ const h=await api("/health/tree");
        if(h.researcher && h.researcher.configured===false) researcherInfo="Researcher not deployed";
        else if(h.researcher && !h.researcher.ok) researcherInfo="Researcher asleep — woke up";
   }catch(_){}
-  setTimeout(()=> _engStop("eng-res", "✓ "+researcherInfo+" · streamed insights forward", "done"), 2600);
-
+  setTimeout(()=>_engStop("res","✓ "+researcherInfo+" · streamed insights forward","done"), 2600);
   // 2) Pipe 1 flows: data → analyser
-  setTimeout(()=>{ if(_enginesOn){ var p=_engEl("pipe-1"); if(p) p.classList.add("flow"); } }, 2300);
-
-  // 3) Analyser wakes — backtesting variants, real numbers if available.
-  setTimeout(()=>{ if(!_enginesOn) return; _engLive("eng-ana"); _engRotate("eng-ana", _ANA_THINGS, 260); }, 3000);
-  let anaInfo = "Backtesting strategies (5×100 each)";
-  try{ const c=await api("/cycle/status");
-       const t=c.tested||0, p=c.proven_count||0;
-       anaInfo = "Tested "+t+" candidates · proven "+p;
-  }catch(_){}
-  setTimeout(()=> _engStop("eng-ana", "✓ "+anaInfo, "done"), 5800);
-
+  setTimeout(()=>{ if(_enginesOn) _pipeEach(1).forEach(p=>p.classList.add("flow")); }, 2300);
+  // 3) Analyser wakes — real tested/proven numbers if available.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("ana"); _engRotate("ana", _ANA_THINGS, 260); }, 3000);
+  let anaInfo="Backtesting strategies (5×100 each)";
+  try{ const c=await api("/cycle/status"); anaInfo="Tested "+(c.tested||0)+" candidates · proven "+(c.proven_count||0); }catch(_){}
+  setTimeout(()=>_engStop("ana","✓ "+anaInfo,"done"), 5800);
   // 4) Pipe 2 flows: proven → bot
-  setTimeout(()=>{ if(_enginesOn){ var p=_engEl("pipe-2"); if(p) p.classList.add("flow"); } }, 5500);
-
-  // 5) Bot powers up — receiving energy from both.
-  setTimeout(()=>{ if(!_enginesOn) return; _engLive("eng-bot"); _engRotate("eng-bot", _BOT_THINGS, 280); }, 6100);
-  let botInfo = "Loop alive · markets live";
+  setTimeout(()=>{ if(_enginesOn) _pipeEach(2).forEach(p=>p.classList.add("flow")); }, 5500);
+  // 5) Bot powers up — real loop/accounts/proven vitals.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("bot"); _engRotate("bot", _BOT_THINGS, 280); }, 6100);
+  let botInfo="Loop alive · markets live";
   try{ const h=await api("/health/tree"); const b=h.bot||{};
-       botInfo = (b.loop_alive?"Loop alive · ":"Loop offline · ") + (b.accounts||0) + " accounts · " + (b.proven_strategies||0) + " proven in store";
+       botInfo=(b.loop_alive?"Loop alive · ":"Loop offline · ")+(b.accounts||0)+" accounts · "+(b.proven_strategies||0)+" proven in store";
   }catch(_){}
-  setTimeout(()=> _engStop("eng-bot", "✓ "+botInfo+" · ready to trade", "done"), 8700);
-
-  // 6) Loop the demo every ~32 s while on (matches roughly to one engine cadence)
-  _engSeqTimer = setTimeout(()=>{ if(_enginesOn) _engSequence(); }, 32000);
+  setTimeout(()=>_engStop("bot","✓ "+botInfo+" · ready to trade","done"), 8700);
+  // 6) Loop while on — keeps the demo breathing every cycle.
+  _engSeqTimer=setTimeout(()=>{ if(_enginesOn) _engSequence(); }, 32000);
 }
 function _enginesPower(on){
   _enginesOn=on;
-  var btn=_engEl("engines-power"); if(btn){ btn.classList.toggle("on",on); var l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Power off" : "Power on"; }
-  if(on){
-    // Trigger a REAL cycle on the server — show what's actually happening.
-    api("/cycle/run",{method:"POST"}).catch(function(){});
-    _engSequence();
-  } else {
-    if(_engSeqTimer){ clearTimeout(_engSeqTimer); _engSeqTimer=null; }
-    _engFeedTimers.forEach(clearInterval); _engFeedTimers=[];
-    _engReset();
-  }
+  document.querySelectorAll('.engines-pwr').forEach(btn=>{
+    btn.classList.toggle("on",on);
+    var l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Power off" : "Power on";
+  });
+  if(on){ api("/cycle/run",{method:"POST"}).catch(function(){}); _engSequence(); }
+  else { if(_engSeqTimer){ clearTimeout(_engSeqTimer); _engSeqTimer=null; } _engFeedTimers.forEach(clearInterval); _engFeedTimers=[]; _engReset(); }
 }
-(function(){ var b=_engEl("engines-power"); if(b) b.addEventListener("click",()=>_enginesPower(!_enginesOn)); })();
+// Bind every engines power button (panel can appear on multiple views — they all toggle the same state).
+document.querySelectorAll('.engines-pwr').forEach(b=>b.addEventListener("click",()=>_enginesPower(!_enginesOn)));
 
 // ---------- Even/Odd deeper read (honest: digit observations, not a prediction) ----------
 function _eoChip(lab,val,col){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:54px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:'+(col||'var(--text)')+'">'+val+'</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">'+lab+'</span></span>'; }
