@@ -48,6 +48,31 @@ from app.sharing import SendResult, _archive_current, _counts, _now_iso, send_to
 from app.trade_store import get_trade_store
 
 
+async def _llm_preflight() -> None:
+    """On boot, check the LLM provider is actually configured. If not, file a
+    loud maintenance issue so the user sees the root cause in the panel —
+    instead of just '0 strategies, 0 insights' every cycle forever."""
+    try:
+        from app.config import get_settings
+        from app import comms_client
+        s = get_settings()
+        provider = (s.llm_provider or "anthropic").strip().lower()
+        if provider == "google" and not s.google_api_key:
+            await comms_client.report_issue(
+                "LLM_PROVIDER=google but GOOGLE_API_KEY is missing — extractor will return 0 every run",
+                severity="critical", area="researcher/config",
+                detail="Set GOOGLE_API_KEY in the j81-researcher Render env (sync:false). Free key at https://aistudio.google.com",
+            )
+        elif provider != "google" and not s.anthropic_api_key:
+            await comms_client.report_issue(
+                "LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is missing — extractor will return 0 every run",
+                severity="critical", area="researcher/config",
+                detail="Set ANTHROPIC_API_KEY in the j81-researcher Render env, or switch LLM_PROVIDER to 'google' and set GOOGLE_API_KEY.",
+            )
+    except Exception:
+        pass
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Self-heal a near-full disk on boot: out/_archive is pure dead weight.
@@ -57,6 +82,7 @@ async def lifespan(_: FastAPI):
     except Exception:
         pass
     scheduler.ensure_running()  # self-gates on config.autonomous.enabled
+    await _llm_preflight()       # tell the user immediately if the LLM key is missing
     yield
 
 

@@ -31,6 +31,29 @@ from app.url_fetcher import UnsafeURLError, fetch_url
 
 _MAX_CONCURRENT_EXTRACTIONS = 4
 
+# Dedupe maintenance reports: only file the same root-cause issue once per
+# process so the panel doesn't fill with identical "extractor failed" entries.
+_REPORTED_ROOTCAUSES: set[str] = set()
+
+
+async def _report_root_cause(summary: str, *, severity: str = "warning",
+                              area: str = "researcher/extractor",
+                              detail: str | None = None) -> None:
+    """Surface a silent extractor failure to the maintenance bus — exactly
+    once per (summary, severity) pair, so the user sees the root cause in
+    the maintenance card instead of just `0 strategies, 0 insights`."""
+    key = f"{severity}|{area}|{summary[:120]}"
+    if key in _REPORTED_ROOTCAUSES:
+        return
+    _REPORTED_ROOTCAUSES.add(key)
+    try:
+        from app import comms_client
+        await comms_client.report_issue(
+            summary, severity=severity, area=area, detail=detail,
+        )
+    except Exception:
+        pass  # bus best-effort; never break extraction
+
 
 class ResearchPipeline:
     def __init__(self) -> None:
@@ -242,16 +265,45 @@ class ResearchPipeline:
                         strategies = await self._extractor.extract(
                             doc, request.trade_type
                         )
-                    except Exception:
+                    except Exception as exc:
+                        # Don't swallow silently — file a maintenance issue so
+                        # the user sees the root cause (e.g. missing API key,
+                        # provider mis-config, schema rejection).
+                        await _report_root_cause(
+                            f"extractor.extract failed: {type(exc).__name__}",
+                            severity="error",
+                            detail=repr(exc)[:300],
+                        )
                         strategies = []
                 if want_insights:
                     try:
                         insights = await self._extractor.extract_insights(doc)
-                    except Exception:
+                    except Exception as exc:
+                        await _report_root_cause(
+                            f"extractor.extract_insights failed: {type(exc).__name__}",
+                            severity="error",
+                            detail=repr(exc)[:300],
+                        )
                         insights = []
                 return strategies, insights
 
         nested = await asyncio.gather(*(extract_one(d) for d in docs))
         all_strategies = [s for st, _ in nested for s in st]
         all_insights = [i for _, ins in nested for i in ins]
+
+        # If we found sources but extracted nothing, that's the silent-yield
+        # case the user kept seeing in the maintenance log. File ONE warning
+        # so they know the LLM call ran but the model couldn't pull a strategy
+        # — usually means the LLM key is missing OR the content was noisy.
+        if docs and not all_strategies and not all_insights:
+            await _report_root_cause(
+                f"0-yield extraction across {len(docs)} sources "
+                f"(trade_type={getattr(request.trade_type, 'value', request.trade_type)})",
+                severity="warning",
+                detail=("Either the LLM provider key is missing in the "
+                        "researcher service (GOOGLE_API_KEY for Gemini, or "
+                        "ANTHROPIC_API_KEY for Claude — see render.yaml), or "
+                        "the sources lacked rule-based content. Check the "
+                        "researcher logs for the extractor trail."),
+            )
         return all_strategies, all_insights
