@@ -90,6 +90,11 @@
   /* views */
   .view{position:relative;z-index:1;display:block;padding:32px 0 80px;animation:fade .25s ease}
   .view[hidden]{display:none}
+  /* Universal [hidden] reset — wins over class rules that set display:flex/grid
+     (e.g. .term-head{display:flex}), so JS setting el.hidden = true actually
+     hides the element. Without this, classes with display:* override the
+     user-agent [hidden] rule and the element stays visible. */
+  [hidden]{display:none!important}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
   /* shared bits */
