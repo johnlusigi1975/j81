@@ -522,6 +522,17 @@ def deriv_library_risk() -> dict:
     return deriv_lib.RISK_MANAGEMENT
 
 
+@app.get("/deriv/library/brain")
+def deriv_library_brain() -> dict:
+    """Human-brain principles powering the J81 tree's architecture: predictive
+    processing, hippocampal memory consolidation, dopamine prediction-error
+    learning, Kahneman's two systems, working-memory limits, Bayesian updating.
+    Each principle is mapped to a concrete J81 feature (built or proposed).
+    These are ANALOGIES, not literal neuroscience — the design language."""
+    from app import deriv_lib
+    return deriv_lib.HUMAN_BRAIN
+
+
 @app.post("/deriv/library/refresh")
 async def deriv_library_refresh() -> dict:
     """Pull real payouts from Deriv for every (market, contract) we track.

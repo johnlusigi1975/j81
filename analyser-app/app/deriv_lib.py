@@ -388,6 +388,172 @@ RISK_MANAGEMENT: dict[str, Any] = {
 }
 
 
+HUMAN_BRAIN: dict[str, Any] = {
+    # Brain-inspired architecture for the J81 tree. The mappings below are
+    # ANALOGIES drawn from well-cited cognitive neuroscience (Kahneman, Friston,
+    # Clark, Schultz, Tulving). The system uses these PATTERNS — predictive
+    # processing, sleep-time consolidation, prediction-error learning, two-system
+    # thinking — as architectural inspiration. It is NOT a literal brain
+    # simulation and not sentient; it is a useful design metaphor.
+
+    "summary": (
+        "The J81 tree maps cleanly to how the brain handles uncertain "
+        "environments: gather signals → predict outcomes → compare to reality → "
+        "consolidate winners → execute the durable ones. The architecture below "
+        "is brain-inspired by design — researcher (sensory) → analyser "
+        "(prefrontal / hippocampal) → bot (motor) → library (long-term memory)."
+    ),
+
+    "tree_as_brain_architecture": {
+        "researcher": {
+            "role": "Sensory cortex — gathers raw external signals from the world.",
+            "j81": "research-app gathers Deriv-related content from web/social, structures it into 'strategies/insights' JSON.",
+        },
+        "analyser": {
+            "role": "Prefrontal cortex + hippocampus — integrates signals, generates predictions, runs them against reality, decides what to keep.",
+            "j81": "analyser-app runs the 30-min cycle, backtests every variant (predictions), scores them against real ticks (reality), pushes only survivors to long-term storage.",
+        },
+        "bot": {
+            "role": "Motor cortex — executes durable actions on behalf of the brain.",
+            "j81": "bot-app trades only proven strategies on real markets; the cycle's gatekeeper decides what reaches it.",
+        },
+        "library": {
+            "role": "Semantic / long-term memory — durable knowledge accessible to all regions.",
+            "j81": "this deriv_library.json — trade types, markets, discipline, risk, goal — shared by every system.",
+        },
+        "30_min_cycle": {
+            "role": "Sleep-time consolidation — replays the day, strengthens useful traces, prunes the rest.",
+            "j81": "Cycle clears working data, keeps only proven strategies, persists a memory trace in cycle_reports — exactly like hippocampal replay.",
+        },
+        "cycle_reports": {
+            "role": "Hippocampal episodic memory — the durable trace of what happened.",
+            "j81": "Cycle_reports table — durable, survives the auto-clear, the tree's memory of what it has tried.",
+        },
+        "scoreboard_trades": {
+            "role": "Autobiographical / procedural memory — what I actually did, with outcomes.",
+            "j81": "trades table + /trade_stats scoreboard — the live record of real performance.",
+        },
+    },
+
+    "principles": [
+        {
+            "name": "Predictive processing — the brain is a prediction machine",
+            "brain_mechanism": "Cortex constantly generates a model of what should happen next; reality arrives; the difference (prediction error) drives updates. The brain minimises long-run prediction error.",
+            "source": "Clark (2016), Friston — Free Energy Principle (Nature Reviews Neuroscience 2010).",
+            "j81_analog": "The cycle backtests each variant — that's the prediction. Real tick outcomes are reality. The difference (win-rate vs 60%, EV vs 0) is the prediction error that prunes losing strategies.",
+            "status": "built",
+        },
+        {
+            "name": "Reward prediction error — dopamine teaches via SURPRISE, not absolute reward",
+            "brain_mechanism": "Schultz's classic work: dopamine neurons fire on UNEXPECTED rewards, not expected ones. Learning happens at the surprise.",
+            "source": "Wolfram Schultz (1997), 'A neural substrate of prediction and reward'; Friston links this to dopamine encoding the precision of prediction errors.",
+            "j81_analog": "The acceptance bar fires only when a strategy SURVIVES the prediction (≥60% over 100 trades AND positive P/L). A strategy that just confirms the null hypothesis (50/50, negative EV) generates no learning signal.",
+            "status": "built",
+        },
+        {
+            "name": "Hippocampal memory consolidation — sleep moves episodic to semantic",
+            "brain_mechanism": "During sleep / quiet wake, the hippocampus REPLAYS the day's experiences; useful patterns migrate to neocortex (long-term); the rest fades.",
+            "source": "Diekelmann & Born (2010); Lewis & Durrant (2011); Marr (1971) — schema consolidation.",
+            "j81_analog": "Every 30 minutes the cycle replays a backtest (the 'day'), proves what survives, pushes survivors to the bot's PROVEN_STRATEGIES store (long-term), then auto-clears the analyser's scratchpad (forgets non-survivors). Mirrors hippocampal replay exactly.",
+            "status": "built",
+        },
+        {
+            "name": "Two-system thinking — fast intuition + slow deliberation",
+            "brain_mechanism": "System 1 is fast/intuitive/emotional; System 2 is slow/deliberate/analytic. System 2 intervenes when something violates System 1's expectations.",
+            "source": "Kahneman (2011), 'Thinking, Fast and Slow'.",
+            "j81_analog": "System 1 = the manual trade buttons + the live deep read (instant, intuitive). System 2 = the cycle's 5×100 acceptance backtest (slow, deliberate, mathematical). Users choose; the cycle gatekeeps the durable decisions.",
+            "status": "built",
+        },
+        {
+            "name": "Free Energy Principle — minimise long-run surprise",
+            "brain_mechanism": "An organism survives by minimising expected surprise — either by better predictions OR by acting to make the world match its predictions.",
+            "source": "Karl Friston (2010), Nature Reviews Neuroscience.",
+            "j81_analog": "The tree minimises surprise about its trades by (a) better predictions (cycle backtests + EV strip) and (b) avoiding actions whose outcomes it can't predict reliably (proven-only auto-trader).",
+            "status": "built",
+        },
+        {
+            "name": "Bayesian updating — beliefs are evidence-weighted",
+            "brain_mechanism": "The brain represents beliefs as probability distributions and updates them with each new observation, weighted by precision.",
+            "source": "Anderson (2007), Knill & Pouget (2004) — 'The Bayesian brain'.",
+            "j81_analog": "The cycle treats each strategy as a hypothesis; each 100-trade window is evidence; only hypotheses with 5 confirming windows + positive P/L survive. Evidence-weighted, not single-shot.",
+            "status": "built",
+        },
+        {
+            "name": "Working memory limits — ~4 items at a time",
+            "brain_mechanism": "Conscious working memory holds ~4 chunks (Cowan); attempting more degrades all of them.",
+            "source": "Nelson Cowan (2001) — refining Miller's 7±2.",
+            "j81_analog": "Trade view focuses on ONE market × ONE trade type at a time; the deep read uses ~6 chips not 20; the scoreboard surfaces 3 stats (wins, win-rate, P/L). Avoid information overload.",
+            "status": "built",
+        },
+        {
+            "name": "Attention as filtering — relevance gates processing",
+            "brain_mechanism": "Salience network selects which signals get full processing; everything else is suppressed.",
+            "source": "Corbetta & Shulman (2002); Menon (2011) — salience-network research.",
+            "j81_analog": "The RFScan confidence gauge + auto-volatility filter focus the tree on the most-active market; the cycle gate filters out below-threshold strategies. Limited attention is allocated to what matters.",
+            "status": "built",
+        },
+        {
+            "name": "Hierarchical processing — sensory → integration → motor",
+            "brain_mechanism": "Cortex is layered: primary sensory areas → association areas → motor output. Information flows up; predictions flow down.",
+            "source": "Felleman & Van Essen (1991), Mountcastle (1978).",
+            "j81_analog": "Three-tier tree: researcher (sensory) → analyser (integration) → bot (motor). The library propagates top-down knowledge to all three (predictions flow down).",
+            "status": "built",
+        },
+        {
+            "name": "Plasticity — use it or lose it",
+            "brain_mechanism": "Synapses that fire together get stronger; unused ones weaken (LTP/LTD). The brain physically rewires based on what works.",
+            "source": "Hebb (1949); Bliss & Lømo (1973) — long-term potentiation.",
+            "j81_analog": "Proven strategies persist (LTP-like); ungated working data is wiped each cycle (LTD-like). The library can be re-refreshed; payouts mutate as Deriv changes. The system rewires itself.",
+            "status": "built",
+        },
+        {
+            "name": "Default Mode Network — useful background work during 'rest'",
+            "brain_mechanism": "When not focused on tasks, the brain runs background processing: planning, simulation, memory consolidation.",
+            "source": "Raichle (2001), Buckner et al. (2008).",
+            "j81_analog": "The 30-min cycle and the trading-loop's 120s cadence run continuously in the background. The DMN equivalent.",
+            "status": "built",
+        },
+        {
+            "name": "Prediction-error-driven memory updating",
+            "brain_mechanism": "Surprising events trigger MORE memory updating than expected ones — exactly the opposite of what naive 'rehearsal' predicts.",
+            "source": "PNAS 2022, 'Prediction errors disrupt hippocampal representations and update episodic memories'.",
+            "j81_analog": "When a strategy that previously passed the cycle later FAILS a window, the cycle history records the surprise — future cycles can weight that strategy down. (This is the natural next-build: a strategy-confidence decay informed by recent errors.)",
+            "status": "proposed",
+        },
+    ],
+
+    "cognitive_biases_to_design_against": [
+        {"bias": "Confirmation bias", "fix_in_j81": "Acceptance bar requires 5 independent windows + positive P/L — confirmation alone doesn't suffice."},
+        {"bias": "Recency bias", "fix_in_j81": "Cycle uses multi-window samples, not last-trade outcomes."},
+        {"bias": "Anchoring", "fix_in_j81": "Pre-defined TP/SL via account settings — no 'just a bit more' anchor on entry price."},
+        {"bias": "Gambler's fallacy", "fix_in_j81": "Library explicitly states ticks are independent; HONEST_NOTES + structural_note debunk 'due for a reversal'."},
+        {"bias": "Overconfidence", "fix_in_j81": "Every UI shows EV + house edge; the scoreboard tracks reality vs goal."},
+    ],
+
+    "sources_consulted": [
+        "Friston, K. (2010). 'The free-energy principle: a unified brain theory?' Nature Reviews Neuroscience.",
+        "Clark, A. (2016). 'Surfing Uncertainty: Prediction, Action, and the Embodied Mind.'",
+        "Kahneman, D. (2011). 'Thinking, Fast and Slow.'",
+        "Schultz, W. (1997). 'A neural substrate of prediction and reward.' Science.",
+        "Diekelmann & Born (2010). 'The memory function of sleep.' Nature Reviews Neuroscience.",
+        "Cowan, N. (2001). 'The magical number 4 in short-term memory.' Behavioral and Brain Sciences.",
+        "PNAS (2022). 'Prediction errors disrupt hippocampal representations and update episodic memories.' https://www.pnas.org/doi/10.1073/pnas.2117625118",
+        "Hebb, D. (1949). 'The Organization of Behavior.'",
+        "https://royalsocietypublishing.org/rstb/article/377/1844/20200531 — Evolution of brain architectures for predictive coding",
+        "https://en.wikipedia.org/wiki/Predictive_coding",
+    ],
+
+    "honest_note": (
+        "These mappings are ANALOGIES, not literal neuroscience. J81 doesn't have "
+        "neurons, consciousness, or feelings. What it has is a brain-inspired "
+        "ARCHITECTURE — hierarchical processing, prediction-error learning, sleep-"
+        "time consolidation, two-system decision making — and that architecture is "
+        "what makes the tree robust on uncertain markets. The metaphor is the "
+        "design language; the actual implementation is plain Python + SQLite + WS."
+    ),
+}
+
+
 J81_GOAL: dict[str, Any] = {
     "stance": "Competitive. Deriv plays to win; J81 plays to win. We measure ourselves head-to-head.",
     "win_target": {
@@ -533,6 +699,7 @@ def library() -> dict[str, Any]:
         "j81_goal": J81_GOAL,
         "trading_discipline": TRADING_DISCIPLINE,
         "risk_management": RISK_MANAGEMENT,
+        "human_brain": HUMAN_BRAIN,
         "live": _LIVE,
     }
 
