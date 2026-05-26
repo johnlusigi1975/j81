@@ -7,7 +7,7 @@ Acceptance bar (the user's, with the honest fix):
   * EVERY window must win >= WIN_BAR% (default 70).
   * AND total net P/L across all 500 trades must be POSITIVE (EV gate).
 
-The EV gate matters because on Deriv synthetics you can win 70%+ and still LOSE
+The EV gate matters because on Deriv synthetics you can win 60%+ and still LOSE
 money (DIFFERS wins ~90% but pays ~1.05x). Win-rate alone would "prove"
 money-losing strategies. Synthetics are an audited RNG with a house edge, so in
 practice almost nothing passes — that's the truth, and the cycle reports it
@@ -29,7 +29,7 @@ from app.even_odd import last_digits
 from app.lab import VARIANTS, _FALLBACK_PAYOUT, _won_at
 from app.scanner import SCAN_SYMBOLS
 
-WIN_BAR = 70.0          # each window must hit this win-rate
+WIN_BAR = 60.0          # J81 goal: each window must hit this win-rate (>=60%)
 SAMPLES = 5             # ...this many times
 TRADES_PER = 100        # ...over this many trades each
 TICKS = 5000            # one history pull per market covers all variants

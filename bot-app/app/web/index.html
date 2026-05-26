@@ -587,7 +587,7 @@
       <div class="stat good"><div class="n" id="home-cy-proven">—</div><div class="l">proven strategies</div></div>
       <div class="stat"><div class="n" id="home-cy-state" style="font-size:15px">—</div><div class="l">cycle</div></div>
     </div>
-    <div id="home-proven"><div class="empty">no proven strategies yet — the analyser cycle runs every 30 min and only keeps 70%×100×5 winners with positive P/L (rare on RNG markets, by design)</div></div>
+    <div id="home-proven"><div class="empty">no proven strategies yet — the analyser cycle runs every 30 min and only keeps strategies that hit J81's goal: ≥60% wins across 5×100 trades AND positive net P/L (rare on RNG, by design)</div></div>
   </div>
 </div>
 
@@ -717,7 +717,7 @@
           <div style="font-weight:800;font-size:14px">🤖 Trade proven strategies <span class="faint" style="font-weight:400;font-size:11.5px">hands-off · uses what the analyser proved</span></div>
           <button class="btn ghost" id="proven-btn" type="button" style="margin-left:auto">Turn on</button>
         </div>
-        <div class="faint" id="proven-status" style="font-size:12px;margin-top:7px">The analyser cycle (every 30 min) only saves strategies that win 70%+ over 100 trades, 5 times, with positive P/L. When it finds one, J81 trades it here automatically — at your stake, with your win/loss targets.</div>
+        <div class="faint" id="proven-status" style="font-size:12px;margin-top:7px">The analyser cycle (every 30 min) only saves strategies that hit J81's goal — ≥60% wins across 5×100 trades with positive P/L. When one passes, the bot trades it here automatically — at your stake, with your win/loss targets.</div>
         <div id="proven-list" style="font-size:12px;margin-top:8px"></div>
       </div>
 
@@ -1672,7 +1672,7 @@ async function loadProven(){
     const list=await api("/strategies/proven?limit=20"), el=$("proven-list");
     if(!el) return;
     el.innerHTML = (!list.length)
-      ? '<div class="faint">No proven strategies yet — on random-walk markets the 70%×5 + profit bar is rarely met. The cycle keeps trying every 30 min.</div>'
+      ? '<div class="faint">No proven strategies yet — the J81 goal (≥60% wins ×5 + positive P/L) is rarely met on random-walk markets. The cycle keeps trying every 30 min.</div>'
       : list.map(s=>{ const c=Number(s.net_pnl)>=0?'var(--good)':'var(--bad)';
           return `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--bd)"><b>${esc(s.label)}</b> <span class="faint">${esc(s.market||s.symbol||'')}</span> <span style="margin-left:auto">${Number(s.win_rate||0).toFixed(0)}% win</span> <span style="font-family:var(--mono);color:${c}">${Number(s.net_pnl)>=0?'+':''}${Number(s.net_pnl||0).toFixed(2)}</span></div>`;
         }).join("");
