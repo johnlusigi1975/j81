@@ -673,6 +673,7 @@
       <div class="maint-actions">
         <button class="btn" id="maint-power" type="button" title="Wake the whole tree — researcher gather + analyser cycle + prime a bot peer-watch">🌳 Power on the tree</button>
         <button class="btn ghost" id="maint-prime" type="button" title="Push a fresh peer-watch right now">⟳ prime</button>
+        <button class="btn ghost" id="maint-resolve" type="button" title="Mark every open maintenance issue as resolved (use after a fix lands)">🧹 resolve all</button>
         <button class="btn ghost" id="maint-copy" type="button" title="Copy the conversation as plain text">📋 copy all</button>
         <span class="maint-copied" id="maint-copied">copied ✓</span>
       </div>
@@ -1456,6 +1457,17 @@ function _maintCopyText(){
     try{ await api("/maintenance/peer_watch", {method:"POST"}); }catch(_){}
     await loadMaintenance();
     p.disabled = false; p.textContent = "⟳ prime";
+  });
+  const rs=$("maint-resolve");
+  if(rs) rs.addEventListener("click", async function(){
+    if(!confirm("Mark every open maintenance issue as resolved? Use this after a fix has landed — fresh issues will still be filed if the same problem returns.")) return;
+    rs.disabled = true; const orig = rs.textContent; rs.textContent = "🧹 sweeping…";
+    try{
+      const d = await api("/maintenance/resolve_all", {method:"POST", timeout:15000});
+      rs.textContent = "🧹 resolved "+(d.resolved||0);
+      setTimeout(function(){ rs.textContent = orig; rs.disabled = false; }, 1500);
+    }catch(_){ rs.textContent = orig; rs.disabled = false; }
+    await loadMaintenance();
   });
   const pw=$("maint-power");
   if(pw) pw.addEventListener("click", async function(){

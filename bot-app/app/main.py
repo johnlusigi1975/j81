@@ -1214,6 +1214,32 @@ async def comms_log_proxy(limit: int = 100) -> list:
         return []
 
 
+@app.post("/maintenance/resolve_all")
+async def maintenance_resolve_all() -> dict:
+    """Sweep every open maintenance issue at the analyser hub in one click —
+    used after a fix lands so the panel reflects the current world. Pulls the
+    open list, posts the ids back to /maintenance/resolve, returns the count."""
+    import httpx
+    base = get_settings().analyser_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as c:
+        try:
+            r = await c.get(f"{base}/maintenance/issues?status=open&limit=500")
+            r.raise_for_status()
+            issues = r.json() or []
+        except Exception as exc:
+            return {"resolved": 0, "error": repr(exc)[:160]}
+        ids = [i["id"] for i in issues if i.get("id")]
+        if not ids:
+            return {"resolved": 0, "note": "no open issues"}
+        try:
+            r = await c.post(f"{base}/maintenance/resolve", json={"ids": ids})
+            r.raise_for_status()
+            data = r.json()
+            return {"resolved": data.get("resolved", len(ids)), "count": len(ids)}
+        except Exception as exc:
+            return {"resolved": 0, "error": repr(exc)[:160]}
+
+
 @app.post("/maintenance/peer_watch")
 async def maintenance_peer_watch() -> dict:
     """Force the bot to push a fresh peer-watch + recommendations RIGHT NOW.
