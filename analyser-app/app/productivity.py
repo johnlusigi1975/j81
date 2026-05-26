@@ -62,6 +62,16 @@ def compute_self() -> dict[str, Any]:
     }
 
 
+def _missing_trade_types() -> list[str]:
+    """Of the four trade types this site trades, which ones do I have ZERO
+    strategies for? The analyser names them explicitly so the researcher can
+    target its next cycle — no more vague 'tell me what you need'."""
+    store = get_store()
+    by_tt = (store.stats().get("strategies", {}) or {}).get("by_trade_type", {}) or {}
+    needed = ["rise_fall", "even_odd", "over_under", "matches_differs"]
+    return [tt for tt in needed if not by_tt.get(tt)]
+
+
 def recommend_for_peer(app: str, snapshot: dict) -> str | None:
     """One short, specific suggestion for `app` based on its reported
     productivity snapshot. Returns None if there's nothing useful to say."""
@@ -71,6 +81,11 @@ def recommend_for_peer(app: str, snapshot: dict) -> str | None:
 
     if app == "researcher":
         spc = m.get("output_last_cycle", m.get("strategies_last_cycle", 0))
+        missing = _missing_trade_types()
+        if missing:
+            need = ", ".join(missing)
+            return (f"Researcher: I have 0 strategies for {need}. Target those four "
+                    f"trade types — the site only trades these. Yield last cycle: {spc}.")
         if score < 40:
             return (f"Researcher productivity {band} ({score}). Last cycle yielded "
                     f"little ({spc}). Broaden sources/hashtags and prioritise pages "
@@ -98,9 +113,14 @@ def recommend_for_peer(app: str, snapshot: dict) -> str | None:
     return None
 
 
+# Dedupe cache — body-per-peer. Only re-emit when the message actually changes.
+_LAST_REC_SENT: dict[str, str] = {}
+
+
 def write_peer_recommendations() -> int:
     """Read every system's reported productivity and emit a recommendation
-    for each peer to the comms bus. Returns how many were written."""
+    for each peer to the comms bus. Returns how many were written. Skips
+    identical follow-ups so the maintenance log stays signal-rich."""
     from app.comms import emit
 
     store = get_store()
@@ -112,6 +132,8 @@ def write_peer_recommendations() -> int:
         text = recommend_for_peer(app, snap)
         if not text:
             continue
+        if _LAST_REC_SENT.get(app) == text:
+            continue   # same recommendation as last time → don't spam the bus
         emit(
             to_app=app,
             type="recommendation",
@@ -120,5 +142,6 @@ def write_peer_recommendations() -> int:
             data={"their_score": snap.get("score")},
             from_app=ANALYSER,
         )
+        _LAST_REC_SENT[app] = text
         written += 1
     return written

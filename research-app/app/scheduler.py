@@ -304,14 +304,25 @@ class AutonomousScheduler:
                 trade_type=tt, query=query, sources=sources, focus=focus,
                 hashtags=[], max_results_per_source=2,  # small = ~10% of effort
             ))
-            await comms_client.send(
-                to_app=m.get("from_app", "analyser"), type="answer",
-                subject=f"answer: {m.get('subject') or 'your question'}",
-                body=(f"Researched '{query[:80]}': {resp.documents_found} sources, "
-                      f"{len(resp.strategies)} strategies, {len(resp.insights)} insights "
-                      f"found and pushed to the library."),
-                data={"question_id": m.get("id"), "query": query},
-            )
+            n_s = len(resp.strategies); n_i = len(resp.insights)
+            if n_s == 0 and n_i == 0:
+                # 0-yield run: log it quietly to study, don't broadcast a noise
+                # "found 0 strategies" answer to the peer — that just spammed the
+                # maintenance log without helping anyone.
+                await comms_client.log_study(
+                    "learning",
+                    f"Question '{query[:60]}' produced 0 strategies/0 insights from "
+                    f"{resp.documents_found} sources — extraction needs softening.",
+                    topic=(m.get('subject') or 'q&a'), source="researcher/answer",
+                )
+            else:
+                await comms_client.send(
+                    to_app=m.get("from_app", "analyser"), type="answer",
+                    subject=f"answer: {m.get('subject') or 'your question'}",
+                    body=(f"Researched '{query[:80]}': {resp.documents_found} sources, "
+                          f"{n_s} strategies, {n_i} insights pushed to the library."),
+                    data={"question_id": m.get("id"), "query": query},
+                )
         except Exception as exc:
             await comms_client.report_issue(
                 f"couldn't answer question: {query[:60]}",

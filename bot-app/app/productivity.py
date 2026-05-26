@@ -86,6 +86,12 @@ def recommend_for_peer(app: str, snapshot: dict) -> str | None:
     return None
 
 
+# Dedupe cache — only re-send a peer recommendation when the body changes
+# from the last one we sent to that peer. Keeps the maintenance log signal-rich
+# instead of repeating "Bot strong (72.8)..." every cycle.
+_LAST_REC_SENT: dict[str, str] = {}
+
+
 async def peer_watch(write_recommendations: bool = True) -> dict:
     """Self-report to the hub and (optionally) advise peers. Best-effort."""
     from app import comms_client
@@ -93,16 +99,22 @@ async def peer_watch(write_recommendations: bool = True) -> dict:
     me = compute_self()
     await comms_client.report_productivity(me["score"], me["summary"], me["metrics"])
     written = 0
+    skipped = 0
     if write_recommendations:
         for snap in await comms_client.all_productivity():
             app = snap.get("app")
             if app == APP:
                 continue
             text = recommend_for_peer(app, snap)
-            if text:
-                await comms_client.send(
-                    to_app=app, type="recommendation", subject="productivity",
-                    body=text, data={"their_score": snap.get("score")},
-                )
-                written += 1
-    return {"self_score": me["score"], "recommendations_written": written}
+            if not text:
+                continue
+            if _LAST_REC_SENT.get(app) == text:
+                skipped += 1
+                continue
+            await comms_client.send(
+                to_app=app, type="recommendation", subject="productivity",
+                body=text, data={"their_score": snap.get("score")},
+            )
+            _LAST_REC_SENT[app] = text
+            written += 1
+    return {"self_score": me["score"], "recommendations_written": written, "skipped_duplicates": skipped}
