@@ -171,6 +171,7 @@ async def _push_to_bot(proven: list[dict]) -> int:
 _LAST: dict = {"started": None, "tested": 0, "proven_count": 0, "proven": [],
                "top": [], "note": "no cycle has run yet"}
 _NEXT_TS: float = 0.0
+_paused: bool = False   # runtime pause switch (no redeploy needed)
 
 
 def _set_last(report: dict) -> None:
@@ -181,7 +182,22 @@ def _set_last(report: dict) -> None:
 
 def status() -> dict:
     secs = max(0, int(_NEXT_TS - time.time())) if _NEXT_TS else None
-    return {**_LAST, "next_in_seconds": secs, "cycle_seconds": CYCLE_SECONDS}
+    return {**_LAST, "next_in_seconds": secs, "cycle_seconds": CYCLE_SECONDS,
+            "paused": _paused}
+
+
+def pause() -> dict:
+    """Pause the automatic 30-min cycle. Cycles in-flight finish; the runner just
+    stops scheduling new ones. Survives across the wake/sleep loop until resumed."""
+    global _paused
+    _paused = True
+    return {"paused": True}
+
+
+def resume() -> dict:
+    global _paused
+    _paused = False
+    return {"paused": False}
 
 
 class CycleRunner:
@@ -196,7 +212,8 @@ class CycleRunner:
         await asyncio.sleep(20)  # let the service settle after boot
         while True:
             try:
-                await run_cycle(push=True)
+                if not _paused:
+                    await run_cycle(push=True)
             except Exception:
                 pass
             await asyncio.sleep(CYCLE_SECONDS)

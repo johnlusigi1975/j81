@@ -446,6 +446,20 @@ async def cycle_run(push: bool = True) -> dict:
         raise HTTPException(502, f"cycle failed: {exc!r}")
 
 
+@app.post("/cycle/pause")
+def cycle_pause() -> dict:
+    """Pause the 30-min automatic cycle — the runner keeps spinning but skips
+    work until /cycle/resume is called. Used while restructuring the tree."""
+    from app import cycle
+    return cycle.pause()
+
+
+@app.post("/cycle/resume")
+def cycle_resume() -> dict:
+    from app import cycle
+    return cycle.resume()
+
+
 @app.get("/even_odd/payouts")
 async def even_odd_payouts(stake: float = 1.0, duration: int = 1) -> dict:
     """Compare the LIVE Even/Odd payout across all 10 synthetic markets and
