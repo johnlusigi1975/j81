@@ -305,6 +305,19 @@
   .brain-recs .rec.warning .ic{color:var(--warn)} .brain-recs .rec.good .ic{color:var(--good)} .brain-recs .rec.good .a{color:var(--good)}
   .brain-recs .rec.ground .ic{color:var(--violet)}
 
+  /* Live observer card — minimal, elegant, with a soft pulse to signal "alive". */
+  .obs-card{border:1px solid var(--bd);border-radius:14px;padding:13px 16px;background:linear-gradient(135deg,rgba(70,207,158,.06),rgba(212,184,122,.03));position:relative}
+  .obs-card::before{content:"";position:absolute;left:14px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good);animation:obs-blink 1.6s ease-in-out infinite}
+  @keyframes obs-blink{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.5);opacity:1}}
+  .obs-card.offline::before{background:var(--bad);box-shadow:0 0 8px var(--bad);animation:none}
+  .obs-card .obs-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-left:18px}
+  .obs-eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+  .obs-title{font-family:var(--serif);font-size:16px;font-weight:700;margin-top:3px}
+  .obs-stats{display:flex;gap:14px}
+  .obs-stats>div{text-align:right;min-width:60px}
+  .obs-stats .n{font-family:var(--mono);font-size:18px;font-weight:800;line-height:1}
+  .obs-stats .l{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+
   /* ---- Perf hints: GPU compositing for animated bits + offscreen paint deferral ---- */
   /* will-change tells the browser to hoist these to their own composite layer so the
      animations are smoother and don't repaint the page on every frame. */
@@ -593,6 +606,22 @@
     <div id="brain-recs" class="brain-recs">applying principles to your current state…</div>
     <div id="brain-auto-status" class="faint" style="font-size:11px;margin-top:8px"></div>
     <div class="faint" id="brain-foot" style="font-size:10.5px;margin-top:6px"></div>
+  </div>
+
+  <!-- Live Market Observer — the analyser is watching all 10 markets 24/7. -->
+  <div id="obs-card" class="obs-card" style="margin-top:18px">
+    <div class="obs-head">
+      <div>
+        <div class="obs-eyebrow">👁 Live observer · 24/7 background watch</div>
+        <div class="obs-title" id="obs-title">connecting…</div>
+      </div>
+      <div class="obs-stats">
+        <div><div class="n" id="obs-ticks">—</div><div class="l">ticks seen</div></div>
+        <div><div class="n" id="obs-ready">—</div><div class="l">markets ready</div></div>
+        <div><div class="n" id="obs-flags">—</div><div class="l">flagged</div></div>
+      </div>
+    </div>
+    <div id="obs-recent" class="faint" style="font-size:11.5px;margin-top:8px">no anomalies — that's the honest truth on uniform RNG.</div>
   </div>
 
   <!-- The J81 scoreboard — Deriv vs J81 over the last 100 settled trades. -->
@@ -1132,8 +1161,41 @@ async function loadHome(){
   loadCycleHistory();
   loadBrain();
   refreshBrainAutoUI();
+  loadObserver();
 }
 function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
+
+// ---- Live observer panel — the analyser's 24/7 watch surfaced to the home ----
+async function loadObserver(){
+  const card=$("obs-card"); if(!card) return;
+  try{
+    const d = await api("/observer/status");
+    if(d.unreachable){ card.classList.add("offline"); $("obs-title").textContent="observer offline"; return; }
+    card.classList.remove("offline");
+    const ticks = d.ticks_seen||0, ready = d.markets_ready||0;
+    const flagged = d.flagged||[];
+    $("obs-ticks").textContent = ticks.toLocaleString();
+    $("obs-ready").textContent = ready+"/10";
+    $("obs-flags").textContent = flagged.length;
+    $("obs-title").textContent = ready < 10
+      ? "warming up · "+ready+"/10 markets streaming"
+      : (flagged.length === 0
+          ? "all markets uniform · no anomalies right now"
+          : "watching "+ready+" markets · "+flagged.length+" recent flags");
+    const top = flagged[0];
+    if(top){
+      $("obs-recent").innerHTML = '<b>'+esc(top.symbol||"?")+'</b> · '+esc((top.kind||"").replace(/_/g," "))+
+        ' <span class="faint">— '+esc(top.note||"")+'</span>';
+    } else if(ready>=10){
+      $("obs-recent").textContent="no anomalies — that's the honest truth on uniform RNG.";
+    } else {
+      $("obs-recent").textContent="(observer warming up — first detection pass after ~1 min of ticks)";
+    }
+  } catch(_){
+    card.classList.add("offline");
+    $("obs-title").textContent="observer offline (analyser cold-starting?)";
+  }
+}
 
 // ---- J81 Brain advisor — turns the shared library into live recommendations ----
 async function loadBrain(){
