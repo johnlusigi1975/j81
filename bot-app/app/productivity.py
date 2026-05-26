@@ -12,6 +12,11 @@ from app.store import get_store
 
 APP = "bot"
 
+# Per user policy: the researcher branch has been cut from the productive tree.
+# We don't advise it, we don't read its productivity, we don't include it in any
+# peer-watch round. Its service may still be deployed for ad-hoc manual research.
+_TREE_PEERS = {"analyser"}
+
 
 def _clamp(x: float, lo: float = 0.0, hi: float = 100.0) -> float:
     return max(lo, min(hi, x))
@@ -103,8 +108,8 @@ async def peer_watch(write_recommendations: bool = True) -> dict:
     if write_recommendations:
         for snap in await comms_client.all_productivity():
             app = snap.get("app")
-            if app == APP:
-                continue
+            if app == APP or app not in _TREE_PEERS:
+                continue   # skip self, and skip anyone outside the active tree (researcher cut)
             text = recommend_for_peer(app, snap)
             if not text:
                 continue

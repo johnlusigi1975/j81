@@ -64,22 +64,14 @@ def diagnose() -> list[dict[str, Any]]:
 
 
 async def study_once(max_requests: int = 1) -> dict:
-    """File enhancement proposals + ask the Researcher to fetch study material
-    for the top weakness. Best-effort. Returns a small summary."""
+    """File enhancement proposals to the local study log.
+    The researcher branch has been cut from the productive tree (per user
+    policy), so we no longer emit research requests to it — the proposals just
+    accumulate in /study/export for the operator to act on directly."""
     store = get_store()
     weaknesses = diagnose()
-    requests_sent = 0
     for w in weaknesses:
-        # The proposal that ends up in front of the AI (Claude).
         store.add_study(APP, "enhancement", w["enhancement"],
                         topic=w["topic"], source="self-diagnosis")
-        # Ask the Researcher to go study this online (its q&a budget answers it).
-        if requests_sent < max_requests:
-            store.add_study(APP, "question", w["query"],
-                            topic=w["topic"], source="sent to researcher")
-            emit(to_app="researcher", type="request",
-                 subject=f"self-study: {w['topic']}",
-                 body=f"Find articles/tools to help the brain improve: {w['query']}",
-                 data={"query": w["query"]}, from_app=APP)
-            requests_sent += 1
-    return {"weaknesses": len(weaknesses), "requests_sent": requests_sent}
+    return {"weaknesses": len(weaknesses), "requests_sent": 0,
+            "note": "researcher branch is cut — no research requests emitted"}

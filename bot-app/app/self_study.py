@@ -63,22 +63,15 @@ def diagnose() -> list[dict[str, Any]]:
 
 
 async def study_once(max_requests: int = 1) -> dict:
-    """File enhancement proposals + ask the Researcher to study the top weakness."""
+    """File enhancement proposals to the hub's study log. The researcher branch
+    has been cut from the tree (per user policy), so we DON'T send research
+    requests to it any more — only the local enhancement log is updated, so the
+    /study/export endpoint still has material to surface for the operator."""
     from app import comms_client
 
     weaknesses = diagnose()
-    requests_sent = 0
     for w in weaknesses:
         await comms_client.log_study(
             "enhancement", w["enhancement"], topic=w["topic"], source="self-diagnosis")
-        if w.get("query") and requests_sent < max_requests:
-            await comms_client.log_study(
-                "question", w["query"], topic=w["topic"], source="sent to researcher")
-            await comms_client.send(
-                to_app="researcher", type="request",
-                subject=f"self-study: {w['topic']}",
-                body=f"Find articles/tools to help the bot improve: {w['query']}",
-                data={"query": w["query"]},
-            )
-            requests_sent += 1
-    return {"weaknesses": len(weaknesses), "requests_sent": requests_sent}
+    return {"weaknesses": len(weaknesses), "requests_sent": 0,
+            "note": "researcher branch is cut — no research requests emitted"}

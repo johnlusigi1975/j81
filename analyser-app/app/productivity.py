@@ -18,6 +18,10 @@ from app.store import get_store
 
 ANALYSER = "analyser"
 
+# Per user policy: the researcher branch was cut from the productive tree.
+# The analyser only advises/peer-watches systems in this set.
+_TREE_PEERS = {"bot"}
+
 
 def _clamp(x: float, lo: float = 0.0, hi: float = 100.0) -> float:
     return max(lo, min(hi, x))
@@ -127,8 +131,8 @@ def write_peer_recommendations() -> int:
     written = 0
     for snap in store.list_productivity():
         app = snap.get("app")
-        if app == ANALYSER:
-            continue  # don't advise myself
+        if app == ANALYSER or app not in _TREE_PEERS:
+            continue  # don't advise myself; don't advise peers outside the active tree
         text = recommend_for_peer(app, snap)
         if not text:
             continue

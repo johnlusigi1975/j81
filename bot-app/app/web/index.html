@@ -369,7 +369,8 @@
     contain-intrinsic-size: auto 220px;
   }
   .engines-flow{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;align-items:stretch;gap:6px}
-  @media(max-width:720px){.engines-flow{grid-template-columns:1fr;gap:8px} .pipe{transform:rotate(90deg);height:28px;width:60px;margin:0 auto}}
+  .engines-flow.eng2{grid-template-columns:1fr 28px 1fr}   /* researcher branch cut → 2 engines */
+  @media(max-width:720px){.engines-flow{grid-template-columns:1fr;gap:8px} .engines-flow.eng2{grid-template-columns:1fr} .pipe{transform:rotate(90deg);height:28px;width:60px;margin:0 auto}}
   .engine{position:relative;border:1px solid var(--bd);border-radius:12px;padding:11px;background:rgba(0,0,0,.18);transition:all .35s;overflow:hidden}
   .engine.live{border-color:var(--amber);box-shadow:0 0 26px -6px rgba(212,184,122,.45),inset 0 0 0 1px rgba(212,184,122,.18)}
   .engine.done{border-color:var(--good);box-shadow:0 0 22px -8px rgba(70,207,158,.5)}
@@ -668,10 +669,10 @@
     <div class="maint-head">
       <div>
         <div class="maint-eyebrow">🔧 System maintenance · live tree chatter</div>
-        <div class="maint-title" id="maint-title">researcher ↔ analyser ↔ bot — what each one needs to work better</div>
+        <div class="maint-title" id="maint-title">analyser ↔ bot — what each one needs to work better</div>
       </div>
       <div class="maint-actions">
-        <button class="btn" id="maint-power" type="button" title="Wake the whole tree — researcher gather + analyser cycle + prime a bot peer-watch">🌳 Power on the tree</button>
+        <button class="btn" id="maint-power" type="button" title="Resume analyser cycle + prime bot peer-watch. Researcher stays in MANUAL mode (won't search by itself).">🌳 Power on the tree</button>
         <button class="btn ghost" id="maint-prime" type="button" title="Push a fresh peer-watch right now">⟳ prime</button>
         <button class="btn ghost" id="maint-resolve" type="button" title="Mark every open maintenance issue as resolved (use after a fix lands)">🧹 resolve all</button>
         <button class="btn ghost" id="maint-copy" type="button" title="Copy the conversation as plain text">📋 copy all</button>
@@ -709,7 +710,7 @@
   </div>
 
   <!-- ===================== J81 ENGINES — also shown on the dashboard ===================== -->
-  <div class="sec-title" style="margin-top:24px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">researcher · analyser · bot</span></div>
+  <div class="sec-title" style="margin-top:24px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">analyser · bot</span></div>
   <div class="engines-wrap" style="margin-bottom:18px">
     <div class="engines-head">
       <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
@@ -717,12 +718,7 @@
         <span class="dot"></span><span class="lbl">Power on</span>
       </button>
     </div>
-    <div class="engines-flow">
-      <div class="engine" data-eng="res">
-        <div class="engine-head"><div class="ico">🔭</div><div class="meta"><div class="nm">Researcher</div><div class="st">idle</div></div></div>
-        <div class="engine-body"><div class="feed">YouTube · TikTok · Instagram · Reddit · X · Medium · Web</div><div class="pbar"><i></i></div></div>
-      </div>
-      <div class="pipe" data-pipe="1"><span></span><span></span><span></span></div>
+    <div class="engines-flow eng2">
       <div class="engine" data-eng="ana">
         <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
         <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
@@ -892,7 +888,7 @@
     <div id="trade-recent"><div class="empty">no trades yet</div></div>
 
     <!-- ===================== J81 ENGINES — live demonstration ===================== -->
-    <div class="sec-title" style="margin:24px 0 8px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">researcher · analyser · bot</span></div>
+    <div class="sec-title" style="margin:24px 0 8px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">analyser · bot</span></div>
     <div class="engines-wrap">
       <div class="engines-head">
         <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
@@ -903,12 +899,7 @@
           </button>
         </div>
       </div>
-      <div class="engines-flow">
-        <div class="engine" data-eng="res">
-          <div class="engine-head"><div class="ico">🔭</div><div class="meta"><div class="nm">Researcher</div><div class="st">idle</div></div></div>
-          <div class="engine-body"><div class="feed">YouTube · TikTok · Instagram · Reddit · X · Medium · Web</div><div class="pbar"><i></i></div></div>
-        </div>
-        <div class="pipe" data-pipe="1"><span></span><span></span><span></span></div>
+      <div class="engines-flow eng2">
         <div class="engine" data-eng="ana">
           <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
           <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
@@ -1352,9 +1343,8 @@ function _maintTree(t){
   const wrap = $("maint-tree"); if(!wrap) return;
   if(!t){ wrap.innerHTML=""; return; }
   const apps = [
-    {k:"researcher", lbl:"researcher", hint:"24/7 web gather"},
-    {k:"analyser",   lbl:"analyser",   hint:"30-min strategy cycle"},
-    {k:"bot",        lbl:"bot",        hint:"trading loop + accounts"},
+    {k:"analyser",   lbl:"analyser",   hint:"30-min strategy cycle + live observer"},
+    {k:"bot",        lbl:"bot",        hint:"trading loop + connected accounts"},
   ];
   wrap.innerHTML = apps.map(function(a){
     const s = t[a.k] || {};
@@ -1391,8 +1381,9 @@ async function loadMaintenance(){
       const t = await api("/maintenance/tree_status");
       _maintTree(t);
       // Once the tree is fully on, soften the power button.
-      const btn = $("maint-power"); const allOn = t && t.researcher && t.researcher.on && t.analyser && t.analyser.on;
-      if(btn) btn.textContent = allOn ? "🌳 tree is on" : "🌳 Power on the tree";
+      // Tree is analyser + bot only; "on" when the analyser cycle is running.
+      const btn = $("maint-power"); const onState = t && t.analyser && t.analyser.on;
+      if(btn) btn.textContent = onState ? "🌳 tree is on" : "🌳 Power on the tree";
     } catch(_){ _maintTree(null); }
   } catch(_){
     if(pulse) pulse.classList.add("offline");
@@ -1633,6 +1624,8 @@ function _engEach(key){ return document.querySelectorAll('[data-eng="'+key+'"]')
 function _pipeEach(n){ return document.querySelectorAll('[data-pipe="'+n+'"]'); }
 function _engReset(){
   _engFeedTimers.forEach(clearInterval); _engFeedTimers=[];
+  // "res" intentionally kept in case the markup is still around in any cached
+  // page; today the tree is analyser + bot only.
   ["res","ana","bot"].forEach(k=>_engEach(k).forEach(e=>{
     e.classList.remove("live","done");
     var s=e.querySelector(".st"); if(s) s.textContent="idle";
@@ -1667,32 +1660,25 @@ function _engLive(key){
 async function _engSequence(){
   if(!_enginesOn) return;
   _engReset();
-  // 1) Researcher wakes — flashes through social/web sources.
-  setTimeout(()=>{ if(!_enginesOn) return; _engLive("res"); _engRotate("res", _RES_SRC, 280); }, 200);
-  let researcherInfo="Researcher gathering";
-  try{ const h=await api("/health/tree");
-       if(h.researcher && h.researcher.configured===false) researcherInfo="Researcher not deployed";
-       else if(h.researcher && !h.researcher.ok) researcherInfo="Researcher asleep — woke up";
-  }catch(_){}
-  setTimeout(()=>_engStop("res","✓ "+researcherInfo+" · streamed insights forward","done"), 2600);
-  // 2) Pipe 1 flows: data → analyser
-  setTimeout(()=>{ if(_enginesOn) _pipeEach(1).forEach(p=>p.classList.add("flow")); }, 2300);
-  // 3) Analyser wakes — real tested/proven numbers if available.
-  setTimeout(()=>{ if(!_enginesOn) return; _engLive("ana"); _engRotate("ana", _ANA_THINGS, 260); }, 3000);
+  // Researcher branch was cut from the productive tree (per user policy);
+  // the sequence now starts at the Analyser. Old "res" engines (if any in
+  // cached HTML) stay idle.
+  // Analyser wakes immediately — real tested/proven numbers if available.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("ana"); _engRotate("ana", _ANA_THINGS, 260); }, 300);
   let anaInfo="Backtesting strategies (5×100 each)";
   try{ const c=await api("/cycle/status"); anaInfo="Tested "+(c.tested||0)+" candidates · proven "+(c.proven_count||0); }catch(_){}
-  setTimeout(()=>_engStop("ana","✓ "+anaInfo,"done"), 5800);
-  // 4) Pipe 2 flows: proven → bot
-  setTimeout(()=>{ if(_enginesOn) _pipeEach(2).forEach(p=>p.classList.add("flow")); }, 5500);
-  // 5) Bot powers up — real loop/accounts/proven vitals.
-  setTimeout(()=>{ if(!_enginesOn) return; _engLive("bot"); _engRotate("bot", _BOT_THINGS, 280); }, 6100);
+  setTimeout(()=>_engStop("ana","✓ "+anaInfo,"done"), 3100);
+  // Pipe 2 flows: proven → bot
+  setTimeout(()=>{ if(_enginesOn) _pipeEach(2).forEach(p=>p.classList.add("flow")); }, 2800);
+  // Bot powers up — real loop/accounts/proven vitals.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("bot"); _engRotate("bot", _BOT_THINGS, 280); }, 3400);
   let botInfo="Loop alive · markets live";
   try{ const h=await api("/health/tree"); const b=h.bot||{};
        botInfo=(b.loop_alive?"Loop alive · ":"Loop offline · ")+(b.accounts||0)+" accounts · "+(b.proven_strategies||0)+" proven in store";
   }catch(_){}
-  setTimeout(()=>_engStop("bot","✓ "+botInfo+" · ready to trade","done"), 8700);
-  // 6) Loop while on — keeps the demo breathing every cycle.
-  _engSeqTimer=setTimeout(()=>{ if(_enginesOn) _engSequence(); }, 32000);
+  setTimeout(()=>_engStop("bot","✓ "+botInfo+" · ready to trade","done"), 6000);
+  // Loop while on — keeps the demo breathing every cycle.
+  _engSeqTimer=setTimeout(()=>{ if(_enginesOn) _engSequence(); }, 25000);
 }
 function _enginesPower(on){
   _enginesOn=on;
