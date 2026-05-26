@@ -102,7 +102,14 @@ def require_token(authorization: str = Header(default="")) -> None:
 
 @app.get("/", include_in_schema=False)
 def home() -> FileResponse:
-    return FileResponse(_HOMEPAGE, media_type="text/html")
+    """Serve the homepage with no-cache headers so a refresh on any device
+    always gets the latest version (without this, browsers serve a stale copy
+    of the SPA until their own cache expires)."""
+    resp = FileResponse(_HOMEPAGE, media_type="text/html")
+    resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @app.get("/health")

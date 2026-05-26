@@ -70,19 +70,30 @@ def _set_session_cookie(resp: Response, sid: str) -> None:
                     httponly=True, samesite="lax", secure=True, path="/")
 
 
+def _no_cache(resp):
+    """Tell browsers to ALWAYS revalidate the HTML with the server (304 when
+    unchanged, full content when changed). Without this, every device caches
+    the SPA and refreshes can show a stale version of the app — exactly the
+    "I updated but it didn't change on my phone" symptom."""
+    resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
 @app.get("/", include_in_schema=False)
 def home(request: Request) -> FileResponse:
     resp = FileResponse(_HOMEPAGE, media_type="text/html")
     if not request.cookies.get(SESSION_COOKIE):
         _set_session_cookie(resp, _new_sid())  # give every visitor a session up front
-    return resp
+    return _no_cache(resp)
 
 
 @app.get("/owner", include_in_schema=False)
 def owner_page() -> FileResponse:
     """Owner console to mint/copy membership codes (guarded by ADMIN_KEY on the
     API calls it makes; the page itself holds no secret)."""
-    return FileResponse(Path(__file__).parent / "web" / "owner.html", media_type="text/html")
+    return _no_cache(FileResponse(Path(__file__).parent / "web" / "owner.html", media_type="text/html"))
 
 
 # ---------------------------------------------------------------------------
