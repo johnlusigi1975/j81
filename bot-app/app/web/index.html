@@ -318,44 +318,6 @@
   .obs-stats .n{font-family:var(--mono);font-size:18px;font-weight:800;line-height:1}
   .obs-stats .l{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
 
-  /* System Maintenance — live tree chatter (researcher ↔ analyser ↔ bot). */
-  .maint-card{border:1px solid var(--bd);border-radius:14px;padding:13px 16px;background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(155,140,255,.04));position:relative}
-  .maint-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
-  .maint-eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
-  .maint-title{font-family:var(--serif);font-size:16px;font-weight:700;margin-top:3px}
-  .maint-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .maint-actions .btn{padding:7px 12px;font-size:12px}
-  .maint-prods{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px;padding:8px 10px;border:1px dashed rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.18)}
-  .maint-prods .p{display:flex;align-items:center;gap:8px;font-size:12px}
-  .maint-prods .p .n{font-family:var(--mono);font-weight:800}
-  .maint-prods .p .nm{text-transform:capitalize;color:var(--dim)}
-  .maint-prods .bar{flex:0 0 80px;height:6px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;position:relative}
-  .maint-prods .bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));border-radius:3px}
-  .maint-log{margin-top:10px;max-height:280px;overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:11.5px;line-height:1.5}
-  .maint-log .row{display:grid;grid-template-columns:80px 92px 1fr;gap:8px;padding:6px 10px;border-top:1px solid rgba(255,255,255,.04)}
-  .maint-log .row:first-child{border-top:0}
-  .maint-log .row .t{color:var(--faint);font-size:10.5px}
-  .maint-log .row .a{font-weight:700}
-  .maint-log .row.from-bot .a{color:var(--good)}
-  .maint-log .row.from-analyser .a{color:var(--amber)}
-  .maint-log .row.from-researcher .a{color:var(--violet)}
-  .maint-log .row.type-recommendation{background:rgba(212,184,122,.04)}
-  .maint-log .row.type-report{background:rgba(245,158,11,.05)}
-  .maint-log .row.severity-critical .b,.maint-log .row.severity-error .b{color:var(--bad)}
-  .maint-log .row.severity-warning .b{color:var(--warn)}
-  .maint-log .row .b{color:var(--text);white-space:pre-wrap;word-break:break-word}
-  .maint-empty{padding:16px;text-align:center;color:var(--faint);font-size:12px}
-  .maint-pulse{position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good);animation:obs-blink 1.6s ease-in-out infinite}
-  .maint-pulse.offline{background:var(--bad);box-shadow:0 0 8px var(--bad);animation:none}
-  .maint-foot{margin-top:8px;font-size:10.5px;color:var(--faint)}
-  .maint-copied{color:var(--good);font-size:11px;margin-left:8px;opacity:0;transition:opacity .25s}
-  .maint-copied.show{opacity:1}
-  .maint-tree .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--bd);border-radius:999px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:11px;text-transform:capitalize}
-  .maint-tree .pill .ld{width:7px;height:7px;border-radius:50%;background:var(--bad);box-shadow:0 0 6px var(--bad)}
-  .maint-tree .pill.on .ld{background:var(--good);box-shadow:0 0 6px var(--good);animation:obs-blink 1.6s ease-in-out infinite}
-  .maint-tree .pill.off{opacity:.7}
-  .maint-tree .pill.unreach{border-style:dashed;color:var(--faint)}
-
   /* ---- Perf hints: GPU compositing for animated bits + offscreen paint deferral ---- */
   /* will-change tells the browser to hoist these to their own composite layer so the
      animations are smoother and don't repaint the page on every frame. */
@@ -674,28 +636,6 @@
   </div>
 
   <div id="choose-grid"></div>
-
-  <!-- 🔧 SYSTEM MAINTENANCE — moved to the bottom of the home interface (per user request). -->
-  <div id="maint-card" class="maint-card" style="margin-top:24px">
-    <div class="maint-pulse" id="maint-pulse"></div>
-    <div class="maint-head">
-      <div>
-        <div class="maint-eyebrow">🔧 System maintenance · live tree chatter</div>
-        <div class="maint-title" id="maint-title">single-bot edition — quiet by design</div>
-      </div>
-      <div class="maint-actions">
-        <button class="btn" id="maint-power" type="button" title="Refresh the local payout library — the 'power on' signal in the single-bot edition.">🌳 Power on the tree</button>
-        <button class="btn ghost" id="maint-prime" type="button" title="Push a fresh self-report right now">⟳ prime</button>
-        <button class="btn ghost" id="maint-resolve" type="button" title="Mark every open maintenance issue as resolved (use after a fix lands)">🧹 resolve all</button>
-        <button class="btn ghost" id="maint-copy" type="button" title="Copy the conversation as plain text">📋 copy all</button>
-        <span class="maint-copied" id="maint-copied">copied ✓</span>
-      </div>
-    </div>
-    <div class="maint-tree" id="maint-tree" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px"></div>
-    <div class="maint-prods" id="maint-prods"></div>
-    <div class="maint-log" id="maint-log"><div class="maint-empty">single-bot edition — nothing to report unless something breaks.</div></div>
-    <div class="maint-foot" id="maint-foot">updates every 30 s · paste the copy-all into Claude to fix what they're asking for</div>
-  </div>
 </div>
 
 <!-- ============ VIEW: TRADE (per type) ============ -->
@@ -1155,7 +1095,6 @@ async function loadHome(){
   }catch(_){}
   if(CUR) loadBalance(CUR.id).then(b=>{ const el=$("s-acct"); if(el&&b&&b.balance!=null) el.textContent=fmtMoney(b.balance,b.currency); });
   refreshBrainAutoUI();
-  loadMaintenance();
 }
 function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
 
@@ -1164,199 +1103,7 @@ function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)
 
 // Brain live advice removed per user request — the card is now just the Brain Auto toggle.
 
-// ---- System Maintenance — live tree chatter (researcher ↔ analyser ↔ bot) ----
-// Pulls /maintenance/conversation every 30 s. Each row in the log shows
-// from-app → to-app, the type, and the body. The Copy All button bundles
-// everything into a single plaintext block ready to paste into Claude.
-let _MAINT_DATA = null;
-function _maintTime(ts){
-  if(!ts) return "—";
-  try{ const d = new Date(ts); return d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
-  catch(_){ return String(ts).slice(11,19); }
-}
-function _maintProds(prod){
-  const wrap = $("maint-prods"); if(!wrap) return;
-  const sys = (prod && prod.systems) || [];
-  const order = {"researcher":0,"analyser":1,"bot":2};
-  sys.sort((a,b)=> (order[a.app]??9) - (order[b.app]??9));
-  if(sys.length===0){ wrap.innerHTML = '<div class="faint" style="font-size:11px">no productivity rates reported yet</div>'; return; }
-  wrap.innerHTML = sys.map(function(s){
-    const score = Math.max(0, Math.min(100, Number(s.score||0)));
-    const colour = score < 40 ? "var(--bad)" : (score < 70 ? "var(--warn)" : "var(--good)");
-    return '<div class="p"><span class="nm">'+esc(s.app||"?")+'</span> '
-      +'<span class="bar"><i style="width:'+score.toFixed(0)+'%"></i></span> '
-      +'<span class="n" style="color:'+colour+'">'+score.toFixed(0)+'</span></div>';
-  }).join("");
-}
-function _maintRows(d){
-  const log = $("maint-log"); if(!log) return;
-  const chatter = d.chatter || [];
-  const issues = d.issues || [];
-  const recs = d.recommendations || [];
-  // Merge chatter + issues + recommendations into one stream sorted by time.
-  const stream = [];
-  chatter.forEach(function(m){
-    stream.push({
-      t: m.created_at, from: m.from_app, to: m.to_app, type: m.type,
-      subject: m.subject || "", body: m.body || "", severity: "",
-    });
-  });
-  issues.forEach(function(i){
-    stream.push({
-      t: i.created_at, from: i.from_app, to: "maintenance", type: "issue",
-      subject: i.area || "", body: i.summary + (i.detail ? " — "+i.detail : ""),
-      severity: i.severity || "",
-    });
-  });
-  // recommendations are a subset of chatter where type==='recommendation';
-  // we don't duplicate them — they're already in chatter.
-  stream.sort(function(a,b){ return String(b.t||"").localeCompare(String(a.t||"")); });
-  if(stream.length === 0){ log.innerHTML='<div class="maint-empty">no chatter yet — the systems will speak as they cycle (every ~30 s once the analyser is warm)</div>'; return; }
-  log.innerHTML = stream.slice(0,60).map(function(r){
-    const sev = r.severity ? " severity-"+r.severity : "";
-    return '<div class="row from-'+esc(r.from||"unknown")+' type-'+esc(r.type||"msg")+sev+'">'+
-      '<div class="t">'+esc(_maintTime(r.t))+'</div>'+
-      '<div class="a">'+esc(r.from||"?")+' → '+esc(r.to||"all")+'<div class="t" style="font-weight:400">'+esc(r.type||"")+'</div></div>'+
-      '<div class="b">'+esc(r.body || r.subject || "")+'</div>'+
-    '</div>';
-  }).join("");
-}
-function _maintTree(t){
-  const wrap = $("maint-tree"); if(!wrap) return;
-  if(!t){ wrap.innerHTML=""; return; }
-  const apps = [
-    {k:"analyser",   lbl:"analyser",   hint:"30-min strategy cycle + live observer"},
-    {k:"bot",        lbl:"bot",        hint:"trading loop + connected accounts"},
-  ];
-  wrap.innerHTML = apps.map(function(a){
-    const s = t[a.k] || {};
-    const cls = !s.reachable ? "unreach" : (s.on ? "on" : "off");
-    const state = !s.reachable ? "unreachable" : (s.on ? "on" : "off");
-    return '<span class="pill '+cls+'" title="'+esc(a.hint)+'">'+
-      '<span class="ld"></span>'+esc(a.lbl)+' · '+esc(state)+'</span>';
-  }).join("");
-}
-
-async function loadMaintenance(){
-  const card = $("maint-card"); if(!card) return;
-  const pulse = $("maint-pulse");
-  try{
-    const d = await api("/maintenance/conversation?limit=40");
-    _MAINT_DATA = d;
-    if(d.unreachable){
-      if(pulse) pulse.classList.add("offline");
-      $("maint-title").textContent = "analyser unreachable — chatter paused";
-      $("maint-log").innerHTML = '<div class="maint-empty">analyser cold-starting? the conversation resumes as soon as the hub responds.</div>';
-    } else {
-      if(pulse) pulse.classList.remove("offline");
-      const sysN = (d.productivity && d.productivity.systems) ? d.productivity.systems.length : 0;
-      const issN = (d.issues || []).length;
-      const recN = (d.recommendations || []).length;
-      $("maint-title").textContent = sysN > 0
-        ? sysN+" systems reporting · "+recN+" recent recommendations · "+issN+" open issues"
-        : "warming up — waiting for the first peer-watch heartbeat";
-      _maintProds(d.productivity);
-      _maintRows(d);
-    }
-    // Tree on/off badges live next to the heading.
-    try{
-      const t = await api("/maintenance/tree_status");
-      _maintTree(t);
-      // Once the tree is fully on, soften the power button.
-      // Tree is analyser + bot only; "on" when the analyser cycle is running.
-      const btn = $("maint-power"); const onState = t && t.analyser && t.analyser.on;
-      if(btn) btn.textContent = onState ? "🌳 tree is on" : "🌳 Power on the tree";
-    } catch(_){ _maintTree(null); }
-  } catch(_){
-    if(pulse) pulse.classList.add("offline");
-    $("maint-title").textContent = "chatter unavailable";
-  }
-}
-function _maintCopyText(){
-  const d = _MAINT_DATA || {};
-  const lines = [];
-  lines.push("J81 SYSTEM MAINTENANCE — live tree chatter");
-  lines.push("snapshot: "+(new Date()).toISOString());
-  lines.push("="+"=".repeat(60));
-  lines.push("");
-  const sys = (d.productivity && d.productivity.systems) || [];
-  if(sys.length){
-    lines.push("Productivity rates:");
-    sys.forEach(function(s){ lines.push("  - "+(s.app||"?")+": "+(s.score!=null?Number(s.score).toFixed(0):"—")+" · "+(s.summary||"")); });
-    lines.push("");
-  }
-  const issues = d.issues || [];
-  if(issues.length){
-    lines.push("Open maintenance issues ("+issues.length+"):");
-    issues.forEach(function(i,idx){
-      lines.push("  "+(idx+1)+". ["+(i.severity||"info").toUpperCase()+"] "+(i.from_app||"?")+" — "+(i.summary||""));
-      if(i.area) lines.push("     area: "+i.area);
-      if(i.detail) lines.push("     detail: "+i.detail);
-      lines.push("     filed: "+(i.created_at||""));
-    });
-    lines.push("");
-  }
-  const chatter = d.chatter || [];
-  if(chatter.length){
-    lines.push("Live conversation (most recent first):");
-    chatter.slice(0, 60).forEach(function(m){
-      lines.push("  ["+(m.created_at||"")+"] "+(m.from_app||"?")+" → "+(m.to_app||"all")+" · "+(m.type||""));
-      if(m.subject) lines.push("    subject: "+m.subject);
-      if(m.body) lines.push("    body: "+m.body);
-    });
-  }
-  if(!sys.length && !issues.length && !chatter.length){
-    lines.push("No conversation yet — the systems will start speaking as soon as the analyser's monitor loop runs (within ~60 s of boot).");
-  }
-  return lines.join("\n");
-}
-(function(){
-  const c=$("maint-copy"), p=$("maint-prime");
-  if(c) c.addEventListener("click", async function(){
-    const txt = _maintCopyText();
-    try{
-      await navigator.clipboard.writeText(txt);
-    }catch(_){
-      // Fallback: invisible textarea so older browsers / mobile still copy.
-      const ta = document.createElement("textarea"); ta.value = txt;
-      ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta);
-      ta.focus(); ta.select(); try{ document.execCommand("copy"); }catch(__){}
-      document.body.removeChild(ta);
-    }
-    const tag=$("maint-copied"); if(tag){ tag.classList.add("show"); setTimeout(function(){ tag.classList.remove("show"); }, 1400); }
-  });
-  if(p) p.addEventListener("click", async function(){
-    p.disabled = true; p.textContent = "⟳ priming…";
-    try{ await api("/maintenance/peer_watch", {method:"POST"}); }catch(_){}
-    await loadMaintenance();
-    p.disabled = false; p.textContent = "⟳ prime";
-  });
-  const rs=$("maint-resolve");
-  if(rs) rs.addEventListener("click", async function(){
-    if(!confirm("Mark every open maintenance issue as resolved? Use this after a fix has landed — fresh issues will still be filed if the same problem returns.")) return;
-    rs.disabled = true; const orig = rs.textContent; rs.textContent = "🧹 sweeping…";
-    try{
-      const d = await api("/maintenance/resolve_all", {method:"POST", timeout:15000});
-      rs.textContent = "🧹 resolved "+(d.resolved||0);
-      setTimeout(function(){ rs.textContent = orig; rs.disabled = false; }, 1500);
-    }catch(_){ rs.textContent = orig; rs.disabled = false; }
-    await loadMaintenance();
-  });
-  const pw=$("maint-power");
-  if(pw) pw.addEventListener("click", async function(){
-    pw.disabled = true; const orig = pw.textContent; pw.textContent = "🌳 powering on…";
-    try{ await api("/maintenance/tree_on", {method:"POST", timeout:15000}); }catch(_){}
-    await loadMaintenance();
-    pw.disabled = false;
-    // Title text comes from loadMaintenance — but in case the call failed silently, restore.
-    if(pw.textContent === "🌳 powering on…") pw.textContent = orig;
-  });
-  // Auto-refresh every 30 s while the home view is visible.
-  setInterval(function(){
-    const v = document.getElementById("view-home");
-    if(v && !v.hidden) loadMaintenance();
-  }, 30000);
-})();
+// System Maintenance / live tree chatter UI removed per user request.
 
 // ---- Brain Auto — act on the brain's recommended Even/Odd every cycle ----
 async function brainAutoState(){
