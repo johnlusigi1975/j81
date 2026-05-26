@@ -628,23 +628,20 @@
     <div id="home-mode"></div>
   </div>
 
-  <!-- J81 BRAIN — synthesises the shared library into live recommendations + drives Brain Auto. -->
+  <!-- Brain Auto control — toggle for the every-cycle Even/Odd auto-trade on the best-payout market. -->
   <div id="brain-card" class="brain-card" style="margin-top:18px">
     <div class="brain-head">
       <div>
-        <div class="brain-eyebrow">🧠 J81 Brain · live advice</div>
-        <div class="brain-title" id="brain-title">Reading the library…</div>
+        <div class="brain-eyebrow">🤖 Brain Auto</div>
+        <div style="font-size:13px;color:var(--dim);margin-top:3px">Auto-trade Even/Odd on the highest-payout market each cycle. TP/SL still in force.</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="engines-pwr" id="brain-auto-toggle" type="button" title="Brain Auto: act on the brain's recommended Even/Odd every cycle">
+        <button class="engines-pwr" id="brain-auto-toggle" type="button" title="Brain Auto: every cycle places ONE Even/Odd on the best-payout market at your stake cap">
           <span class="dot"></span><span class="lbl">Brain Auto off</span>
         </button>
-        <button class="btn ghost" id="brain-refresh" type="button" style="padding:7px 12px;font-size:12px">↻</button>
       </div>
     </div>
-    <div id="brain-recs" class="brain-recs">applying principles to your current state…</div>
     <div id="brain-auto-status" class="faint" style="font-size:11px;margin-top:8px"></div>
-    <div class="faint" id="brain-foot" style="font-size:10.5px;margin-top:6px"></div>
   </div>
 
   <!-- Live Market Observer — the analyser is watching all 10 markets 24/7. -->
@@ -1210,7 +1207,6 @@ async function loadHome(){
   loadHomeCycle();
   loadGoal();
   loadCycleHistory();
-  loadBrain();
   refreshBrainAutoUI();
   loadObserver();
   loadMaintenance();
@@ -1249,38 +1245,7 @@ async function loadObserver(){
   }
 }
 
-// ---- J81 Brain advisor — turns the shared library into live recommendations ----
-async function loadBrain(){
-  const card=$("brain-card"); if(!card) return;
-  try{
-    const url = CUR ? "/brain/advise?account_id="+encodeURIComponent(CUR.id) : "/brain/advise";
-    const d = await api(url);
-    const recs = d.recommendations || [];
-    const t=$("brain-title");
-    if(t){
-      const s=d.scoreboard_state;
-      t.textContent = ({
-        winning:"Beating the bar — stay the course",
-        below_goal:"Below goal — discipline says stop",
-        win_high_pnl_negative:"Wins high · money negative — pivot",
-        pnl_positive_winrate_low:"Profitable · keep sampling",
-        warming:"Building sample — applying setup",
-      })[s] || "Applying the library";
-    }
-    const ICONS = {primary:"⭐",info:"·",good:"✓",warning:"⚠",danger:"✗",ground:"✝"};
-    const list=$("brain-recs");
-    if(list) list.innerHTML = recs.map(function(r){
-      const sev=r.severity||"info", ic=ICONS[sev]||"·";
-      const verse = r.verse_or_source ? '<span style="color:var(--violet)"> · '+esc(r.verse_or_source)+'</span>' : '';
-      return '<div class="rec '+sev+'"><div class="ic">'+ic+'</div><div><div class="a">'+esc(r.action)+'</div><div class="r">'+esc(r.reason)+'</div><div class="p">'+esc(r.principle)+verse+'</div></div></div>';
-    }).join("");
-    const f=$("brain-foot"); if(f) f.textContent = d.honest_note || "";
-  }catch(_){
-    const t=$("brain-title"); if(t) t.textContent="Brain offline";
-    const list=$("brain-recs"); if(list) list.innerHTML='<div class="faint">advice unavailable — the analyser may be cold-starting</div>';
-  }
-}
-(function(){ var b=$("brain-refresh"); if(b) b.addEventListener("click", loadBrain); })();
+// Brain live advice removed per user request — the card is now just the Brain Auto toggle.
 
 // ---- System Maintenance — live tree chatter (researcher ↔ analyser ↔ bot) ----
 // Pulls /maintenance/conversation every 30 s. Each row in the log shows
@@ -1498,7 +1463,7 @@ async function refreshBrainAutoUI(){
   try{
     await api("/accounts/"+encodeURIComponent(CUR.id), {method:"PATCH", body: JSON.stringify(body)});
     CUR.brain_auto = turningOn; CUR.enabled = turningOn;
-    await refreshBrainAutoUI(); loadBrain();
+    await refreshBrainAutoUI();
   } catch(e){ const st=$("brain-auto-status"); if(st) st.textContent="couldn't toggle: "+e.message; }
   finally{ b.disabled=false; }
 }); })();
