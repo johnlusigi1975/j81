@@ -533,6 +533,24 @@ def deriv_library_brain() -> dict:
     return deriv_lib.HUMAN_BRAIN
 
 
+@app.get("/deriv/library/scripture")
+def deriv_library_scripture() -> dict:
+    """Biblical financial wisdom (Good News Bible) — 13 principles with verse
+    references and J81 design-constraint mappings. Honest by design: scripture
+    guides the people building this system; the system itself is the result."""
+    from app import deriv_lib
+    return deriv_lib.BIBLE_FINANCIAL_WISDOM
+
+
+@app.get("/deriv/library/dedication")
+def deriv_library_dedication() -> dict:
+    """The founder's dedication of the project — values encoded as design
+    constraints. The plain-spoken note: software has no soul and cannot be
+    saved; what we CAN do is offer the WORK of building it as service."""
+    from app import deriv_lib
+    return deriv_lib.PROJECT_DEDICATION
+
+
 @app.post("/deriv/library/refresh")
 async def deriv_library_refresh() -> dict:
     """Pull real payouts from Deriv for every (market, contract) we track.

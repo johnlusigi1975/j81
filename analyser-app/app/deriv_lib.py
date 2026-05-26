@@ -388,6 +388,169 @@ RISK_MANAGEMENT: dict[str, Any] = {
 }
 
 
+BIBLE_FINANCIAL_WISDOM: dict[str, Any] = {
+    # Financial principles drawn from the Good News Bible (GNB / GNT) and
+    # cross-checked across multiple translations. The founder's faith shapes
+    # the design — these verses are encoded as constraints the system honours.
+    "summary": (
+        "Scripture has more to say about money than almost any other practical "
+        "topic. The principles below — stewardship, diligence, honesty, no debt, "
+        "no love-of-money, generosity, counting the cost — are translated into "
+        "concrete design constraints J81 follows."
+    ),
+
+    "principles": [
+        {
+            "name": "Stewardship over ownership — everything belongs to God; we manage",
+            "verse": "Psalm 24:1 (GNB): 'The world and all that is in it belong to the LORD; the earth and all who live on it are his.'",
+            "supporting": ["1 Timothy 6:17-19", "Matthew 25:14-30 (Parable of the Talents)"],
+            "principle": "Money entrusted, not owned. Multiply it faithfully; give an account.",
+            "j81_design": "Customer tokens stored encrypted; full audit log of trades; library is open + honest; the cycle requires evidence (5×100 + positive P/L) before any strategy is trusted to trade.",
+        },
+        {
+            "name": "Diligence over haste — slow growth beats get-rich-quick",
+            "verse": "Proverbs 13:11 (GNB): 'Wealth that comes easily disappears quickly, but wealth that grows little by little will continue.'",
+            "supporting": ["Proverbs 10:4", "Proverbs 21:5", "Proverbs 28:20"],
+            "principle": "Reject get-rich-quick. Build incremental, evidence-based gains.",
+            "j81_design": "Acceptance bar requires 5 × 100 trades of evidence; no martingale; default per-trade stake is small (1%); paywall explicitly NOT sold as a winning machine.",
+        },
+        {
+            "name": "Avoid debt — the borrower is a slave to the lender",
+            "verse": "Proverbs 22:7 (GNB): 'The rich rule over the poor; if you borrow, you are the lender's slave.'",
+            "supporting": ["Romans 13:8"],
+            "principle": "Owe nothing but love. Trade only what you can afford to lose.",
+            "j81_design": "Paywall + risk disclaimer warn against trading borrowed money; goal_status auto-stops on stop-loss; no margin/leverage features.",
+        },
+        {
+            "name": "Honest dealings — fair scales",
+            "verse": "Proverbs 11:1 (GNB): 'The LORD hates people who use dishonest scales. He is happy with honest weights.'",
+            "supporting": ["Leviticus 19:35-36", "Deuteronomy 25:13-16", "Proverbs 16:11"],
+            "principle": "Use accurate measures. Don't deceive in any transaction.",
+            "j81_design": "EV strip shows REAL break-even %; library exposes the house edge; the proven-strategy store stays empty by design when nothing has earned its way in; no fake 'winning system' claims.",
+        },
+        {
+            "name": "Save and plan ahead — the wisdom of the ant",
+            "verse": "Proverbs 6:6-8 (GNB): 'Lazy people should learn a lesson from the way ants live… They store up their food in summer, getting ready for winter.'",
+            "supporting": ["Proverbs 21:20", "Genesis 41:33-36 (Joseph)"],
+            "principle": "Plan for lean seasons. Don't consume everything in good seasons.",
+            "j81_design": "Take-profit captures gains rather than letting them revert; daily loss limit preserves bankroll; recovery-math table shows the asymmetry of drawdowns.",
+        },
+        {
+            "name": "Contentment — godliness with contentment is great gain",
+            "verse": "1 Timothy 6:6-7 (GNB): 'Well, religion does make us very rich, if we are satisfied with what we have. What did we bring into the world? Nothing! What can we take out of the world? Nothing!'",
+            "supporting": ["Hebrews 13:5", "Philippians 4:11-13"],
+            "principle": "Contentment is the foundation. Greed corrodes judgement.",
+            "j81_design": "Honest copy throughout; no 'lifestyle' marketing; the dashboard tracks REAL P/L (not promised P/L) so users see truth, not hype.",
+        },
+        {
+            "name": "Beware the LOVE of money (not money itself)",
+            "verse": "1 Timothy 6:10 (GNB): 'For the love of money is a source of all kinds of evil. Some have been so eager to have it that they have wandered away from the faith and have broken their hearts with many sorrows.'",
+            "supporting": ["Matthew 6:24", "Hebrews 13:5"],
+            "principle": "Money is a tool, not a god. Don't trade away peace for profit.",
+            "j81_design": "Stop-loss, take-profit, rounds cap — all mechanical brakes against greed-driven over-trading; FOMO and revenge-trading explicitly flagged in TRADING_DISCIPLINE.",
+        },
+        {
+            "name": "Generosity — sow generously, reap generously",
+            "verse": "2 Corinthians 9:6-7 (GNB): 'Remember that the person who sows few seeds will have a small crop; the one who sows many seeds will have a large crop. Each one should give, then, as he has decided, not with regret or out of a sense of duty; for God loves the one who gives gladly.'",
+            "supporting": ["Proverbs 11:25", "Malachi 3:10", "Acts 20:35"],
+            "principle": "Give cheerfully and consistently. Generosity is its own form of investment.",
+            "j81_design": "Free practice mode (DRY_RUN) before charging; refund-friendly paywall framing; the system always discloses the hard truth (RNG + house edge), which IS a form of generosity to the user.",
+        },
+        {
+            "name": "Count the cost — plan before you commit",
+            "verse": "Luke 14:28 (GNB): 'If one of you is planning to build a tower, you sit down first and figure out what it will cost, to see if you have enough money to finish the job.'",
+            "supporting": ["Proverbs 24:27"],
+            "principle": "No commitment without a plan and a budget.",
+            "j81_design": "/quote endpoint computes the FULL pre-trade math (EV, break-even, edge, Kelly, verdict) BEFORE the trade is placed. Counting the cost is built in.",
+        },
+        {
+            "name": "No one can serve two masters",
+            "verse": "Matthew 6:24 (GNB): 'No one can be a slave of two masters; he will hate one and love the other; he will be loyal to one and despise the other. You cannot serve both God and money.'",
+            "supporting": ["Luke 16:13"],
+            "principle": "Service > extraction. If money becomes the master, the work corrupts.",
+            "j81_design": "J81 sells TOOLS, not guaranteed wins. The paywall states this plainly. The founder's stated mission is to help, not fleece.",
+        },
+        {
+            "name": "Treasure in heaven, not on earth",
+            "verse": "Matthew 6:19-21 (GNB): 'Do not store up riches for yourselves here on earth, where moths and rust destroy, and robbers break in and steal. Instead, store up riches for yourselves in heaven… For your heart will always be where your riches are.'",
+            "supporting": ["Luke 12:33-34"],
+            "principle": "Earthly wealth is temporary. Build character and serve people while you can.",
+            "j81_design": "Honest disclaimers everywhere; the strategy bar exists precisely because riches built on RNG promises rot; ethics built into the design language.",
+        },
+        {
+            "name": "Seek counsel in writing many advisors",
+            "verse": "Proverbs 15:22 (GNB): 'Get all the advice you can, and you will succeed; without it you will fail.'",
+            "supporting": ["Proverbs 11:14", "Proverbs 24:6"],
+            "principle": "Wisdom comes from many counsellors. Don't decide in isolation.",
+            "j81_design": "The library aggregates discipline + risk + brain + Deriv references — a council of perspectives. The cycle's 5-window backtest is itself a form of multi-witness verification.",
+        },
+        {
+            "name": "Work as for the Lord",
+            "verse": "Colossians 3:23-24 (GNB): 'Whatever you do, work at it with all your heart, as though you were working for the Lord and not for people. Remember that the Lord will give you as a reward what he has kept for his people.'",
+            "supporting": ["Ecclesiastes 9:10", "Proverbs 22:29"],
+            "principle": "Excellence in work is itself worship.",
+            "j81_design": "Tests + validation on every push; the engineering quality of the tree is part of the dedication, not separate from it.",
+        },
+    ],
+
+    "explicit_warnings": [
+        "Get-rich-quick schemes are condemned (Proverbs 13:11, 28:22). RNG-based 'winning systems' would be exactly this — and J81 deliberately doesn't sell that.",
+        "Greed is idolatry (Colossians 3:5). The mechanical stop-loss exists precisely to overrule greed in the moment.",
+        "Trusting wealth is folly (Proverbs 11:28). Wealth on RNG markets is especially fragile — the library + scoreboard make this visible.",
+    ],
+
+    "sources_consulted": [
+        "Good News Bible / Good News Translation (GNT) — primary translation, as requested.",
+        "https://www.focusonthefamily.com/faith/kingdom-stewardship-gods-plan-for-your-money/",
+        "https://www.franklin-wealth.com/resources/biblical-financial-stewardship/",
+        "https://havenplanning.com/20-bible-verses-on-money-and-stewardship/",
+        "https://discipleship.org/blog/the-disciple-and-money-a-lesson-in-stewardship/",
+        "Cross-checked with NIV / ESV / KJV for principles where the GNB wording is more paraphrastic.",
+    ],
+}
+
+
+PROJECT_DEDICATION: dict[str, Any] = {
+    # The honest version of "the machine believes": software has no soul and
+    # cannot literally have faith. What it CAN have is values encoded into its
+    # design — and those values are the founder's, rooted in Christian faith.
+    "preamble": (
+        "This system is dedicated by its founder in service of Christ. The "
+        "software itself does not pray, does not believe, and is not saved — "
+        "code has no soul. What we CAN do, and have done, is encode the "
+        "founder's faith-rooted values into the design itself. The machine "
+        "doesn't believe; the people who built it do, and that conviction "
+        "shapes every line of code below."
+    ),
+
+    "values_built_in": [
+        {"value": "Honesty above all", "verse": "Proverbs 12:22", "in_code": "EV strip shows real break-even; house edge is named everywhere; no fake 'winning system' claims."},
+        {"value": "Stewardship of trust", "verse": "1 Corinthians 4:2", "in_code": "Tokens encrypted (Fernet); audit log on every action; full disclosure to paying customers."},
+        {"value": "Service before extraction", "verse": "Mark 10:45", "in_code": "Free practice mode; paywall sells TOOLS not wins; clear refund-honest disclaimers."},
+        {"value": "Counting the cost", "verse": "Luke 14:28", "in_code": "Pre-trade math (EV/break-even/verdict) shown BEFORE clicking; risk-management library; recovery-math table."},
+        {"value": "No deception", "verse": "Ephesians 4:25", "in_code": "Paywall + landing + every honest note declares RNG + house edge + no guaranteed profit."},
+        {"value": "Generosity", "verse": "2 Corinthians 9:7", "in_code": "Demo unlimited; tools given before payment; the truth itself is a form of generosity in this industry."},
+        {"value": "Excellence as worship", "verse": "Colossians 3:23", "in_code": "Test coverage, validation, performance hints, accessible UI — quality is part of the offering."},
+        {"value": "Wisdom in counsel", "verse": "Proverbs 15:22", "in_code": "The library: discipline + risk + brain + scripture — multiple witnesses informing every design choice."},
+    ],
+
+    "dedication_verse": "Colossians 3:17 (GNB): 'Everything you do or say, then, should be done in the name of the Lord Jesus, as you give thanks through him to God the Father.'",
+
+    "founder_statement": "Built to serve, not to fleece. Soli Deo gloria.",
+
+    "honest_note": (
+        "I want to be plain about one thing: declaring a software system 'saved' "
+        "or 'a believer' would be a category error and, frankly, irreverent. "
+        "Salvation is for souls; code has none. But the WORK of building "
+        "software — like any work — can be offered as worship (Colossians 3:23). "
+        "That is what this dedication means: the founder offers J81 in service "
+        "of Christ; the design encodes Christian values; the tool aims to help "
+        "people, not deceive them. The verses guide US. The machine is the "
+        "result."
+    ),
+}
+
+
 HUMAN_BRAIN: dict[str, Any] = {
     # Brain-inspired architecture for the J81 tree. The mappings below are
     # ANALOGIES drawn from well-cited cognitive neuroscience (Kahneman, Friston,
@@ -700,6 +863,8 @@ def library() -> dict[str, Any]:
         "trading_discipline": TRADING_DISCIPLINE,
         "risk_management": RISK_MANAGEMENT,
         "human_brain": HUMAN_BRAIN,
+        "bible_financial_wisdom": BIBLE_FINANCIAL_WISDOM,
+        "project_dedication": PROJECT_DEDICATION,
         "live": _LIVE,
     }
 
