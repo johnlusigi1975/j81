@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark" />
 <meta name="theme-color" content="#0a0e13" />
 <title>J81 Trade Desk — AI-assisted trading on Deriv</title>
-<meta name="description" content="J81 Trade Desk is a premium AI-assisted trading platform for Deriv synthetics — Rise/Fall, Even/Odd, Over/Under and Matches/Differs, with live charts, auto-trading and a self-testing strategy engine. Connect your Deriv account in one tap." />
+<meta name="description" content="J81 Trade Desk is a premium AI-assisted trading platform for Deriv synthetics — Rise/Fall, Even/Odd, and Over/Under — with live charts, auto-trading and a self-testing strategy engine. Connect your Deriv account in one tap." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://j81-trade-desk.onrender.com/" />
 <!-- Open Graph (link previews on social / chat) -->
@@ -194,7 +194,7 @@
   .gcard .ic{font-size:22px;font-weight:800;color:var(--amber);font-family:var(--serif);letter-spacing:1px}
   .gcard .t{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
   .gcard .d{font-size:12.5px;color:var(--dim)}
-  /* digit picker (Over/Under, Matches/Differs) */
+  /* digit picker (Over/Under) */
   .digrow{display:flex;flex-wrap:wrap;gap:7px}
   .digbtn{width:40px;height:44px;border-radius:11px;border:1px solid var(--bd);background:var(--panel);color:var(--dim);font-family:var(--mono);font-size:17px;font-weight:800;cursor:pointer;transition:all .12s}
   .digbtn:hover{border-color:var(--amber);color:#fff}
@@ -481,7 +481,6 @@
       <div class="ttype"><div class="ic">↗↘</div><div><h4>Rise / Fall</h4><p>Will the price tick up or down?</p></div></div>
       <div class="ttype"><div class="ic">E·O</div><div><h4>Even / Odd</h4><p>Will the last digit be even or odd?</p></div></div>
       <div class="ttype"><div class="ic">7▲</div><div><h4>Over / Under</h4><p>Will the last digit land over or under your pick?</p></div></div>
-      <div class="ttype"><div class="ic">=≠</div><div><h4>Matches / Differs</h4><p>Will the last digit match or differ from your pick?</p></div></div>
       <div class="ttype"><div class="ic">◷</div><div><h4>Auto take-profit</h4><p>Runs by itself and stops at your win or loss limit.</p></div></div>
     </div>
   </div>
@@ -663,7 +662,7 @@
     <div class="engines-flow eng2">
       <div class="engine" data-eng="ana">
         <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
-        <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
+        <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under — backtesting 5×100</div><div class="pbar"><i></i></div></div>
       </div>
       <div class="pipe" data-pipe="2"><span></span><span></span><span></span></div>
       <div class="engine" data-eng="bot">
@@ -773,13 +772,13 @@
       <div id="eo-payout" hidden style="margin-top:10px"></div>
     </div>
 
-    <!-- digit picker (Over/Under, Matches/Differs only) -->
+    <!-- digit picker (Over/Under only) -->
     <div id="digit-picker" hidden style="margin-bottom:12px">
       <div class="lab" style="margin-bottom:6px">Pick your digit <span class="faint" id="digit-hint"></span></div>
       <div class="digrow" id="digit-row"></div>
     </div>
 
-    <!-- manual buttons (Rise/Fall, Even/Odd, Over/Under, Matches/Differs) -->
+    <!-- manual buttons (Rise/Fall, Even/Odd, Over/Under) -->
     <!-- honest pre-trade math (payout · break-even · EV) -->
     <div id="trade-math" style="margin-bottom:10px"></div>
     <div class="tgrid" id="trade-buttons"></div>
@@ -851,7 +850,7 @@
       <div class="engines-flow eng2">
         <div class="engine" data-eng="ana">
           <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
-          <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
+          <div class="engine-body"><div class="feed">Rise/Fall · Even/Odd · Over/Under — backtesting 5×100</div><div class="pbar"><i></i></div></div>
         </div>
         <div class="pipe" data-pipe="2"><span></span><span></span><span></span></div>
         <div class="engine" data-eng="bot">
@@ -1125,7 +1124,6 @@ const GAMES=[
   {id:"rise_fall",ic:"↗↘",name:"Rise / Fall",d:"Will the price tick up or down?",status:"live",grp:"Quick trades"},
   {id:"even_odd",ic:"E·O",name:"Even / Odd",d:"Will the last digit be even or odd?",status:"live",grp:"Quick trades"},
   {id:"over_under",ic:"7▲",name:"Over / Under",d:"Will the last digit land over or under your pick?",status:"live",grp:"Quick trades"},
-  {id:"matches_differs",ic:"=≠",name:"Matches / Differs",d:"Will the last digit match or differ from your pick?",status:"live",grp:"Quick trades"},
 ];
 function renderGames(){
   const groups=[...new Set(GAMES.map(g=>g.grp))];
@@ -1427,7 +1425,7 @@ function renderDeepRead(prices, vol, P, streak, sdir){
 // between the engines, pulsing heartbeat, and (when powered on) actually triggers
 // a real cycle run on the server — so it's a window into work, not theatre.
 const _RES_SRC = ["YouTube","TikTok","Instagram","Reddit","X / Twitter","Medium","Telegram","Discord","Web articles","arXiv"];
-const _ANA_THINGS = ["Rise/Fall · R_100","Even/Odd · R_25 (best payout)","Over/Under 4 · R_75","Matches/Differs · 1HZ100V","Backtesting 5×100","Computing EV vs payout","Scoring break-even","Filtering survivors"];
+const _ANA_THINGS = ["Rise/Fall · R_100","Even/Odd · R_25 (best payout)","Over/Under 4 · R_75","Backtesting 5×100","Computing EV vs payout","Scoring break-even","Filtering survivors"];
 const _BOT_THINGS = ["Subscribing to 10 markets","Live tick stream","Balance check","Risk gate · TP/SL","Proven-strategy auto","24/7 settle loop","Order route ready"];
 let _enginesOn=false, _engSeqTimer=null, _engFeedTimers=[];
 // All selectors are class/data-attr based so the engines panel can be embedded
@@ -1653,11 +1651,6 @@ const LiveWS=(function(){
       sel=call==="over"?".tbtn.up":".tbtn.down";
       msg=`Over ${b}: ${Math.round(over/n*100)}% · Under ${b}: ${Math.round(under/n*100)}% (last ${n}) — leaning ${call.toUpperCase()} ${b}`;
       LIVESIG={trade_type:"over_under",direction:call,prediction:String(b)};
-    } else if(GAME==="matches_differs"){
-      const b=SELDIGIT, m=digits.filter(x=>x===b).length;
-      sel=".tbtn.odd";
-      msg=`Digit ${b} hit ${Math.round(m/n*100)}% of last ${n} (~10% expected) — Differs wins ~9 in 10`;
-      LIVESIG={trade_type:"matches_differs",direction:"differs",prediction:String(b)};
     } else { return; }
     am.textContent="📊 "+msg+" — synthetics are random, so manage your risk";
     document.querySelectorAll(".tbtn").forEach(b=>b.classList.remove("sug"));
@@ -1760,20 +1753,20 @@ const RFScan=(function(){
 })();
 
 // ---------- trade view ----------
-const GAME_NAMES={m_pro:"M Pro · Auto Scanner",rise_fall:"Rise / Fall",even_odd:"Even / Odd",over_under:"Over / Under",matches_differs:"Matches / Differs"};
-let SELDIGIT=5;   // chosen digit for Over/Under + Matches/Differs
+const GAME_NAMES={m_pro:"M Pro · Auto Scanner",rise_fall:"Rise / Fall",even_odd:"Even / Odd",over_under:"Over / Under"};
+let SELDIGIT=5;   // chosen digit for Over/Under
 function renderDigitPicker(game){
   const row=$("digit-row"); if(!row) return;
   row.innerHTML=[0,1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" class="digbtn ${n===SELDIGIT?'on':''}" data-dig="${n}">${n}</button>`).join("");
   row.querySelectorAll(".digbtn").forEach(b=>b.addEventListener("click",()=>{ SELDIGIT=+b.dataset.dig; row.querySelectorAll(".digbtn").forEach(x=>x.classList.toggle("on",+x.dataset.dig===SELDIGIT)); scheduleTradeMath(); }));
-  $("digit-hint").textContent = game==="over_under" ? "— win if the last digit lands over / under this" : "— win if the last digit matches / differs from this";
+  $("digit-hint").textContent = "— win if the last digit lands over / under this";
 }
 async function openTrade(game){
   GAME=game; showView("trade");
   $("trade-kind").textContent = GAME_NAMES[game] || "Trade";
   $("mpro-extra").hidden = (game!=="m_pro");
   $("trade-buttons").hidden = (game==="m_pro");
-  const isDigit=(game==="over_under"||game==="matches_differs");
+  const isDigit=(game==="over_under");
   $("digit-picker").hidden = !isDigit;
   if(isDigit) renderDigitPicker(game);
   // buttons
@@ -1786,9 +1779,6 @@ async function openTrade(game){
   } else if(game==="over_under"){
     $("trade-buttons").innerHTML=`<button class="tbtn up" data-tt="over_under" data-dir="over"><span class="big">▲ OVER</span><span class="pay" id="pay-a">—</span></button>
       <button class="tbtn down" data-tt="over_under" data-dir="under"><span class="big">▼ UNDER</span><span class="pay" id="pay-b">—</span></button>`;
-  } else if(game==="matches_differs"){
-    $("trade-buttons").innerHTML=`<button class="tbtn even" data-tt="matches_differs" data-dir="matches"><span class="big">= MATCHES</span><span class="pay" id="pay-a">—</span></button>
-      <button class="tbtn odd" data-tt="matches_differs" data-dir="differs"><span class="big">≠ DIFFERS</span><span class="pay" id="pay-b">—</span></button>`;
   }
   // digit strength panel = digit games; price chart + market scan = Rise/Fall
   $("live-panel").hidden = (game==="m_pro" || game==="rise_fall");
@@ -1868,7 +1858,7 @@ async function placeTrade(btn){
   let call;
   if(tt==="rise_fall"){ body.direction=btn.dataset.dir; call=body.direction.toUpperCase(); }
   else if(tt==="even_odd"){ body.prediction=btn.dataset.pred; call=body.prediction.toUpperCase(); }
-  else if(tt==="over_under"||tt==="matches_differs"){ body.direction=btn.dataset.dir; body.prediction=String(SELDIGIT); call=body.direction.toUpperCase()+" "+SELDIGIT; }
+  else if(tt==="over_under"){ body.direction=btn.dataset.dir; body.prediction=String(SELDIGIT); call=body.direction.toUpperCase()+" "+SELDIGIT; }
   else { call=(btn.dataset.dir||btn.dataset.pred||"").toUpperCase(); }
   // Impossible digit bets: nothing is over 9, nothing is under 0.
   if(tt==="over_under" && body.direction==="over" && SELDIGIT===9){ res.innerHTML='<div class="banner warn" style="margin:0">Pick a digit 0–8 for OVER (nothing is over 9).</div>'; return; }
@@ -1893,7 +1883,7 @@ async function placeTrade(btn){
 
 async function loadAssistant(){
   // Rise/Fall uses the price-momentum read from the analyser; the digit games
-  // (even_odd, over_under, matches_differs) are driven live by LiveWS/applySig.
+  // (even_odd, over_under) are driven live by LiveWS/applySig.
   if(GAME!=="rise_fall") return;
   const sym=($("t-symbol")||{}).value||"R_100";
   try{
@@ -1937,7 +1927,6 @@ async function loadTradeMath(){
   if(tt==="rise_fall") p.set("direction","up");
   else if(tt==="even_odd") p.set("direction","even");
   else if(tt==="over_under"){ p.set("direction","over"); p.set("prediction",String(SELDIGIT)); side=" (OVER "+SELDIGIT+")"; }
-  else if(tt==="matches_differs"){ p.set("direction","differs"); p.set("prediction",String(SELDIGIT)); side=" (DIFFERS "+SELDIGIT+")"; }
   try{
     const q=await api("/quote?"+p.toString());
     if(!q.payout){ el.innerHTML=""; return; }

@@ -265,7 +265,7 @@ async def execute_decision_for_account(account: dict, decision: dict) -> dict:
 # ---------- manual trade (the simple grandma "Trade" panel) -------------
 
 # The two simple sections we support first. Everything else is future work.
-MANUAL_TRADE_TYPES = ("rise_fall", "even_odd", "over_under", "matches_differs")
+MANUAL_TRADE_TYPES = ("rise_fall", "even_odd", "over_under")
 
 
 async def execute_manual_trade(
@@ -288,7 +288,7 @@ async def execute_manual_trade(
 
     tt = (trade_type or "").lower()
     if tt not in MANUAL_TRADE_TYPES:
-        return {"outcome": "error", "error": f"trade_type {trade_type!r} not supported (Rise/Fall, Even/Odd, Over/Under, Matches/Differs)"}
+        return {"outcome": "error", "error": f"trade_type {trade_type!r} not supported (Rise/Fall, Even/Odd, Over/Under)"}
     # A manual trade is the human pressing the button — that IS the
     # authorization. So manual trades have NO auto-gates: we do NOT require the
     # `enabled` opt-in, and we do NOT apply the take-profit / loss-limit / daily

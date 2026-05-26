@@ -41,8 +41,6 @@ def _proven_to_params(s: dict) -> tuple[str, str | None, str | None]:
         "DIGITODD":   ("even_odd", None, "odd"),
         "DIGITOVER":  ("over_under", "over", bs or "4"),
         "DIGITUNDER": ("over_under", "under", bs or "5"),
-        "DIGITMATCH": ("matches_differs", "matches", bs or "0"),
-        "DIGITDIFF":  ("matches_differs", "differs", bs or "0"),
     }
     return table.get(ct, (s.get("trade_type") or "rise_fall", "up", None))
 

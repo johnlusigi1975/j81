@@ -743,7 +743,6 @@ def _structural_winprob(trade_type: str | None, direction: str | None,
     """The TRUE win chance of a Deriv synthetic bet (audited RNG):
       rise_fall / even_odd → 0.5
       over N  → digits N+1..9 = (9-N)/10 ; under N → digits 0..N-1 = N/10
-      matches a digit → 0.1 ; differs → 0.9
     Recent streaks don't move these — that's the honest point."""
     tt = (trade_type or "").lower()
     d = (direction or "").lower()
@@ -753,8 +752,6 @@ def _structural_winprob(trade_type: str | None, direction: str | None,
         n = int(prediction) if prediction is not None else 5
         n = max(0, min(9, n))
         return (9 - n) / 10.0 if d == "over" else n / 10.0
-    if tt == "matches_differs":
-        return 0.9 if d == "differs" else 0.1
     return 0.5
 
 

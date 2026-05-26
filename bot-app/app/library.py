@@ -1,6 +1,6 @@
 """Deriv Trade-Type Library — the tree's single source of truth.
 
-We ONLY trade four contract types: Rise/Fall, Even/Odd, Over/Under, Matches/Differs.
+We ONLY trade three contract types: Rise/Fall, Even/Odd, Over/Under.
 This module holds:
 
   * STATIC knowledge from Deriv's API docs (contract codes, settlement rules,
@@ -79,20 +79,6 @@ TRADE_TYPES: dict[str, dict[str, Any]] = {
             "under_1": 0.1, "under_5": 0.5, "under_9": 0.9,
         },
         "real_ev_edge": "None — Deriv prices payouts per barrier so EV stays negative for both sides. High-probability barriers pay low (~1.1×); low-probability pay high (~9×). Break-even tracks the structural odds plus the house edge.",
-    },
-    "matches_differs": {
-        "name": "Matches / Differs",
-        "deriv_codes": {"matches": "DIGITMATCH", "differs": "DIGITDIFF"},
-        "settles_on": "last digit of the final tick at expiry",
-        "win_rule": "DIGITMATCH wins if last digit == barrier; DIGITDIFF wins if last digit != barrier",
-        "duration_unit": "t",
-        "duration_min": 1, "duration_max": 10,
-        "barrier_required": True,
-        "barrier_constraints": {"any": "0–9"},
-        "structural_win_prob": {"matches": 0.10, "differs": 0.90},
-        "typical_payout_multiplier": {"matches": 9.5, "differs": 1.05},
-        "break_even_winrate": {"matches": 0.105, "differs": 0.952},
-        "real_ev_edge": "None — and the most honest demonstration in the library of 'high win-rate ≠ profit'. DIFFERS wins ~90% but pays only ~1.05×; MATCHES wins ~10% but pays ~9.5×. Both sides carry a small house edge.",
     },
 }
 
@@ -801,8 +787,6 @@ def variants_to_probe() -> list[dict[str, Any]]:
         {"ct": "DIGITEVEN",  "duration": 1, "barrier": None, "side": "even_odd.even",  "stake": 1.0},
         {"ct": "DIGITOVER",  "duration": 1, "barrier": "4",  "side": "over_under.over4","stake": 1.0},
         {"ct": "DIGITUNDER", "duration": 1, "barrier": "5",  "side": "over_under.under5","stake": 1.0},
-        {"ct": "DIGITMATCH", "duration": 1, "barrier": "0",  "side": "matches_differs.matches0","stake": 1.0},
-        {"ct": "DIGITDIFF",  "duration": 1, "barrier": "0",  "side": "matches_differs.differs0","stake": 1.0},
     ]
 
 

@@ -97,7 +97,7 @@ def _trade_payload(
     # Only digit-target contracts take a barrier (the predicted digit).
     # even_odd is NOT one — its parity is encoded in DIGITEVEN/DIGITODD, so
     # sending a barrier there makes Deriv reject the contract.
-    if prediction is not None and trade_type in ("over_under", "matches_differs"):
+    if prediction is not None and trade_type == "over_under":
         body["parameters"]["barrier"] = str(prediction)
     return body
 
@@ -115,8 +115,6 @@ def _contract_type(trade_type: str, direction: str | None, prediction) -> str:
         return "DIGITEVEN" if prediction in ("even", 0, "0") else "DIGITODD"
     if t == "over_under":
         return "DIGITOVER" if d == "over" else "DIGITUNDER"
-    if t == "matches_differs":
-        return "DIGITMATCH" if d == "matches" else "DIGITDIFF"
     raise DerivBotError(f"unsupported trade_type for execution: {trade_type!r}")
 
 
@@ -267,7 +265,7 @@ async def get_proposal(
         "symbol": symbol,
         "req_id": 1,
     }
-    if prediction is not None and trade_type in ("over_under", "matches_differs"):
+    if prediction is not None and trade_type == "over_under":
         req["barrier"] = str(prediction)
     async with websockets.connect(url, open_timeout=timeout) as ws:
         await ws.send(json.dumps(req))
