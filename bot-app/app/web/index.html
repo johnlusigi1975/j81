@@ -1864,11 +1864,20 @@ async function openTrade(game){
   if($("eo-scan")) $("eo-scan").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
   if($("eo-auto")) $("eo-auto").hidden = !isEO;
-  // On EO we hide the term-head (spot price + volatility name), the
-  // market/stake/ticks param row, and the J81 "analysing" read — the
-  // auto-trader panel above carries equivalent controls and a cleaner header.
+  // On EO we strip out everything the auto-trader already covers — the
+  // page becomes JUST the auto-trader at the top and the scanner below.
+  //   • trade-header (spot price + volatility name pill)
+  //   • trade-params (Market / Stake / Ticks input row)
+  //   • assist read ("J81 is analysing for you")
+  //   • trade-math (Payout / break-even / EV strip)
+  //   • trade-buttons (EVEN / ODD / AUTO trio — auto-trader has its own start)
+  //   • t-result (inline send/win/lose toast — replaced by the session stats
+  //     inside the auto-trader and the recent-activity ticker below)
   if($("trade-header")) $("trade-header").hidden = isEO;
   if($("trade-params")) $("trade-params").hidden = isEO;
+  if($("trade-math")) $("trade-math").hidden = isEO;
+  if($("trade-buttons")) $("trade-buttons").hidden = isEO;
+  if($("t-result")) $("t-result").hidden = isEO;
   document.querySelectorAll(".read").forEach(r => { if(r.querySelector("#assist-msg")) r.hidden = isEO; });
   if(isEO){ loadEvenOddPayouts(); startEoScan(); } else { stopEoScan(); }
   $("trade-buttons").className = "tgrid"
