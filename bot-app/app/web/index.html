@@ -253,11 +253,22 @@
   /* J81 Engines live-demo panel — Researcher → Analyser → Bot. */
   .engines-wrap{border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(212,184,122,.06),rgba(23,182,196,.03))}
   .engines-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-  .engines-pwr{font-family:inherit;font-size:13px;color:var(--text);background:rgba(0,0,0,.32);border:1px solid var(--bd);border-radius:999px;padding:7px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .18s}
-  .engines-pwr .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);box-shadow:none;transition:all .25s}
-  .engines-pwr.on{border-color:var(--amber);box-shadow:0 0 18px -4px rgba(212,184,122,.4);color:var(--amber)}
-  .engines-pwr.on .dot{background:var(--amber);box-shadow:0 0 12px var(--amber);animation:eng-pulse 1.4s ease-in-out infinite}
-  @keyframes eng-pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.35);opacity:1}}
+  /* Power button is a SLIDER toggle: OFF = ball left + red; ON = ball right + green. */
+  .engines-pwr{font-family:inherit;font-size:13px;color:var(--bad);background:rgba(0,0,0,.32);border:1px solid var(--bd);border-radius:99px;padding:5px 12px 5px 8px;cursor:pointer;display:inline-flex;flex-direction:row-reverse;align-items:center;gap:10px;transition:border-color .25s,box-shadow .25s,color .25s}
+  .engines-pwr .lbl{font-weight:700;letter-spacing:.02em;transition:color .25s}
+  .engines-pwr .dot{position:relative;width:42px;height:22px;border-radius:99px;background:rgba(229,72,77,.18);border:1px solid rgba(229,72,77,.55);box-shadow:none;transition:background .25s,border-color .25s}
+  .engines-pwr .dot::before{content:"";position:absolute;left:2px;top:50%;transform:translateY(-50%);width:16px;height:16px;border-radius:50%;background:var(--bad);box-shadow:0 0 8px var(--bad);transition:left .35s cubic-bezier(.4,1.7,.5,1),background .25s,box-shadow .25s}
+  .engines-pwr.on{border-color:rgba(70,207,158,.55);box-shadow:0 0 18px -4px rgba(70,207,158,.45);color:var(--good)}
+  .engines-pwr.on .lbl{color:var(--good)}
+  .engines-pwr.on .dot{background:rgba(70,207,158,.22);border-color:rgba(70,207,158,.6)}
+  .engines-pwr.on .dot::before{left:22px;background:var(--good);box-shadow:0 0 12px var(--good);animation:eng-pulse 1.6s ease-in-out infinite}
+  @keyframes eng-pulse{0%,100%{box-shadow:0 0 8px var(--good)}50%{box-shadow:0 0 18px var(--good)}}
+  /* Floating reminder beside the power button (shown to new visitors until they turn it on). */
+  .engines-pwr-wrap{display:inline-flex;align-items:center;gap:12px}
+  .engines-tip{position:relative;display:inline-flex;align-items:center;background:linear-gradient(135deg,#ecd9a8,#d4b87a);color:#241c0a;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:8px;white-space:nowrap;box-shadow:0 8px 18px -5px rgba(212,184,122,.55);animation:tip-nudge 1.4s ease-in-out infinite;letter-spacing:.02em}
+  .engines-tip::after{content:"";position:absolute;left:100%;top:50%;width:0;height:0;border-style:solid;border-width:6px 0 6px 7px;border-color:transparent transparent transparent #d4b87a;transform:translateY(-50%)}
+  .engines-tip.dismissed{display:none}
+  @keyframes tip-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
   .engines-flow{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;align-items:stretch;gap:6px}
   @media(max-width:720px){.engines-flow{grid-template-columns:1fr;gap:8px} .pipe{transform:rotate(90deg);height:28px;width:60px;margin:0 auto}}
   .engine{position:relative;border:1px solid var(--bd);border-radius:12px;padding:11px;background:rgba(0,0,0,.18);transition:all .35s;overflow:hidden}
@@ -709,9 +720,12 @@
     <div class="engines-wrap">
       <div class="engines-head">
         <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
-        <button class="engines-pwr" type="button" title="Toggle the live engine view">
-          <span class="dot"></span><span class="lbl">Power on</span>
-        </button>
+        <div class="engines-pwr-wrap">
+          <span class="engines-tip">👉 Power me on to watch</span>
+          <button class="engines-pwr" type="button" title="Toggle the live engine view">
+            <span class="dot"></span><span class="lbl">Power on</span>
+          </button>
+        </div>
       </div>
       <div class="engines-flow">
         <div class="engine" data-eng="res">
@@ -1168,11 +1182,20 @@ function _enginesPower(on){
     btn.classList.toggle("on",on);
     var l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Power off" : "Power on";
   });
-  if(on){ api("/cycle/run",{method:"POST"}).catch(function(){}); _engSequence(); }
-  else { if(_engSeqTimer){ clearTimeout(_engSeqTimer); _engSeqTimer=null; } _engFeedTimers.forEach(clearInterval); _engFeedTimers=[]; _engReset(); }
+  if(on){
+    // First time powered on → dismiss the floating reminder for good.
+    document.querySelectorAll('.engines-tip').forEach(t=>t.classList.add('dismissed'));
+    try{ localStorage.setItem("j81_eng_tip_dismissed","1"); }catch(_){}
+    api("/cycle/run",{method:"POST"}).catch(function(){});
+    _engSequence();
+  } else {
+    if(_engSeqTimer){ clearTimeout(_engSeqTimer); _engSeqTimer=null; } _engFeedTimers.forEach(clearInterval); _engFeedTimers=[]; _engReset();
+  }
 }
 // Bind every engines power button (panel can appear on multiple views — they all toggle the same state).
 document.querySelectorAll('.engines-pwr').forEach(b=>b.addEventListener("click",()=>_enginesPower(!_enginesOn)));
+// Hide the floating tip on load if the user already powered the engines on once before.
+try{ if(localStorage.getItem("j81_eng_tip_dismissed")) document.querySelectorAll('.engines-tip').forEach(t=>t.classList.add('dismissed')); }catch(_){}
 
 // ---------- Even/Odd deeper read (honest: digit observations, not a prediction) ----------
 function _eoChip(lab,val,col){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:54px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:'+(col||'var(--text)')+'">'+val+'</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">'+lab+'</span></span>'; }
