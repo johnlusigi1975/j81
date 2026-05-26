@@ -503,9 +503,6 @@
   </div>
 
   <div id="choose-grid"></div>
-
-  <div class="sec-title">Recent activity</div>
-  <div class="glass" style="padding:14px"><div id="trades-mini"><div class="empty">no trades yet</div></div></div>
 </div>
 
 <!-- ============ VIEW: TRADE (per type) ============ -->
@@ -932,14 +929,6 @@ async function loadHome(){
     $("s-acct").textContent=CUR?(CUR.is_demo?"demo account":"real account"):"—";
   }catch(_){}
   if(CUR) loadBalance(CUR.id).then(b=>{ const el=$("s-acct"); if(el&&b&&b.balance!=null) el.textContent=fmtMoney(b.balance,b.currency); });
-  try{ const t=await api("/trades?limit=6"); const el=$("trades-mini");
-    el.innerHTML = (!t.length)?'<div class="empty">no trades yet — pick a game above</div>'
-      : t.map(x=>`<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--bd);font-size:12.5px">
-        <span class="pill ${x.is_dry_run?'warn':''}">${x.is_dry_run?'practice':'live'}</span>
-        <b>${esc(x.symbol||'')}</b> <span class="faint">${esc(x.trade_type||'')} ${esc(x.direction||x.prediction||'')}</span>
-        <span style="margin-left:auto" class="${x.outcome==='won'?'':''}">${esc(x.outcome||'')}</span>
-        ${x.profit!=null?`<span style="color:${x.profit>=0?'var(--good)':'var(--bad)'}">${x.profit>=0?'+':''}${Number(x.profit).toFixed(2)}</span>`:''}</div>`).join("");
-  }catch(_){}
   loadHomeCycle();
 }
 function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
