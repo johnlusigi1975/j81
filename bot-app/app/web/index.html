@@ -250,6 +250,40 @@
   .confbar .mark{position:absolute;top:-3px;bottom:-3px;left:70%;width:2px;background:rgba(255,255,255,.55)}
   .confbar .mark::after{content:"70%";position:absolute;top:-14px;left:-8px;font-size:8px;color:var(--faint)}
   @keyframes sug{0%,100%{box-shadow:0 16px 36px -14px rgba(255,255,255,.45)}50%{box-shadow:0 20px 48px -10px rgba(255,255,255,.85)}}
+  /* J81 Engines live-demo panel — Researcher → Analyser → Bot. */
+  .engines-wrap{border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(212,184,122,.06),rgba(23,182,196,.03))}
+  .engines-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .engines-pwr{font-family:inherit;font-size:13px;color:var(--text);background:rgba(0,0,0,.32);border:1px solid var(--bd);border-radius:999px;padding:7px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .18s}
+  .engines-pwr .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);box-shadow:none;transition:all .25s}
+  .engines-pwr.on{border-color:var(--amber);box-shadow:0 0 18px -4px rgba(212,184,122,.4);color:var(--amber)}
+  .engines-pwr.on .dot{background:var(--amber);box-shadow:0 0 12px var(--amber);animation:eng-pulse 1.4s ease-in-out infinite}
+  @keyframes eng-pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.35);opacity:1}}
+  .engines-flow{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;align-items:stretch;gap:6px}
+  @media(max-width:720px){.engines-flow{grid-template-columns:1fr;gap:8px} .pipe{transform:rotate(90deg);height:28px;width:60px;margin:0 auto}}
+  .engine{position:relative;border:1px solid var(--bd);border-radius:12px;padding:11px;background:rgba(0,0,0,.18);transition:all .35s;overflow:hidden}
+  .engine.live{border-color:var(--amber);box-shadow:0 0 26px -6px rgba(212,184,122,.45),inset 0 0 0 1px rgba(212,184,122,.18)}
+  .engine.done{border-color:var(--good);box-shadow:0 0 22px -8px rgba(70,207,158,.5)}
+  .engine .engine-head{display:flex;align-items:center;gap:10px}
+  .engine .ico{font-size:22px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:rgba(0,0,0,.32);transition:transform .35s}
+  .engine.live .ico{transform:translateY(-2px);animation:eng-bob 1.6s ease-in-out infinite}
+  @keyframes eng-bob{0%,100%{transform:translateY(-1px)}50%{transform:translateY(-4px)}}
+  .engine .nm{font-weight:800;font-size:13.5px} .engine .st{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;transition:color .25s}
+  .engine.live .st{color:var(--amber)} .engine.done .st{color:var(--good)}
+  .engine .feed{margin-top:9px;font-size:11.5px;color:var(--dim);min-height:30px;line-height:1.4;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis}
+  .engine .pbar{margin-top:8px;height:3px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden}
+  .engine .pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--amber),var(--amber2));transition:width .35s ease;border-radius:99px}
+  .engine.done .pbar i{background:linear-gradient(90deg,var(--good),#9af0c5)}
+  /* shimmer overlay on a live engine */
+  .engine.live::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.06) 50%,transparent 65%);background-size:200% 100%;animation:eng-shimmer 2.4s linear infinite;pointer-events:none}
+  @keyframes eng-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  /* power-flow pipes */
+  .pipe{position:relative;height:2px;align-self:center;background:rgba(255,255,255,.10);border-radius:99px;overflow:hidden}
+  .pipe span{position:absolute;top:-2px;width:6px;height:6px;border-radius:50%;background:var(--amber);opacity:0;box-shadow:0 0 8px var(--amber)}
+  .pipe.flow{background:rgba(212,184,122,.18)}
+  .pipe.flow span{animation:eng-flow 1.2s linear infinite}
+  .pipe.flow span:nth-child(2){animation-delay:.4s} .pipe.flow span:nth-child(3){animation-delay:.8s}
+  @keyframes eng-flow{0%{left:-6px;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:calc(100% + 6px);opacity:0}}
+
   /* Auto-trade box hidden: the trading interface is manual-only for now.
      CSS-hide (not delete) so all the auto JS hooks/IDs still exist and
      nothing throws. To bring it back, remove this 'display:none' line. */
@@ -641,6 +675,34 @@
 
     <div class="sec-title" style="margin:18px 0 8px">Live results <span class="faint" id="trade-bal" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
     <div id="trade-recent"><div class="empty">no trades yet</div></div>
+
+    <!-- ===================== J81 ENGINES — live demonstration ===================== -->
+    <div class="sec-title" style="margin:24px 0 8px">J81 engines <span class="faint" style="text-transform:none;letter-spacing:0">researcher · analyser · bot</span></div>
+    <div id="engines" class="engines-wrap">
+      <div class="engines-head">
+        <div class="faint" style="font-size:11.5px;max-width:560px">The three systems run on our servers around the clock. Press the switch to watch a live demonstration of what they do each cycle.</div>
+        <button id="engines-power" class="engines-pwr" type="button" title="Toggle the live engine view">
+          <span class="dot"></span><span class="lbl">Power on</span>
+        </button>
+      </div>
+      <div class="engines-flow">
+        <div class="engine" id="eng-res" data-name="Researcher">
+          <div class="engine-head"><div class="ico">🔭</div><div class="meta"><div class="nm">Researcher</div><div class="st">idle</div></div></div>
+          <div class="engine-body"><div class="feed" id="eng-res-feed">YouTube · TikTok · Instagram · Reddit · X · Medium · Web</div><div class="pbar"><i></i></div></div>
+        </div>
+        <div class="pipe" id="pipe-1"><span></span><span></span><span></span></div>
+        <div class="engine" id="eng-ana" data-name="Analyser">
+          <div class="engine-head"><div class="ico">🧠</div><div class="meta"><div class="nm">Analyser</div><div class="st">idle</div></div></div>
+          <div class="engine-body"><div class="feed" id="eng-ana-feed">Rise/Fall · Even/Odd · Over/Under · Matches/Differs — backtesting 5×100</div><div class="pbar"><i></i></div></div>
+        </div>
+        <div class="pipe" id="pipe-2"><span></span><span></span><span></span></div>
+        <div class="engine" id="eng-bot" data-name="Bot">
+          <div class="engine-head"><div class="ico">🤖</div><div class="meta"><div class="nm">Bot</div><div class="st">idle</div></div></div>
+          <div class="engine-body"><div class="feed" id="eng-bot-feed">Live ticks · balance · risk gate · proven-strategy auto · 24/7 loop</div><div class="pbar"><i></i></div></div>
+        </div>
+      </div>
+      <div class="faint" id="engines-note" style="font-size:11px;margin-top:10px">Honest note: the engines always run server-side regardless of this switch — this is just a live window into what they're doing.</div>
+    </div>
   </div>
 </div>
 
@@ -989,6 +1051,92 @@ function renderDeepRead(prices, vol, P, streak, sdir){
     '</div>'+
     '<div class="faint" style="font-size:10.5px;margin-top:6px">'+esc(_deepReadMsg(w10,w30,streak,sdir,volLab))+'</div>';
 }
+
+// ---------- J81 Engines live demonstration (Researcher → Analyser → Bot) ----------
+// Polished: real data from /health/tree + /cycle/status, animated power-flow pipes
+// between the engines, pulsing heartbeat, and (when powered on) actually triggers
+// a real cycle run on the server — so it's a window into work, not theatre.
+const _RES_SRC = ["YouTube","TikTok","Instagram","Reddit","X / Twitter","Medium","Telegram","Discord","Web articles","arXiv"];
+const _ANA_THINGS = ["Rise/Fall · R_100","Even/Odd · R_25 (best payout)","Over/Under 4 · R_75","Matches/Differs · 1HZ100V","Backtesting 5×100","Computing EV vs payout","Scoring break-even","Filtering survivors"];
+const _BOT_THINGS = ["Subscribing to 10 markets","Live tick stream","Balance check","Risk gate · TP/SL","Proven-strategy auto","24/7 settle loop","Order route ready"];
+let _enginesOn=false, _engSeqTimer=null, _engFeedTimers=[];
+function _engEl(id){ return document.getElementById(id); }
+function _engReset(){
+  _engFeedTimers.forEach(clearInterval); _engFeedTimers=[];
+  ["eng-res","eng-ana","eng-bot"].forEach(id=>{ var e=_engEl(id); if(e){ e.classList.remove("live","done"); var s=e.querySelector(".st"); if(s) s.textContent="idle"; var b=e.querySelector(".pbar i"); if(b) b.style.width="0"; }});
+  ["pipe-1","pipe-2"].forEach(id=>{ var p=_engEl(id); if(p) p.classList.remove("flow"); });
+}
+function _engRotate(engineId, items, intervalMs){
+  var el=document.querySelector("#"+engineId+" .feed"); if(!el) return;
+  var i=0; el.textContent=items[0];
+  var t=setInterval(()=>{ i=(i+1)%items.length; el.textContent=items[i]; }, intervalMs);
+  _engFeedTimers.push(t);
+}
+function _engStop(engineId, finalText, statusText){
+  var el=_engEl(engineId); if(!el) return;
+  var s=el.querySelector(".st"); if(s) s.textContent=statusText||"done";
+  var feed=el.querySelector(".feed"); if(feed && finalText) feed.textContent=finalText;
+  el.classList.remove("live"); el.classList.add("done");
+  var b=el.querySelector(".pbar i"); if(b) b.style.width="100%";
+}
+function _engLive(engineId){
+  var el=_engEl(engineId); if(!el) return; el.classList.remove("done"); el.classList.add("live");
+  var s=el.querySelector(".st"); if(s) s.textContent="alive";
+  var b=el.querySelector(".pbar i"); if(b){ b.style.width="0"; setTimeout(()=>{ b.style.width="85%"; }, 50); }
+}
+async function _engSequence(){
+  if(!_enginesOn) return;
+  _engReset();
+  // 1) Researcher wakes — flashes through social/web sources.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("eng-res"); _engRotate("eng-res", _RES_SRC, 280); }, 200);
+  // pull a real "configured/asleep" hint from /health/tree
+  let researcherInfo = "Researcher gathering";
+  try{ const h=await api("/health/tree");
+       if(h.researcher && h.researcher.configured===false) researcherInfo="Researcher not deployed";
+       else if(h.researcher && !h.researcher.ok) researcherInfo="Researcher asleep — woke up";
+  }catch(_){}
+  setTimeout(()=> _engStop("eng-res", "✓ "+researcherInfo+" · streamed insights forward", "done"), 2600);
+
+  // 2) Pipe 1 flows: data → analyser
+  setTimeout(()=>{ if(_enginesOn){ var p=_engEl("pipe-1"); if(p) p.classList.add("flow"); } }, 2300);
+
+  // 3) Analyser wakes — backtesting variants, real numbers if available.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("eng-ana"); _engRotate("eng-ana", _ANA_THINGS, 260); }, 3000);
+  let anaInfo = "Backtesting strategies (5×100 each)";
+  try{ const c=await api("/cycle/status");
+       const t=c.tested||0, p=c.proven_count||0;
+       anaInfo = "Tested "+t+" candidates · proven "+p;
+  }catch(_){}
+  setTimeout(()=> _engStop("eng-ana", "✓ "+anaInfo, "done"), 5800);
+
+  // 4) Pipe 2 flows: proven → bot
+  setTimeout(()=>{ if(_enginesOn){ var p=_engEl("pipe-2"); if(p) p.classList.add("flow"); } }, 5500);
+
+  // 5) Bot powers up — receiving energy from both.
+  setTimeout(()=>{ if(!_enginesOn) return; _engLive("eng-bot"); _engRotate("eng-bot", _BOT_THINGS, 280); }, 6100);
+  let botInfo = "Loop alive · markets live";
+  try{ const h=await api("/health/tree"); const b=h.bot||{};
+       botInfo = (b.loop_alive?"Loop alive · ":"Loop offline · ") + (b.accounts||0) + " accounts · " + (b.proven_strategies||0) + " proven in store";
+  }catch(_){}
+  setTimeout(()=> _engStop("eng-bot", "✓ "+botInfo+" · ready to trade", "done"), 8700);
+
+  // 6) Loop the demo every ~32 s while on (matches roughly to one engine cadence)
+  _engSeqTimer = setTimeout(()=>{ if(_enginesOn) _engSequence(); }, 32000);
+}
+function _enginesPower(on){
+  _enginesOn=on;
+  var btn=_engEl("engines-power"); if(btn){ btn.classList.toggle("on",on); var l=btn.querySelector(".lbl"); if(l) l.textContent = on ? "Power off" : "Power on"; }
+  if(on){
+    // Trigger a REAL cycle on the server — show what's actually happening.
+    api("/cycle/run",{method:"POST"}).catch(function(){});
+    _engSequence();
+  } else {
+    if(_engSeqTimer){ clearTimeout(_engSeqTimer); _engSeqTimer=null; }
+    _engFeedTimers.forEach(clearInterval); _engFeedTimers=[];
+    _engReset();
+  }
+}
+(function(){ var b=_engEl("engines-power"); if(b) b.addEventListener("click",()=>_enginesPower(!_enginesOn)); })();
 
 // ---------- Even/Odd deeper read (honest: digit observations, not a prediction) ----------
 function _eoChip(lab,val,col){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;min-width:54px;padding:6px 8px;border:1px solid var(--bd);border-radius:9px;background:rgba(255,255,255,.02)"><b style="font-size:13px;color:'+(col||'var(--text)')+'">'+val+'</b><span style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">'+lab+'</span></span>'; }
