@@ -783,7 +783,10 @@ function showView(v){
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
   // Remember the section so a refresh lands the user right back here.
-  if(inApp){ try{ localStorage.setItem("j81_nav", JSON.stringify({view:v, account:CUR?CUR.id:null, game:GAME})); }catch(_){} } }
+  // Also save "connect" so a refresh on the auth screen doesn't bounce you
+  // straight into the account picker — if you went to connect, you wanted to
+  // re-auth, so respect that until you actually pick an account.
+  if(inApp || v==="connect"){ try{ localStorage.setItem("j81_nav", JSON.stringify({view:v, account:CUR?CUR.id:null, game:GAME})); }catch(_){} } }
 
 // floating REAL gold bars + REAL banknotes — premium wealth background (login)
 function spawnMoney(){
@@ -904,6 +907,10 @@ async function boot(){
   // them to the beginning).
   let nav=null; try{ nav=JSON.parse(localStorage.getItem("j81_nav")||"null"); }catch(_){}
   if(nav && nav.account){ CUR = accts.find(a=>a.id===nav.account) || null; }
+  // If they last went to "connect" (e.g. to re-auth), keep them on connect on
+  // refresh instead of bouncing into the account picker just because they
+  // happen to have an account on file.
+  if(nav && nav.view==="connect"){ showView("connect"); return; }
   if(nav && nav.view==="trade" && CUR && nav.game){ updateNav(); openTrade(nav.game); return; }
   if(nav && nav.view==="home" && CUR){ enterApp(); return; }
   if(nav && nav.view==="accounts"){ showView("accounts"); return; }
