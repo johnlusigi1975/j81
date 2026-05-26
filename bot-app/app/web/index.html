@@ -289,6 +289,22 @@
   .goal-foot{margin-top:10px;font-size:12.5px;color:var(--dim)}
   .goal-card.winning .goal-foot{color:var(--good)} .goal-card.below .goal-foot{color:var(--bad)}
 
+  /* J81 brain advisor — live recommendations grounded in the library. */
+  .brain-card{border:1px solid var(--bd);border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(155,140,255,.08),rgba(212,184,122,.04))}
+  .brain-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
+  .brain-eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+  .brain-title{font-family:var(--serif);font-size:18px;font-weight:800;margin-top:3px}
+  .brain-recs .rec{display:grid;grid-template-columns:22px 1fr;gap:9px;padding:7px 0;border-top:1px solid rgba(255,255,255,.06);align-items:flex-start}
+  .brain-recs .rec:first-child{border-top:0}
+  .brain-recs .ic{font-size:14px;line-height:1.4;text-align:center}
+  .brain-recs .rec .a{font-weight:700;font-size:13px;line-height:1.35}
+  .brain-recs .rec .r{font-size:11.5px;color:var(--dim);margin-top:2px}
+  .brain-recs .rec .p{font-size:10.5px;color:var(--faint);font-family:var(--mono);margin-top:3px}
+  .brain-recs .rec.primary{border-left:3px solid var(--amber);padding-left:8px;border-radius:4px;background:rgba(212,184,122,.05)}
+  .brain-recs .rec.danger .ic{color:var(--bad)} .brain-recs .rec.danger .a{color:var(--bad)}
+  .brain-recs .rec.warning .ic{color:var(--warn)} .brain-recs .rec.good .ic{color:var(--good)} .brain-recs .rec.good .a{color:var(--good)}
+  .brain-recs .rec.ground .ic{color:var(--violet)}
+
   /* ---- Perf hints: GPU compositing for animated bits + offscreen paint deferral ---- */
   /* will-change tells the browser to hoist these to their own composite layer so the
      animations are smoother and don't repaint the page on every frame. */
@@ -558,6 +574,19 @@
   <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
     <div><div class="term-title">Welcome</div><div style="font-size:24px;font-weight:800" id="home-hello">Choose how you want to trade</div></div>
     <div id="home-mode"></div>
+  </div>
+
+  <!-- J81 BRAIN — synthesises the shared library into live recommendations. -->
+  <div id="brain-card" class="brain-card" style="margin-top:18px">
+    <div class="brain-head">
+      <div>
+        <div class="brain-eyebrow">🧠 J81 Brain · live advice</div>
+        <div class="brain-title" id="brain-title">Reading the library…</div>
+      </div>
+      <button class="btn ghost" id="brain-refresh" type="button" style="padding:7px 12px;font-size:12px">↻ refresh</button>
+    </div>
+    <div id="brain-recs" class="brain-recs">applying principles to your current state…</div>
+    <div class="faint" id="brain-foot" style="font-size:10.5px;margin-top:8px"></div>
   </div>
 
   <!-- The J81 scoreboard — Deriv vs J81 over the last 100 settled trades. -->
@@ -1095,8 +1124,42 @@ async function loadHome(){
   loadHomeCycle();
   loadGoal();
   loadCycleHistory();
+  loadBrain();
 }
 function mmss(s){ if(s==null) return "—"; s=Math.max(0,s|0); return ((s/60)|0)+"m "+((s%60)<10?"0":"")+(s%60)+"s"; }
+
+// ---- J81 Brain advisor — turns the shared library into live recommendations ----
+async function loadBrain(){
+  const card=$("brain-card"); if(!card) return;
+  try{
+    const url = CUR ? "/brain/advise?account_id="+encodeURIComponent(CUR.id) : "/brain/advise";
+    const d = await api(url);
+    const recs = d.recommendations || [];
+    const t=$("brain-title");
+    if(t){
+      const s=d.scoreboard_state;
+      t.textContent = ({
+        winning:"Beating the bar — stay the course",
+        below_goal:"Below goal — discipline says stop",
+        win_high_pnl_negative:"Wins high · money negative — pivot",
+        pnl_positive_winrate_low:"Profitable · keep sampling",
+        warming:"Building sample — applying setup",
+      })[s] || "Applying the library";
+    }
+    const ICONS = {primary:"⭐",info:"·",good:"✓",warning:"⚠",danger:"✗",ground:"✝"};
+    const list=$("brain-recs");
+    if(list) list.innerHTML = recs.map(function(r){
+      const sev=r.severity||"info", ic=ICONS[sev]||"·";
+      const verse = r.verse_or_source ? '<span style="color:var(--violet)"> · '+esc(r.verse_or_source)+'</span>' : '';
+      return '<div class="rec '+sev+'"><div class="ic">'+ic+'</div><div><div class="a">'+esc(r.action)+'</div><div class="r">'+esc(r.reason)+'</div><div class="p">'+esc(r.principle)+verse+'</div></div></div>';
+    }).join("");
+    const f=$("brain-foot"); if(f) f.textContent = d.honest_note || "";
+  }catch(_){
+    const t=$("brain-title"); if(t) t.textContent="Brain offline";
+    const list=$("brain-recs"); if(list) list.innerHTML='<div class="faint">advice unavailable — the analyser may be cold-starting</div>';
+  }
+}
+(function(){ var b=$("brain-refresh"); if(b) b.addEventListener("click", loadBrain); })();
 
 // ---- J81 vs Deriv scoreboard (60% × 100 + net P/L > 0) ----
 async function loadGoal(){

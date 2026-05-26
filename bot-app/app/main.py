@@ -1140,6 +1140,48 @@ def trade_stats(account_id: str | None = None, window: int = 100,
                                    include_practice=include_practice)
 
 
+@app.get("/brain/advise")
+async def brain_advise(account_id: str | None = None) -> dict:
+    """J81 Brain — synthesizes the shared library (Deriv specs + discipline +
+    risk + scripture) with the live state (scoreboard, balance, account) into
+    a ranked list of actionable recommendations, each citing the principle
+    behind it. The library becomes trading POWER instead of just stockpile."""
+    from app import brain
+    store = get_store()
+    account = store.get_internal(account_id) if account_id else None
+    if account:
+        # public-shape view for is_demo flag + currency
+        public = next((a for a in store.list_accounts_public()
+                       if a["id"] == account_id), None) or {}
+        if public:
+            account = {**account, "is_demo": public.get("is_demo"), "currency": public.get("currency")}
+    # Balance: try the cached endpoint logic; fall back to None.
+    balance: dict | None = None
+    if account_id:
+        try:
+            # Reuse the existing balance endpoint logic for caching.
+            from app import tokens  # noqa: F401
+            import time as _time
+            now = _time.monotonic()
+            hit = _BALANCE_CACHE.get(account_id)
+            if hit and (now - hit[0]) < _BALANCE_TTL:
+                balance = hit[1]
+            else:
+                token = await tokens.get_access_token(account_id)
+                if token and account and (account.get("platform") or "legacy").lower() == "new":
+                    from app import deriv_new
+                    async def _read(tk):
+                        ws_url = await deriv_new.request_otp_ws(tk, account["deriv_account_id"])
+                        return await deriv_new.balance(ws_url)
+                    b = await tokens.with_fresh_token(account_id, _read)
+                    balance = {"balance": b.get("balance"), "currency": b.get("currency"),
+                               "deriv_account_id": account["deriv_account_id"]}
+        except Exception:
+            balance = None
+    scoreboard = store.trade_stats(account_id=account_id, window=100)
+    return await brain.advise(account=account, balance=balance, scoreboard=scoreboard)
+
+
 class ProvenStrategies(BaseModel):
     strategies: list[dict]
 
