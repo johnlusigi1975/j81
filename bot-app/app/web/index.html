@@ -2168,23 +2168,40 @@ window.EOAuto = (function(){
     const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
     const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
   }
-  // (_liveDigits defined above for the signal radar — reused here.)
-  // Decide EVEN / ODD / SKIP from the live read + threshold.
-  function _decide(threshold){
-    const d = _liveDigits(); if(d.length < 20) return {side:null, why:"reading the tape — need at least 20 ticks"};
-    const last20 = d.slice(-20);
-    const ev = last20.filter(x=>x%2===0).length;
-    const evp = Math.round(ev/last20.length*100), odp = 100-evp;
-    if(evp >= threshold) return {side:"even", evp, odp, why:"EVEN at "+evp+"% over last 20 ≥ "+threshold+"%"};
-    if(odp >= threshold) return {side:"odd",  evp, odp, why:"ODD at "+odp+"% over last 20 ≥ "+threshold+"%"};
-    return {side:null, evp, odp, why:"no side ≥ "+threshold+"% threshold (EVEN "+evp+" / ODD "+odp+")"};
-  }
-  function _autoTicks(decision){
+  // (Old single-market _decide() removed — _pickBestMarket scans ALL 10
+  // volatilities via /scan now, so the auto-trader hops between markets
+  // instead of staying glued to whatever the user opened with.)
+  function _autoTicks(lead){
     // Auto-ticks: stronger lean → fewer ticks (less time for randomness to revert).
-    const lead = Math.max(decision.evp||0, decision.odp||0);
     if(lead >= 75) return 1;
     if(lead >= 65) return 2;
     return 3;
+  }
+  // Scan ALL 10 markets, pick the one whose dominant side's % is highest AND
+  // above the user's threshold. Returns {symbol, name, side, pct, lean} or null.
+  async function _pickBestMarket(threshold){
+    try{
+      const d = await api("/scan");
+      const ready = (d.markets || []).filter(m => m.ready && m.even_pct != null);
+      if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      const cands = ready.map(m => {
+        const evp = Math.round(m.even_pct), odp = 100 - evp;
+        const evWins = evp >= odp;
+        const pct = evWins ? evp : odp;
+        return {
+          symbol: m.symbol, name: m.name || m.symbol,
+          side: evWins ? "even" : "odd",
+          pct, lean: pct - 50,
+        };
+      });
+      const passing = cands.filter(c => c.pct >= threshold).sort((a,b) => b.pct - a.pct);
+      if(passing.length) return passing[0];
+      // Nothing above threshold — return the strongest lean for the status line.
+      const best = cands.sort((a,b) => b.pct - a.pct)[0];
+      return {none:true, reason: "best lean is "+best.pct+"% "+best.side.toUpperCase()+" on "+best.name+" — need ≥"+threshold+"%"};
+    } catch(_){
+      return {none:true, reason:"scanner unreachable — retrying"};
+    }
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
@@ -2197,16 +2214,27 @@ window.EOAuto = (function(){
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
     };
-    const d = _decide(cfg.threshold);
-    if(!d.side){ _setStatus("⌗ holding — "+esc(d.why)); return; }
-    const dur = (cfg.ticksMode==="auto") ? _autoTicks(d) : cfg.ticksManual;
+    // 1. Pick the best market across ALL 10 volatilities — not just the active one.
+    const pick = await _pickBestMarket(cfg.threshold);
+    if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
+    // 2. Hop the active market if a stronger candidate is on a different one.
+    //    Updating t-symbol fires LiveWS resub so the signal radar follows along.
+    const sel = $g("t-symbol");
+    if(sel && sel.value !== pick.symbol){
+      sel.value = pick.symbol;
+      sel.dispatchEvent(new Event("change"));
+      // Refresh the scanner immediately so the "✓ trading here" cell hops
+      // along visually instead of waiting up to 4s for the next poll.
+      try{ loadEoScan(); }catch(_){ }
+    }
+    const dur = (cfg.ticksMode==="auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
-    _setStatus("⌗ firing <b>"+d.side.toUpperCase()+"</b> · "+dur+" tick · "+esc(d.why));
+    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+dur+" tick · "+pick.pct+"% lean");
     try{
       const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
-        account_id: CUR.id, trade_type:"even_odd", symbol: $g("t-symbol").value,
-        stake: cfg.stake, duration: dur, duration_unit: "t", prediction: d.side,
+        account_id: CUR.id, trade_type:"even_odd", symbol: pick.symbol,
+        stake: cfg.stake, duration: dur, duration_unit: "t", prediction: pick.side,
       })});
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
