@@ -512,6 +512,16 @@ def deriv_library_discipline() -> dict:
     return deriv_lib.TRADING_DISCIPLINE
 
 
+@app.get("/deriv/library/risk")
+def deriv_library_risk() -> dict:
+    """Risk management for binary options on RNG markets — position sizing
+    models (fixed-fractional, Kelly, half-Kelly, anti-martingale), drawdown
+    rules, the recovery-math table, martingale danger, and risk-of-ruin honest
+    notes. Each principle is mapped to a concrete J81 feature."""
+    from app import deriv_lib
+    return deriv_lib.RISK_MANAGEMENT
+
+
 @app.post("/deriv/library/refresh")
 async def deriv_library_refresh() -> dict:
     """Pull real payouts from Deriv for every (market, contract) we track.

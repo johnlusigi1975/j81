@@ -255,6 +255,139 @@ TRADING_DISCIPLINE: dict[str, Any] = {
 }
 
 
+RISK_MANAGEMENT: dict[str, Any] = {
+    # The MATH/SIZING side of staying alive (TRADING_DISCIPLINE covers the
+    # process/psychology side). Synthesized from Kelly's 1956 paper, fixed-
+    # fractional research, binary-options money-management writings, and
+    # backtest data on drawdowns. Tailored to BINARY OPTIONS on Deriv synthetics
+    # — where a loss is a 100% stake loss (no in-trade stop) and the underlying
+    # is an audited RNG with a house edge.
+    "summary": (
+        "Risk management on binary options is harsher than on Forex/CFDs: every "
+        "losing trade costs 100% of the stake (there is no in-trade stop-loss). "
+        "So sizing per trade matters more, not less. The math below shows how to "
+        "stay alive long enough for any edge to play out — and how recovery gets "
+        "exponentially harder as drawdowns deepen."
+    ),
+
+    "position_sizing_models": [
+        {
+            "name": "Fixed fractional (the industry default)",
+            "formula": "stake = bankroll × risk_pct",
+            "recommended_risk_pct": "1–3% for active traders; 0.5% for binary options on RNG (each loss = 100% of stake)",
+            "why": "Auto-scales with the account — risk shrinks during drawdowns, grows back as you recover. Simple, robust, no overfitting.",
+            "j81_support": "Set max_stake_per_trade per account; bot enforces it before placing.",
+            "example": "$1,000 bankroll × 1% = $10 max stake. After a 20-trade loss streak at 1% → ~$818 remaining (down 18%); at 5% per trade → $358 remaining (down 64%).",
+        },
+        {
+            "name": "Kelly criterion (theoretically optimal)",
+            "formula": "f* = (b·p − q) / b   where b = net odds, p = win prob, q = 1−p",
+            "why": "Maximises long-term geometric growth IF you have an edge. On Deriv synthetics there's no edge → Kelly returns 0 → bet nothing.",
+            "warning": "Full Kelly produces ~1-in-3 chance of losing HALF the account; almost no one runs full Kelly in practice.",
+            "j81_support": "calc.py exposes kelly(win_prob, payout); the EV strip computes it for the current trade.",
+            "example": "win_prob=0.52, payout=1.94 → b=0.94, f* = (0.94×0.52 − 0.48)/0.94 = 1.5%. With no edge (0.5/1.94) → f* = 0%.",
+        },
+        {
+            "name": "Half-Kelly (the practical standard)",
+            "formula": "stake = (Kelly fraction × bankroll) × 0.5",
+            "why": "Captures ~75% of full Kelly's growth at ~half the drawdown. The professional default for edge-based betting.",
+            "j81_support": "Same calc.kelly + scale by 0.5 client-side.",
+        },
+        {
+            "name": "Anti-martingale (reduce on loss)",
+            "rule": "Cut size after a loss; add size only after wins.",
+            "why": "Smooths drawdowns, lets winners compound. Opposite of the death-spiral (martingale).",
+            "j81_support": "Manual sizing — the bot won't size up after a loss unless you set max_stake_per_trade higher.",
+        },
+    ],
+
+    "martingale_warning": {
+        "what_it_is": "Doubling the stake after each loss to 'recover' on the next win.",
+        "the_math": "From a $3 base, a 7-loss streak forces a $192 stake — just to win the original $3 back. A 10-loss streak demands $1,536. Brokers' max-stake limits often make full recovery impossible before you run out.",
+        "why_dangerous_on_rng": "Synthetic indices have unbounded streak risk — a 7–10 loss streak is statistically unremarkable. Combined with the house edge and broker stake caps, martingale is a guaranteed blow-up given enough time.",
+        "verdict": "AVOID. Anti-martingale (reduce on loss) is the mathematically sound mirror.",
+        "j81_support": "max_stake_per_trade hard-caps any sizing scheme; default behaviour is fixed-fractional, not martingale.",
+        "source": "tradersunion.com, daytrading.com, binary-options.org — all warn against martingale on binaries.",
+    },
+
+    "drawdown_rules": [
+        {
+            "rule": "Daily loss limit: 10–15% of session bankroll",
+            "why": "Hard stop ends revenge spirals and capital destruction in one bad session.",
+            "j81_support": "daily_loss_limit per account; goal_status auto-disables auto-trading when hit.",
+        },
+        {
+            "rule": "Weekly drawdown limit: 20–25%",
+            "why": "If you're losing this much over a week, your strategy or sizing is wrong — STOP and review.",
+            "j81_support": "Track via /trade_stats (which can be extended to multi-window) and the scoreboard's net P/L.",
+        },
+        {
+            "rule": "Walk-away after target",
+            "why": "Take-profit captures upside; without it, gains revert to the house edge.",
+            "j81_support": "take_profit per account; goal_status auto-disables when hit.",
+        },
+    ],
+
+    "recovery_math": {
+        "principle": "Recovery is asymmetric — a P% drawdown requires P/(100−P)% gain to break even.",
+        "table": [
+            {"drawdown_pct": 10, "gain_needed_pct": 11.1},
+            {"drawdown_pct": 20, "gain_needed_pct": 25.0},
+            {"drawdown_pct": 30, "gain_needed_pct": 42.9},
+            {"drawdown_pct": 50, "gain_needed_pct": 100.0},
+            {"drawdown_pct": 75, "gain_needed_pct": 300.0},
+            {"drawdown_pct": 90, "gain_needed_pct": 900.0},
+        ],
+        "implication": "Avoiding a 50% drawdown is mathematically more valuable than scoring a 50% gain. This is why position sizing matters more than entry signals.",
+    },
+
+    "binary_options_specific": [
+        "Each trade is binary — you lose 100% of the stake on a loss (unlike Forex/CFDs where a stop limits the loss to a fraction).",
+        "Therefore: risk_pct should be smaller than on instruments with stops (0.5–1% vs 1–2%).",
+        "There is no 'cut losses early' within a contract — the result is determined at expiry. The only loss control is contract size + frequency.",
+        "Concurrent open contracts compound risk: if you have 3 trades open at 1% each, your worst-case is −3% in one tick.",
+        "Treat the deposit as the maximum loss budget for the session — never add money to recover.",
+    ],
+
+    "risk_of_ruin_notes": {
+        "definition": "Probability of losing your entire bankroll. Function of (edge, risk-per-trade, bankroll units).",
+        "on_deriv_rng": "Win probability ~50% and payout < 2× → negative EV → risk of ruin trends toward 1.0 over enough trades, regardless of sizing.",
+        "what_sizing_changes": "Sizing doesn't change the EV — it changes how LONG you survive. 0.5% per trade buys you ~600 trades expected, 5% per trade buys you ~60.",
+        "the_honest_implication": "On a negative-EV game, the question isn't 'how do I win in the long run' (you can't) but 'how do I make it last and enjoy the variance'. That's what risk management actually delivers on Deriv synthetics.",
+    },
+
+    "j81_concrete_rules": [
+        "Default per-trade stake = 1% of bankroll for demo, 0.5% for real (encoded by the demo=$100 / real=$10 default at $1000-ish bankroll).",
+        "Daily loss limit set when starting auto; auto-disables on hit.",
+        "Take-profit set when starting auto; auto-disables on hit.",
+        "Bot's max_stake_per_trade is a hard ceiling no auto/manual path can exceed.",
+        "Anti-martingale by default — sizing never auto-increases after a loss.",
+        "The cycle's acceptance bar (60% × 5 windows of 100 trades + net P/L > 0) is the only gate that lets a strategy reach the bot's auto-trader.",
+    ],
+
+    "sources_consulted": [
+        "https://journalplus.co/learn/guides/kelly-criterion-guide/",
+        "https://www.backtestbase.com/education/how-much-risk-per-trade",
+        "https://medium.com/@tmapendembe_28659/kelly-criterion-vs-fixed-fractional-which-risk-model-maximizes-long-term-growth-972ecb606e6c",
+        "https://www.quantvps.com/blog/trading-risk-management",
+        "https://tradesearcher.ai/tools/kelly-criterion-simulator",
+        "https://www.binaryoptions.net/risk-management",
+        "https://learn.binany.com/trading-strategy/money-management-binany/",
+        "https://tradersunion.com/interesting-articles/best-binary-options-strategies-you-should-know/martingale/",
+        "https://www.daytrading.com/binary-options-martingale-strategy",
+        "https://binary-options.org/binary-options-martingale-strategy/",
+        "John Kelly Jr. (1956), 'A New Interpretation of Information Rate' — original Kelly paper",
+    ],
+
+    "honest_note": (
+        "Risk management does not create an edge on RNG markets — it controls how fast "
+        "you lose to the house edge that is structurally there. Combined with the one "
+        "real EV lever (Even/Odd highest-payout market), tight sizing, and acceptance-bar "
+        "gating, J81 minimises the rate of loss; it does not promise profit on synthetics."
+    ),
+}
+
+
 J81_GOAL: dict[str, Any] = {
     "stance": "Competitive. Deriv plays to win; J81 plays to win. We measure ourselves head-to-head.",
     "win_target": {
@@ -399,6 +532,7 @@ def library() -> dict[str, Any]:
         "deriv_stance": DERIV_STANCE,
         "j81_goal": J81_GOAL,
         "trading_discipline": TRADING_DISCIPLINE,
+        "risk_management": RISK_MANAGEMENT,
         "live": _LIVE,
     }
 
