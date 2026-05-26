@@ -48,7 +48,20 @@
       radial-gradient(1100px 800px at 50% 128%, rgba(22,64,74,.30), transparent 72%),        /* deep-ocean glow below */
       linear-gradient(180deg,#0d141b 0%, #0a0f15 55%, #070b10 100%);
     background-attachment:fixed;}
-  ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:rgba(212,184,122,.35);border-radius:99px}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-track{background:rgba(0,0,0,.18)}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(212,184,122,.55),rgba(212,184,122,.25));border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(212,184,122,.75),rgba(212,184,122,.4));background-clip:padding-box}
+  *{scrollbar-width:thin;scrollbar-color:rgba(212,184,122,.45) transparent}
+
+  /* Premium focus ring — replaces the default blue outline on inputs/buttons. */
+  :focus-visible{outline:none;box-shadow:0 0 0 3px rgba(212,184,122,.32),0 0 0 1px rgba(212,184,122,.6) inset;border-radius:6px}
+  button:focus-visible{box-shadow:0 0 0 3px rgba(212,184,122,.4),inset 0 1px 0 rgba(255,255,255,.45)}
+  input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(212,184,122,.22)}
+  /* Disable native tap highlight on touch — replaced by our hover/active styles. */
+  *{-webkit-tap-highlight-color:transparent}
+  /* Smooth all interactive shifts globally so nothing jumps. */
+  a,button,.gcard,.stat,.tbtn,.engine,.eo-cell{will-change:auto}
   a{color:var(--amber);text-decoration:none} code{font-family:var(--mono)}
   .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
 
@@ -187,18 +200,42 @@
 
   /* home choose grid */
   .sec-title{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:26px 0 12px}
+
+  /* Trade-view balance bar — sticky, premium look with a live pulse. */
+  .balbar{position:sticky;top:54px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px;padding:13px 18px;border-radius:14px;border:1px solid var(--bd2);background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.18),transparent 55%),linear-gradient(135deg,rgba(12,18,28,.92),rgba(20,28,40,.92));box-shadow:0 14px 36px -18px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05)}
+  .balbar-left{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .balbar-eyebrow{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700}
+  .balbar-kind{font-size:11px;letter-spacing:0;font-family:var(--sans)}
+  .balbar-right{display:flex;align-items:center;gap:9px}
+  .balbar-pulse{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good);animation:bal-pulse 1.8s ease-in-out infinite}
+  @keyframes bal-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.35);opacity:1}}
+  .balbar-amt{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
+
+  /* Home hero — replaces the basic "Welcome / Choose how to trade" header. */
+  .home-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px 22px;margin:6px 0 6px;border:1px solid var(--bd);border-radius:18px;background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.10),transparent 55%),radial-gradient(120% 100% at 100% 0%,rgba(212,184,122,.12),transparent 55%),linear-gradient(180deg,rgba(20,28,40,.5),rgba(10,14,22,.5));box-shadow:0 24px 60px -32px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);position:relative;overflow:hidden}
+  .home-hero::before{content:"";position:absolute;inset:-40% -10% auto auto;width:280px;height:280px;background:radial-gradient(circle at center,rgba(212,184,122,.18),transparent 65%);pointer-events:none;filter:blur(20px)}
+  .home-hero-eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--amber);font-weight:700}
+  .home-hero-title{font-family:var(--serif);font-size:28px;font-weight:800;letter-spacing:-.01em;margin-top:2px;line-height:1.15}
+  .home-hero-sub{font-size:12.5px;color:var(--dim);margin-top:5px;max-width:520px;line-height:1.5}
+  .home-hero-right{display:flex;align-items:center;gap:10px}
+  @media(max-width:560px){.home-hero{padding:16px 18px}.home-hero-title{font-size:23px}}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
   @media(max-width:520px){.grid{grid-template-columns:1fr}}
   /* account picker: centered cards, never squished into a fixed-column grid */
   #acct-grid{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:740px;margin:0 auto}
   #acct-grid .gcard{flex:1 1 300px;max-width:340px;min-height:auto;text-align:center;align-items:center}
-  .gcard{position:relative;border-radius:16px;border:1px solid var(--bd);background:var(--panel);padding:18px;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;overflow:hidden;min-height:130px;display:flex;flex-direction:column;gap:6px}
-  .gcard:hover{transform:translateY(-3px);border-color:var(--amber);box-shadow:0 18px 40px -20px rgba(240,200,90,.45)}
-  .gcard.soon{opacity:.5;cursor:not-allowed} .gcard.soon:hover{transform:none;border-color:var(--bd);box-shadow:none}
-  .gcard .ic{font-size:22px;font-weight:800;color:var(--amber);font-family:var(--serif);letter-spacing:1px}
-  .gcard .t{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
-  .gcard .d{font-size:12.5px;color:var(--dim)}
+  .gcard{position:relative;border-radius:16px;border:1px solid var(--bd);background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.18));padding:18px;cursor:pointer;transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;overflow:hidden;min-height:140px;display:flex;flex-direction:column;gap:6px}
+  .gcard::before{content:"";position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at center,rgba(212,184,122,.16),transparent 70%);opacity:0;transition:opacity .35s ease;pointer-events:none}
+  .gcard:hover{transform:translateY(-4px);border-color:var(--amber);box-shadow:0 22px 48px -22px rgba(212,184,122,.55)}
+  .gcard:hover::before{opacity:1}
+  .gcard:active{transform:translateY(-1px) scale(.99)}
+  .gcard::after{content:"→";position:absolute;right:18px;bottom:16px;color:var(--amber);font-size:18px;font-weight:800;opacity:.0;transition:opacity .2s ease,transform .2s ease}
+  .gcard:hover::after{opacity:1;transform:translateX(4px)}
+  .gcard.soon{opacity:.5;cursor:not-allowed} .gcard.soon:hover{transform:none;border-color:var(--bd);box-shadow:none} .gcard.soon::after{display:none}
+  .gcard .ic{font-size:24px;font-weight:800;color:var(--amber);font-family:var(--serif);letter-spacing:1px;line-height:1.1;position:relative;z-index:1}
+  .gcard .t{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;font-family:var(--serif);letter-spacing:-.005em;position:relative;z-index:1}
+  .gcard .d{font-size:12.5px;color:var(--dim);line-height:1.5;position:relative;z-index:1}
   /* digit picker (Over/Under) */
   .digrow{display:flex;flex-wrap:wrap;gap:7px}
   .digbtn{width:40px;height:44px;border-radius:11px;border:1px solid var(--bd);background:var(--panel);color:var(--dim);font-family:var(--mono);font-size:17px;font-weight:800;cursor:pointer;transition:all .12s}
@@ -206,10 +243,14 @@
   .digbtn.on{background:linear-gradient(180deg,#ffe49a,#f0c64a);border-color:var(--amber);color:#1a1407}
   .badge{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:999px}
   .badge.new{background:var(--good);color:#06210f} .badge.soon{background:rgba(255,255,255,.08);color:var(--faint)}
-  .statstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
-  .stat{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:13px}
-  .stat .n{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--amber)} .stat.good .n{color:var(--good)}
-  .stat .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-top:3px}
+  .statstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px}
+  .stat{background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.18));border:1px solid var(--bd);border-radius:13px;padding:14px 14px 12px;transition:border-color .2s ease,transform .15s ease;position:relative;overflow:hidden}
+  .stat:hover{border-color:var(--bd2);transform:translateY(-1px)}
+  .stat .n{font-family:var(--serif);font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--amber);line-height:1.1} .stat.good .n{color:var(--good)}
+  .stat .l{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-top:5px;font-weight:700}
+  /* tiny accent line on hover to signal interactivity */
+  .stat::after{content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;background:linear-gradient(90deg,var(--amber),transparent);transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
+  .stat:hover::after{transform:scaleX(1)}
 
   /* trade terminal */
   .term-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
@@ -783,9 +824,13 @@
 <!-- ============ VIEW: HOME (choose) ============ -->
 <div class="view wrap" id="view-home" hidden>
   <button class="backbtn" onclick="showView('landing')">← home page</button>
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
-    <div><div class="term-title">Welcome</div><div style="font-size:24px;font-weight:800" id="home-hello">Choose how you want to trade</div></div>
-    <div id="home-mode"></div>
+  <div class="home-hero">
+    <div class="home-hero-left">
+      <div class="home-hero-eyebrow" id="home-greeting">Good evening</div>
+      <div class="home-hero-title" id="home-hello">Welcome to your desk</div>
+      <div class="home-hero-sub">Pick a precision instrument below — the desk handles execution, you set the limits.</div>
+    </div>
+    <div class="home-hero-right" id="home-mode"></div>
   </div>
 
   <!-- Brain Auto control — toggle for the every-cycle Even/Odd auto-trade on the best-payout market. -->
@@ -846,10 +891,16 @@
       <div class="spot" id="term-spot"><small>spot price</small>—</div>
     </div>
 
-    <!-- live Deriv balance — STICKY so it stays in view while you trade/scroll -->
-    <div id="balbar" style="position:sticky;top:54px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:12px 16px;border-radius:13px;background:linear-gradient(135deg,rgba(54,214,200,.16),rgba(240,200,90,.06)),#0c1422;border:1px solid var(--bd2);box-shadow:0 10px 30px -16px rgba(0,0,0,.9)">
-      <span class="lab" style="font-size:11px;letter-spacing:.08em">Your Deriv balance <span class="faint" id="trade-bal-kind" style="letter-spacing:0"></span></span>
-      <b id="trade-bal-top" style="font-family:var(--mono);font-size:21px;font-weight:800">—</b>
+    <!-- live Deriv balance — sticky so it stays in view while you trade/scroll -->
+    <div id="balbar" class="balbar">
+      <div class="balbar-left">
+        <span class="balbar-eyebrow">YOUR DERIV BALANCE</span>
+        <span class="balbar-kind faint" id="trade-bal-kind"></span>
+      </div>
+      <div class="balbar-right">
+        <span class="balbar-pulse"></span>
+        <b id="trade-bal-top" class="balbar-amt">—</b>
+      </div>
     </div>
 
     <div class="read">
@@ -1409,6 +1460,15 @@ function renderGames(){
 async function loadHome(){
   renderGames();
   if(CUR){ $("nav-acct-txt").textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo account":"real account"); }
+  // Time-of-day greeting on the hero — makes the desk feel personal.
+  try{
+    const hr = new Date().getHours();
+    const greet = hr < 5 ? "Trading late" : hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : hr < 22 ? "Good evening" : "Trading late";
+    const g = $("home-greeting"); if(g) g.textContent = greet;
+    const t = $("home-hello"); if(t) t.textContent = CUR
+      ? "Welcome back to your desk"
+      : "Welcome to your desk";
+  }catch(_){}
   // Label reflects the actual account you're on (not just the global DRY flag),
   // so a demo account never shows "REAL MONEY".
   const _isDemo = !!(CUR && CUR.is_demo);
