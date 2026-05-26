@@ -313,13 +313,49 @@
 
   /* Dedicated Even/Odd auto-trade control surface — premium look. */
   .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:16px;padding:16px 18px 18px;background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.10),transparent 55%),radial-gradient(120% 100% at 100% 0%,rgba(212,184,122,.08),transparent 55%),linear-gradient(180deg,rgba(20,28,40,.55),rgba(10,14,22,.55));position:relative;box-shadow:0 26px 60px -28px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05)}
-  .eo-auto-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-  .eo-auto-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700}
-  .eo-auto h5{margin:4px 0 0;font-family:var(--serif);font-size:17px;font-weight:800;letter-spacing:.01em}
-  .eo-auto-pnl-wrap{text-align:right}
-  .eo-auto-pnl{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:.02em}
-  .eo-auto-pnl.up{color:var(--good)} .eo-auto-pnl.dn{color:var(--bad)}
-  .eo-auto-pnl-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin-top:2px}
+
+  /* LIVE SIGNAL radar — top of the panel. Pulses when threshold is crossed. */
+  .eo-signal{padding:12px 14px;border:1px solid var(--bd);border-radius:13px;background:linear-gradient(135deg,rgba(0,0,0,.32),rgba(20,28,40,.25));margin-bottom:13px;position:relative;overflow:hidden;transition:border-color .25s ease,box-shadow .25s ease}
+  .eo-signal.live-even{border-color:rgba(240,200,90,.55);box-shadow:0 0 0 1px rgba(240,200,90,.25) inset, 0 16px 36px -22px rgba(240,200,90,.55);animation:eo-sig-pulse 1.8s ease-in-out infinite}
+  .eo-signal.live-odd{border-color:rgba(170,176,189,.55);box-shadow:0 0 0 1px rgba(170,176,189,.25) inset, 0 16px 36px -22px rgba(170,176,189,.55);animation:eo-sig-pulse 1.8s ease-in-out infinite}
+  @keyframes eo-sig-pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
+  .eo-signal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:9px}
+  .eo-signal-eyebrow{font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700}
+  .eo-signal-eyebrow span{color:var(--text);font-family:var(--mono);letter-spacing:.06em}
+  .eo-signal-state{font-family:var(--mono);font-size:11.5px;color:var(--dim);margin-top:3px;letter-spacing:.04em}
+  .eo-signal-state b{color:var(--text)}
+  .eo-signal-bias{text-align:right;line-height:1}
+  .eo-signal-side{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700}
+  .eo-signal.live-even .eo-signal-side{color:#f0c64a} .eo-signal.live-odd .eo-signal-side{color:#aab0bd}
+  .eo-signal-pct{display:block;font-family:var(--serif);font-size:24px;font-weight:800;letter-spacing:-.02em;margin-top:1px}
+  .eo-signal-bar{position:relative;display:flex;height:10px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,.04)}
+  .eo-signal-bar .even{background:linear-gradient(135deg,#fff0c2 0%,#f0c64a 60%,#cf9e2a 100%);transition:width .35s ease}
+  .eo-signal-bar .odd{background:linear-gradient(135deg,#eef0f5 0%,#aab0bd 60%,#7c8290 100%);transition:width .35s ease}
+  .eo-signal-bar .thr{position:absolute;top:-3px;bottom:-3px;width:2px;background:rgba(255,255,255,.85);box-shadow:0 0 6px rgba(255,255,255,.5);transform:translateX(-1px);transition:left .25s ease}
+  .eo-signal-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
+  .eo-signal-meta b{color:var(--text);font-weight:800}
+  .eo-signal-meta .thr-lab{font-size:10px}
+
+  /* Inline session strip — replaces the 4-card stat grid for tighter layout. */
+  .eo-strip{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;margin:12px 0 4px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em}
+  .eo-pnl-inline{font-family:var(--mono);font-size:17px;font-weight:800;letter-spacing:.02em}
+  .eo-pnl-inline.up{color:var(--good)} .eo-pnl-inline.dn{color:var(--bad)}
+  .eo-stat-inline{color:var(--dim)}
+  .eo-stat-inline b{color:var(--text);font-weight:800}
+  .eo-strip-sep{color:var(--faint);opacity:.5}
+
+  /* Quick-presets chips. */
+  .eo-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:13px 0 4px}
+  .eo-presets button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 6px;border:1px solid var(--bd);border-radius:10px;background:rgba(0,0,0,.22);color:var(--dim);cursor:pointer;transition:all .15s ease;text-align:center}
+  .eo-presets button:hover{border-color:var(--bd2);color:var(--text);transform:translateY(-1px)}
+  .eo-presets button.on{border-color:var(--amber);background:linear-gradient(135deg,rgba(212,184,122,.12),rgba(212,184,122,.04));color:var(--text);box-shadow:0 8px 22px -12px rgba(212,184,122,.45)}
+  .eo-presets button .ic{font-size:16px;line-height:1}
+  .eo-presets button .lab{font-family:var(--serif);font-size:12.5px;font-weight:800;letter-spacing:.01em;margin-top:2px}
+  .eo-presets button .sub{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+
+  /* Section labels between groups in the auto-trader. */
+  .eo-section-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700;margin:14px 0 7px;display:flex;align-items:center;gap:9px}
+  .eo-section-lab::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
 
   .eo-auto .eo-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
   @media(max-width:560px){.eo-auto .eo-row{grid-template-columns:1fr}}
@@ -888,18 +924,58 @@
 
     <!-- Dedicated Even/Odd auto-trader (shown only when GAME==="even_odd"). -->
     <div id="eo-auto" class="eo-auto" hidden>
-      <div class="eo-auto-head">
-        <div>
-          <div class="eo-auto-eyebrow">⚙ Auto-trader · the desk takes the next moves</div>
-          <h5>Even / Odd · session controls</h5>
+      <!-- ── LIVE SIGNAL RADAR ── real-time read of the active market.
+           Updates every ~400ms from LiveWS digits. Pulses green when the lean
+           crosses the user's threshold (system would fire right now). -->
+      <div class="eo-signal" id="eo-signal">
+        <div class="eo-signal-head">
+          <div>
+            <div class="eo-signal-eyebrow">LIVE SIGNAL · <span id="eo-signal-market">—</span></div>
+            <div class="eo-signal-state" id="eo-signal-state">reading the tape…</div>
+          </div>
+          <div class="eo-signal-bias" id="eo-signal-bias">
+            <span class="eo-signal-side" id="eo-signal-side">—</span>
+            <span class="eo-signal-pct" id="eo-signal-pct">—%</span>
+          </div>
         </div>
-        <div class="eo-auto-pnl-wrap">
-          <div class="eo-auto-pnl" id="eo-pnl">+$0.00</div>
-          <div class="eo-auto-pnl-lab">session P/L</div>
+        <div class="eo-signal-bar">
+          <span class="even" id="eo-signal-even" style="width:50%"></span>
+          <span class="odd"  id="eo-signal-odd"  style="width:50%"></span>
+          <span class="thr"  id="eo-signal-thr"  style="left:58%"></span>
+        </div>
+        <div class="eo-signal-meta">
+          <span>EVEN <b id="eo-signal-e">—</b></span>
+          <span class="thr-lab">⌖ threshold <b id="eo-signal-thr-lab">58%</b></span>
+          <span>ODD <b id="eo-signal-o">—</b></span>
         </div>
       </div>
 
-      <!-- TARGETS ROW: take-profit + stop-loss with stepper buttons and progress fills -->
+      <!-- ── HERO START + INLINE SESSION ── primary action up top.
+           When running, the gold button turns into a pulsing green Stop. -->
+      <button class="eo-go" id="eo-go" type="button">▶ Start auto-trading</button>
+      <div class="eo-strip">
+        <span class="eo-pnl-inline" id="eo-pnl">+$0.00</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="eo-stat-wins">0</b> wins</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="eo-stat-losses">0</b> losses</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline">streak <b id="eo-stat-streak">0</b></span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="eo-stat-trades">0</b> trades</span>
+      </div>
+      <div class="eo-status" id="eo-status">⌗ idle — pick a preset or fine-tune below</div>
+
+      <!-- ── QUICK PRESETS ── one-tap profiles fill TP/SL/threshold/stake/streak.
+           Lets the user start trading without filling every field manually. -->
+      <div class="eo-presets" id="eo-presets">
+        <button type="button" data-preset="cautious"><span class="ic">🛡</span><span class="lab">Cautious</span><span class="sub">small wins · tight rails</span></button>
+        <button type="button" data-preset="steady" class="on"><span class="ic">⚖</span><span class="lab">Steady</span><span class="sub">balanced · default</span></button>
+        <button type="button" data-preset="bold"><span class="ic">🔥</span><span class="lab">Bold</span><span class="sub">bigger swings · looser</span></button>
+      </div>
+
+      <!-- ── TARGETS ── take-profit + stop-loss with progress fills. -->
+      <div class="eo-section-lab">Targets</div>
       <div class="eo-row">
         <div class="eo-tile target-tp">
           <div class="eo-tile-head"><span class="eo-tile-lab">Take profit</span><span class="eo-tile-hint">stops at this win</span></div>
@@ -921,7 +997,8 @@
         </div>
       </div>
 
-      <!-- STAKE + SIGNAL THRESHOLD slider -->
+      <!-- ── ENGINE ── stake + signal + ticks + streak guard, tighter spacing. -->
+      <div class="eo-section-lab">Engine</div>
       <div class="eo-row">
         <div class="eo-tile">
           <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35</span></div>
@@ -939,11 +1016,9 @@
           </div>
         </div>
       </div>
-
-      <!-- TICKS chips + LOSS-STREAK dots -->
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint">how long the contract runs</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint">contract length</span></div>
           <div class="eo-chips" id="eo-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
@@ -954,7 +1029,7 @@
           <input id="eo-ticks" type="hidden" value="1"/>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Loss-streak guard</span><span class="eo-tile-hint">stops after <b id="eo-streak-display">11</b> losses in a row</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Loss-streak guard</span><span class="eo-tile-hint">stops after <b id="eo-streak-display">11</b> in a row</span></div>
           <div class="eo-dots" id="eo-streak-dots"></div>
           <div class="eo-stepper compact">
             <button type="button" data-step="-1" data-tgt="eo-streak">−</button>
@@ -963,16 +1038,6 @@
           </div>
         </div>
       </div>
-
-      <!-- LIVE SESSION STAT BLOCKS + START BUTTON -->
-      <div class="eo-session">
-        <div class="eo-stat"><div class="n" id="eo-stat-wins">0</div><div class="l">wins</div></div>
-        <div class="eo-stat"><div class="n" id="eo-stat-losses">0</div><div class="l">losses</div></div>
-        <div class="eo-stat"><div class="n" id="eo-stat-streak">0</div><div class="l">streak</div></div>
-        <div class="eo-stat"><div class="n" id="eo-stat-trades">0</div><div class="l">trades</div></div>
-      </div>
-      <button class="eo-go" id="eo-go" type="button">▶ Start auto-trading</button>
-      <div class="eo-status" id="eo-status">⌗ idle — set your targets and press start</div>
     </div>
 
     <!-- ⤵ Confidence scanner — now positioned BELOW the auto-trader so the
@@ -1105,7 +1170,7 @@ function showView(v){
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display="none";   // beach theme: ocean body gradient is the backdrop (no gold bars)
-  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} }   // stop live sockets when leaving the trade view
+  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
   // Remember the section so a refresh lands the user right back here.
@@ -1884,7 +1949,8 @@ async function openTrade(game){
   if($("trade-buttons")) $("trade-buttons").hidden = isEO;
   if($("t-result")) $("t-result").hidden = isEO;
   document.querySelectorAll(".read").forEach(r => { if(r.querySelector("#assist-msg")) r.hidden = isEO; });
-  if(isEO){ loadEvenOddPayouts(); startEoScan(); } else { stopEoScan(); }
+  if(isEO){ loadEvenOddPayouts(); startEoScan(); try{ window.EOAuto && window.EOAuto.startSignal(); }catch(_){} }
+  else    { stopEoScan(); try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} }
   $("trade-buttons").className = "tgrid"
     + (game==="rise_fall" ? " compact" : "")
     + (isEO ? " eo3" : "");          // 3-column layout when EVEN/ODD/AUTO trio is present
@@ -2027,13 +2093,56 @@ function showPop({kind, icon, title, msg, pnl}){
 // take-profit, stop-loss, or consecutive-loss limit is reached and shows
 // the appropriate popup. Pauses on signal too weak — never blind-fires.
 window.EOAuto = (function(){
-  const S = { running:false, timer:null, sess:{pnl:0, wins:0, losses:0, streak:0, trades:0}, busy:false };
+  const S = { running:false, timer:null, signalTimer:null, sess:{pnl:0, wins:0, losses:0, streak:0, trades:0}, busy:false };
   const $g = id => document.getElementById(id);
   function _setStatus(t){ const el=$g("eo-status"); if(el) el.innerHTML=t; }
   function _setPnl(){
     const p=$g("eo-pnl"); if(!p) return; const v=S.sess.pnl;
     p.textContent = (v>=0?"+$":"-$")+Math.abs(v).toFixed(2);
-    p.className = "eo-auto-pnl " + (v>=0?"up":"dn");
+    p.className = "eo-pnl-inline " + (v>=0?"up":"dn");
+  }
+  // -- Live signal radar -- reads LiveWS digits and renders the EVEN/ODD lean
+  // against the user's threshold every ~400ms. Pulses when threshold crossed.
+  function _liveDigits(){ try{ return (typeof LiveWS!=="undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
+  function _updateSignal(){
+    const sig = $g("eo-signal"); if(!sig) return;
+    const d = _liveDigits();
+    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||58));
+    const thrLine = $g("eo-signal-thr"); if(thrLine) thrLine.style.left = thr + "%";
+    const thrLab  = $g("eo-signal-thr-lab"); if(thrLab) thrLab.textContent = thr + "%";
+    const mkt = $g("eo-signal-market");
+    if(mkt){ const opt = ($g("t-symbol")||{}).selectedOptions?.[0]; mkt.textContent = (opt?opt.textContent:"") || "—"; }
+    if(d.length < 20){
+      sig.classList.remove("live-even","live-odd");
+      const ne=$g("eo-signal-even"); if(ne) ne.style.width = "50%";
+      const no=$g("eo-signal-odd");  if(no) no.style.width = "50%";
+      const sp=$g("eo-signal-pct"); if(sp) sp.textContent = "—";
+      const ss=$g("eo-signal-side"); if(ss) ss.textContent = "warming";
+      const se=$g("eo-signal-e"); if(se) se.textContent = "—";
+      const so=$g("eo-signal-o"); if(so) so.textContent = "—";
+      const st=$g("eo-signal-state"); if(st) st.innerHTML = "reading the tape… <b>"+d.length+"/20</b>";
+      return;
+    }
+    const last20 = d.slice(-20);
+    const ev = last20.filter(x=>x%2===0).length;
+    const evp = Math.round(ev/last20.length*100), odp = 100 - evp;
+    const evWins = evp >= odp;
+    const lead = Math.max(evp, odp);
+    const overThr = lead >= thr;
+    const dom = evWins ? "EVEN" : "ODD";
+    sig.classList.toggle("live-even", overThr && evWins);
+    sig.classList.toggle("live-odd",  overThr && !evWins);
+    const ne=$g("eo-signal-even"); if(ne) ne.style.width = evp+"%";
+    const no=$g("eo-signal-odd");  if(no) no.style.width = odp+"%";
+    const sp=$g("eo-signal-pct"); if(sp) sp.textContent = lead + "%";
+    const ss=$g("eo-signal-side"); if(ss) ss.textContent = dom;
+    const se=$g("eo-signal-e"); if(se) se.textContent = evp + "%";
+    const so=$g("eo-signal-o"); if(so) so.textContent = odp + "%";
+    const st=$g("eo-signal-state");
+    if(st){
+      if(overThr) st.innerHTML = '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire';
+      else        st.innerHTML = '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger';
+    }
   }
   function _setFills(){
     const tp = parseFloat(($g("eo-tp")||{}).value)||0;
@@ -2059,7 +2168,7 @@ window.EOAuto = (function(){
     const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
     const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
   }
-  function _liveDigits(){ try{ return (typeof LiveWS!=="undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
+  // (_liveDigits defined above for the signal radar — reused here.)
   // Decide EVEN / ODD / SKIP from the live read + threshold.
   function _decide(threshold){
     const d = _liveDigits(); if(d.length < 20) return {side:null, why:"reading the tape — need at least 20 ticks"};
@@ -2159,6 +2268,16 @@ window.EOAuto = (function(){
   // Expose for external bindings (input handlers update fills + dots live).
   S._setFills = _setFills;
   S._renderDots = _renderDots;
+  S._updateSignal = _updateSignal;
+  // Live signal lifecycle: poll while the auto-panel is visible (every 400ms).
+  S.startSignal = function(){
+    if(S.signalTimer) return;
+    _updateSignal();
+    S.signalTimer = setInterval(_updateSignal, 400);
+  };
+  S.stopSignal = function(){
+    if(S.signalTimer){ clearInterval(S.signalTimer); S.signalTimer = null; }
+  };
   S.toggle = function(){ S.running ? S.stop("manual stop") : S.start(); };
   return S;
 })();
@@ -2205,6 +2324,35 @@ window.EOAuto = (function(){
   // -- Big start button + the AUTO mix button on the trio --
   const go  = document.getElementById("eo-go");      if(go)  go.addEventListener("click",  ()=>window.EOAuto.toggle());
   const mix = document.getElementById("eo-mix-btn"); if(mix) mix.addEventListener("click", ()=>window.EOAuto.toggle());
+
+  // -- Quick presets: tap to fill TP / SL / threshold / stake / streak in one go --
+  const PRESETS = {
+    cautious: { tp:5,  sl:3,  thr:65, stake:0.35, streak:5  },   // small wins, tight rails
+    steady:   { tp:10, sl:5,  thr:58, stake:0.50, streak:8  },   // balanced default
+    bold:     { tp:20, sl:10, thr:53, stake:1.00, streak:11 },   // bigger swings, looser
+  };
+  function _applyPreset(name){
+    const p = PRESETS[name]; if(!p) return;
+    const set = (id, v) => { const el = document.getElementById(id); if(!el) return;
+      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+    set("eo-tp",     p.tp);
+    set("eo-sl",     p.sl);
+    set("eo-thr",    p.thr);
+    set("eo-stake",  p.stake.toFixed(2));
+    set("eo-streak", p.streak);
+    document.querySelectorAll("#eo-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
+    try{ window.EOAuto._setFills(); window.EOAuto._renderDots(); window.EOAuto._updateSignal(); }catch(_){ }
+  }
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#eo-presets button[data-preset]");
+    if(t) _applyPreset(t.dataset.preset);
+  });
+  // Apply the default "Steady" preset once on first open so the inputs aren't
+  // empty when the user lands on Even/Odd. Skip if user already typed values.
+  setTimeout(() => {
+    const tp = document.getElementById("eo-tp");
+    if(tp && !tp.value) _applyPreset("steady");
+  }, 100);
 })();
 
 async function placeTrade(btn){
