@@ -1645,6 +1645,47 @@ async function api(p,opts={}){
 }
 const $=id=>document.getElementById(id);
 
+// ----------------------------------------------------------------------
+// Auto-trader session persistence — saves running state + session stats to
+// localStorage so a page refresh / tab restore picks up where it left off.
+// Per-account, per-trade-type. Cleared on manual stop / TP / SL / streak.
+// ----------------------------------------------------------------------
+function _autoKey(kind){
+  const acct = (CUR && CUR.id) ? CUR.id : "_none";
+  return "j81_auto_" + kind + "_" + acct;
+}
+function _saveAutoSession(kind){
+  try{
+    const ctrl = kind === "eo" ? window.EOAuto : kind === "rf" ? window.RFAuto : window.OUAuto;
+    if(!ctrl || !CUR) return;
+    localStorage.setItem(_autoKey(kind), JSON.stringify({
+      running: !!ctrl.running,
+      sess: ctrl.sess || null,
+      at: Date.now(),
+    }));
+  }catch(_){}
+}
+function _clearAutoSession(kind){ try{ localStorage.removeItem(_autoKey(kind)); }catch(_){} }
+function _loadAutoSession(kind){
+  try{ return JSON.parse(localStorage.getItem(_autoKey(kind)) || "null"); }catch(_){ return null; }
+}
+// Called once after CUR is set on boot — resumes any auto-trader that was
+// running before a refresh / tab close. Only resumes sessions saved in the
+// last 8 hours (after that the live data is too stale to mean anything).
+function resumeAutoSessions(){
+  if(!CUR) return;
+  const tooOld = 8 * 60 * 60 * 1000;
+  ["eo","rf","ou"].forEach(kind => {
+    const saved = _loadAutoSession(kind);
+    if(!saved || !saved.running) return;
+    if(Date.now() - (saved.at||0) > tooOld){ _clearAutoSession(kind); return; }
+    const ctrl = kind === "eo" ? window.EOAuto : kind === "rf" ? window.RFAuto : window.OUAuto;
+    if(!ctrl) return;
+    if(saved.sess) ctrl.sess = saved.sess;       // carry the P/L / wins / losses / streak / martStep forward
+    try{ ctrl.start({resume:true}); }catch(_){}
+  });
+}
+
 // /scan dedup + short-lived cache. The EO, RF, OU auto-traders and the
 // scanner UI all read /scan at overlapping cadences — without this they'd
 // fire 4× the requests for the same data. ~600ms cache window is well below
@@ -1835,7 +1876,14 @@ function setupLanding(){
     el.innerHTML='<a href="#" onclick="showView(\'connect\');return false">Prefer an API token? Connect that way →</a>';
   });
 }
-function enterApp(){ updateNav(); showView("home"); }
+function enterApp(){
+  updateNav();
+  showView("home");
+  // Resume any auto-trader that was running before a refresh / tab close.
+  // Runs after a tiny delay so the controllers (defined later in the file)
+  // are guaranteed to be live by the time we call them.
+  setTimeout(()=>{ try{ resumeAutoSessions(); }catch(_){} }, 250);
+}
 async function logout(){   // disconnect THIS browser → back to the front page
   try{ await api("/logout",{method:"POST",body:"{}"}); }catch(_){}
   clearNav(); CUR=null; GAME=null; HAS_ACCOUNTS=false;
@@ -2517,10 +2565,11 @@ async function openTrade(game){
   $("trade-buttons").className = "tgrid"
     + (game==="rise_fall" ? " compact" : "")
     + (isEO ? " eo3" : "");          // 3-column layout when EVEN/ODD/AUTO trio is present
-  // Stop auto-traders on game switch so leaving the page never leaves them firing.
-  if(!isEO && window.EOAuto && window.EOAuto.running) window.EOAuto.stop("game changed");
-  if(!isRF && window.RFAuto && window.RFAuto.running) window.RFAuto.stop("game changed");
-  if(!isOU && window.OUAuto && window.OUAuto.running) window.OUAuto.stop("game changed");
+  // NOTE: don't kill running auto-traders just because the user navigated
+  // to a different game's view. Auto runs until the user stops it manually,
+  // a stop condition fires (TP / SL / loss-streak), or they start the auto
+  // for a different game (the start() function enforces one-auto-at-a-time
+  // since multiple controllers firing on the same account would conflict).
   // Keep legacy RFScan running only when we're NOT on the new RF view (it's
   // still used elsewhere; on RF view, the new scanner replaces it).
   if(game==="rise_fall") RFScan.stop(); else RFScan.stop();
@@ -2877,6 +2926,7 @@ window.EOAuto = (function(){
         S.sess.martStep = (S.sess.martStep || 0) + 1;        // bump the martingale ladder
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      _saveAutoSession("eo");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
       const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
       _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
@@ -2909,15 +2959,23 @@ window.EOAuto = (function(){
       S.busy = false;
     }
   }
-  S.start = function(){
+  S.start = function(opts){
     if(S.running) return;
     if(!CUR){ showView("connect"); return; }
+    // Only one auto-trader fires on the account at a time — kill anything
+    // else that's running so we don't conflict.
+    try{ if(window.RFAuto && window.RFAuto.running) window.RFAuto.stop("EO auto started"); }catch(_){}
+    try{ if(window.OUAuto && window.OUAuto.running) window.OUAuto.stop("EO auto started"); }catch(_){}
     S.running = true;
-    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    // resume:true skips the sess reset so localStorage-restored sessions keep their P/L.
+    if(!(opts && opts.resume)){
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const b=$g("eo-mix-btn"); if(b){ b.classList.add("on"); const sub=b.querySelector(".sub"); if(sub) sub.textContent="running · session 0/0"; }
     const go=$g("eo-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    _saveAutoSession("eo");
     // Mark the ticks chip row as running so the AUTO chip pulses + shows a
     // live green dot while the auto-trader is actively picking ticks.
     const chips = $g("eo-tick-seg");
@@ -2937,6 +2995,7 @@ window.EOAuto = (function(){
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer=null; }
     _resetBtn();
+    _clearAutoSession("eo");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+
                ((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
   };
@@ -3181,6 +3240,7 @@ window.RFAuto = (function(){
       if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
       else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      _saveAutoSession("rf");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
       const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
       _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
@@ -3194,13 +3254,18 @@ window.RFAuto = (function(){
     } catch(e){ _setStatus("error: "+(e&&e.message||"trade failed")); }
     finally{ S.busy = false; }
   }
-  S.start = function(){
+  S.start = function(opts){
     if(S.running) return; if(!CUR){ showView("connect"); return; }
+    try{ if(window.EOAuto && window.EOAuto.running) window.EOAuto.stop("RF auto started"); }catch(_){}
+    try{ if(window.OUAuto && window.OUAuto.running) window.OUAuto.stop("RF auto started"); }catch(_){}
     S.running = true;
-    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    if(!(opts && opts.resume)){
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const go=$g("rf-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    _saveAutoSession("rf");
     const chips=$g("rf-tick-seg");
     const ticksMode=(document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto";
     if(chips){ chips.setAttribute("data-running","1");
@@ -3213,6 +3278,7 @@ window.RFAuto = (function(){
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer = null; }
     _resetBtn();
+    _clearAutoSession("rf");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
   };
   S._setFills = _setFills; S._renderDots = _renderDots; S._renderMart = _renderMart;
@@ -3542,6 +3608,7 @@ window.OUAuto = (function(){
       if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
       else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      _saveAutoSession("ou");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
       const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
       _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
@@ -3555,13 +3622,18 @@ window.OUAuto = (function(){
     } catch(e){ _setStatus("error: "+(e&&e.message||"trade failed")); }
     finally{ S.busy = false; }
   }
-  S.start = function(){
+  S.start = function(opts){
     if(S.running) return; if(!CUR){ showView("connect"); return; }
+    try{ if(window.EOAuto && window.EOAuto.running) window.EOAuto.stop("OU auto started"); }catch(_){}
+    try{ if(window.RFAuto && window.RFAuto.running) window.RFAuto.stop("OU auto started"); }catch(_){}
     S.running = true;
-    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    if(!(opts && opts.resume)){
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const go=$g("ou-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    _saveAutoSession("ou");
     const chips=$g("ou-tick-seg");
     const ticksMode=(document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto";
     if(chips){ chips.setAttribute("data-running","1");
@@ -3574,6 +3646,7 @@ window.OUAuto = (function(){
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer = null; }
     _resetBtn();
+    _clearAutoSession("ou");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
   };
   S._setFills = _setFills; S._renderDots = _renderDots; S._renderMart = _renderMart;
