@@ -1114,7 +1114,7 @@
           <div class="eo-tile-head"><span class="eo-tile-lab">Take profit</span><span class="eo-tile-hint">stops at this win</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-1" data-tgt="eo-tp">−</button>
-            <span class="cur">$<input id="eo-tp" type="number" min="0" step="0.5" placeholder="100"/></span>
+            <span class="cur">$<input id="eo-tp" type="number" min="0" step="0.5" placeholder="1000"/></span>
             <button type="button" data-step="+1" data-tgt="eo-tp">+</button>
           </div>
           <div class="eo-fill"><i id="eo-tp-fill"></i></div>
@@ -1123,7 +1123,7 @@
           <div class="eo-tile-head"><span class="eo-tile-lab">Stop loss</span><span class="eo-tile-hint">stops at this loss</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-1" data-tgt="eo-sl">−</button>
-            <span class="cur">$<input id="eo-sl" type="number" min="0" step="0.5" placeholder="50"/></span>
+            <span class="cur">$<input id="eo-sl" type="number" min="0" step="0.5" placeholder="1000"/></span>
             <button type="button" data-step="+1" data-tgt="eo-sl">+</button>
           </div>
           <div class="eo-fill danger"><i id="eo-sl-fill"></i></div>
@@ -2593,9 +2593,9 @@ window.EOAuto = (function(){
   // Thresholds tightened: the auto-trader now requires |z|≥2σ + multi-window
   // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
-    cautious: { tp:30,  sl:15,  thr:75, stake:5,   streak:5  },   // very selective
-    steady:   { tp:100, sl:50,  thr:70, stake:50,  streak:8  },   // strong leans only ($50 stake + $50 SL)
-    bold:     { tp:200, sl:100, thr:62, stake:100, streak:11 },   // wider net but still gated
+    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5  },   // very selective
+    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8  },   // default — $1000 TP/SL
+    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11 },   // wider net but still gated
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
