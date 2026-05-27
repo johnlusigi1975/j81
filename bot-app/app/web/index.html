@@ -476,6 +476,17 @@
   .eo-presets button .lab{font-family:var(--serif);font-size:12.5px;font-weight:800;letter-spacing:.01em;margin-top:2px}
   .eo-presets button .sub{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
 
+  /* AUTO threshold chip — sits inline with the threshold label. Click toggles
+     the desk's self-tuning of the signal threshold based on session streak. */
+  .thr-auto-chip{display:inline-block;margin-left:6px;padding:1px 6px 0;font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:5px;cursor:pointer;transition:all .15s ease;line-height:1.5;vertical-align:middle;position:relative;top:-1px}
+  .thr-auto-chip:hover{border-color:var(--bd2);color:var(--text)}
+  .thr-auto-chip.on{background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a);color:#04200f;border-color:transparent;box-shadow:0 4px 12px -4px rgba(70,207,158,.6)}
+  /* Armed dot beside the threshold label — green pulse when AUTO threshold is on. */
+  .thr-auto-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);margin-right:7px;vertical-align:middle;transition:all .25s ease;position:relative;top:-1px}
+  .thr-auto-dot.on{background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-tick-pulse 1.4s ease-in-out infinite}
+  /* When AUTO is on, soften the slider visually so the user sees it's being driven by the system. */
+  .eo-slider-wrap.locked{opacity:.55;pointer-events:none}
+
   /* Armed dot beside the "Martingale × loss" label — pulses green when the
      auto-trader is running (martingale is active), dim grey when idle. */
   .mart-armed{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);margin-right:7px;vertical-align:middle;transition:background .25s ease,box-shadow .25s ease;position:relative;top:-1px}
@@ -1201,7 +1212,7 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <b id="eo-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <b id="eo-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
             <input id="eo-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
@@ -1342,7 +1353,7 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Direction threshold</span><span class="eo-tile-hint" id="rf-thr-hint">preferred lean ≥ <b id="rf-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="rf-thr-auto-dot"></span>Direction threshold <button type="button" class="thr-auto-chip" id="rf-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="rf-thr-hint">preferred lean ≥ <b id="rf-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
             <input id="rf-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
@@ -1500,7 +1511,7 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="ou-thr-hint">preferred lean ≥ <b id="ou-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="ou-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="ou-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="ou-thr-hint">preferred lean ≥ <b id="ou-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
             <input id="ou-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
@@ -1688,8 +1699,51 @@ function resumeAutoSessions(){
     if(!ctrl) return;
     if(saved.sess) ctrl.sess = saved.sess;       // carry the P/L / wins / losses / streak / martStep forward
     try{ ctrl.start({resume:true}); }catch(_){}
+    // Re-apply the AUTO-threshold chip UI if the saved session had it on.
+    try{ if(ctrl.sess && ctrl.sess.thrAuto) _setThrAutoUI(kind, true); }catch(_){}
   });
 }
+
+// ----------------------------------------------------------------------
+// Auto-threshold helper — when the user enables AUTO on the threshold,
+// the system self-tunes between 52% and 72% based on session performance:
+//   • After 2+ losses in a row → push threshold up (be pickier next cycle)
+//   • No streak + at least one win banked → ease threshold down (let it ride)
+//   • Capped at [52, 72] so it never goes silly.
+// Returns the suggested new threshold; the caller updates the slider value.
+function _adaptThreshold(prev, sess){
+  let t = Number(prev) || 55;
+  if(sess.streak >= 3)      t += 2.0;       // hard streak: bigger jump
+  else if(sess.streak === 2) t += 1.0;
+  else if(sess.streak === 0 && sess.wins > 0) t -= 0.5;
+  return Math.max(52, Math.min(72, Math.round(t * 10) / 10));
+}
+function _setThrAutoUI(kind, on){
+  const chip = document.getElementById(kind+"-thr-auto");
+  const dot  = document.getElementById(kind+"-thr-auto-dot");
+  const slider = document.getElementById(kind+"-thr");
+  const wrap = slider ? slider.closest(".eo-slider-wrap") : null;
+  if(chip)  chip.classList.toggle("on", !!on);
+  if(dot)   dot.classList.toggle("on",  !!on);
+  if(wrap)  wrap.classList.toggle("locked", !!on);
+}
+// Wire each AUTO chip on click — kept in the global scope so it works after
+// the controllers boot, no matter the order of script blocks.
+(function(){
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest(".thr-auto-chip");
+    if(!t) return;
+    const kind = t.id === "eo-thr-auto" ? "eo" : t.id === "rf-thr-auto" ? "rf" : t.id === "ou-thr-auto" ? "ou" : null;
+    if(!kind) return;
+    const ctrl = kind === "eo" ? window.EOAuto : kind === "rf" ? window.RFAuto : window.OUAuto;
+    if(!ctrl) return;
+    ctrl.sess = ctrl.sess || {};
+    ctrl.sess.thrAuto = !ctrl.sess.thrAuto;
+    _setThrAutoUI(kind, ctrl.sess.thrAuto);
+    // Persist so the toggle survives a refresh too.
+    try{ _saveAutoSession(kind); }catch(_){}
+  });
+})();
 
 // /scan dedup + short-lived cache. The EO, RF, OU auto-traders and the
 // scanner UI all read /scan at overlapping cadences — without this they'd
@@ -2937,6 +2991,16 @@ window.EOAuto = (function(){
         S.sess.martStep = (S.sess.martStep || 0) + 1;        // bump the martingale ladder
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      // Auto-threshold: nudge the threshold based on session performance.
+      if(S.sess.thrAuto){
+        const slider = $g("eo-thr"); if(slider){
+          const next = _adaptThreshold(slider.value, S.sess);
+          if(Number(slider.value) !== next){
+            slider.value = next;
+            slider.dispatchEvent(new Event("input", {bubbles:true}));
+          }
+        }
+      }
       _saveAutoSession("eo");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
       const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
@@ -3258,6 +3322,15 @@ window.RFAuto = (function(){
         else if(isLoss){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      if(S.sess.thrAuto){
+        const slider = $g("rf-thr"); if(slider){
+          const next = _adaptThreshold(slider.value, S.sess);
+          if(Number(slider.value) !== next){
+            slider.value = next;
+            slider.dispatchEvent(new Event("input", {bubbles:true}));
+          }
+        }
+      }
       _saveAutoSession("rf");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
       const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
@@ -3633,6 +3706,15 @@ window.OUAuto = (function(){
         else if(isLoss){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      if(S.sess.thrAuto){
+        const slider = $g("ou-thr"); if(slider){
+          const next = _adaptThreshold(slider.value, S.sess);
+          if(Number(slider.value) !== next){
+            slider.value = next;
+            slider.dispatchEvent(new Event("input", {bubbles:true}));
+          }
+        }
+      }
       _saveAutoSession("ou");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
       const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
