@@ -1644,6 +1644,25 @@ async function api(p,opts={}){
   } finally { clearTimeout(to); }
 }
 const $=id=>document.getElementById(id);
+
+// /scan dedup + short-lived cache. The EO, RF, OU auto-traders and the
+// scanner UI all read /scan at overlapping cadences — without this they'd
+// fire 4× the requests for the same data. ~600ms cache window is well below
+// the observer's ~1/sec tick rhythm so we never miss a meaningful update.
+let _scanCache = null;       // {at: ms, data}
+let _scanInflight = null;    // Promise (shared) while a request is in flight
+async function scanGet(maxAgeMs){
+  const max = maxAgeMs == null ? 600 : maxAgeMs;
+  const now = performance.now();
+  if(_scanCache && (now - _scanCache.at) < max) return _scanCache.data;
+  if(_scanInflight) return _scanInflight;
+  _scanInflight = api("/scan").then(d => {
+    _scanCache = { at: performance.now(), data: d };
+    _scanInflight = null;
+    return d;
+  }).catch(e => { _scanInflight = null; throw e; });
+  return _scanInflight;
+}
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtMoney=(v,c)=>(v==null||isNaN(v))?"—":(((c||"USD")==="USD")?"$":(esc(c)+" "))+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 async function loadBalance(id){ try{ return await api("/accounts/"+encodeURIComponent(id)+"/balance"); }catch(_){ return null; } }
@@ -2203,7 +2222,7 @@ async function loadEoScan(){
   if(GAME !== "even_odd"){ el.hidden = true; return; }
   el.hidden = false;
   try{
-    const d = await api("/scan");
+    const d = await scanGet();
     const bySym = {};
     (d.markets || []).forEach(m => { if(m && m.symbol) bySym[m.symbol] = m; });
     const bestPayoutSym = (d.best_payout || d.best || {}).symbol || null;
@@ -2483,6 +2502,9 @@ async function openTrade(game){
   if($("trade-buttons")) $("trade-buttons").hidden = stripLegacy;
   if($("t-result")) $("t-result").hidden = stripLegacy;
   document.querySelectorAll(".read").forEach(r => { if(r.querySelector("#assist-msg")) r.hidden = stripLegacy; });
+  // Pre-warm /scan so the first scanner paint after game switch is instant
+  // (saves the ~150–400ms cold-fetch round-trip the user feels otherwise).
+  if(isEO || isRF || isOU){ try{ scanGet(0); }catch(_){} }
   // EO lifecycle
   if(isEO){ loadEvenOddPayouts(); startEoScan(); try{ window.EOAuto && window.EOAuto.startSignal(); }catch(_){} }
   else    { stopEoScan(); try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} }
@@ -2749,7 +2771,7 @@ window.EOAuto = (function(){
   // Returns {symbol, name, side, pct, lean, z} or {none:true, reason}.
   async function _pickBestMarket(threshold){
     try{
-      const d = await api("/scan");
+      const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.even_pct != null);
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
       const Z_MIN = 2.0;            // 2σ confirmation
@@ -2927,7 +2949,7 @@ window.EOAuto = (function(){
         : "manual " + (($g("eo-ticks")||{}).value || "1") + " tick — fixed per trade";
     }
     _fireOnce();
-    S.timer = setInterval(_fireOnce, 6000);
+    S.timer = setInterval(_fireOnce, 4000);
   };
   S.stop = function(reason){
     if(!S.running && !S.timer) return;
@@ -2998,7 +3020,7 @@ async function loadRfScan(){
   if(GAME !== "rise_fall"){ el.hidden = true; return; }
   el.hidden = false;
   try{
-    const d = await api("/scan");
+    const d = await scanGet();
     const bySym = {};
     (d.markets || []).forEach(m => { if(m && m.symbol) bySym[m.symbol] = m; });
     const cur = ($("t-symbol")||{}).value || null;
@@ -3116,7 +3138,7 @@ window.RFAuto = (function(){
   // Same filtered candidate pick as EO but on up_pct + |up_z|>=2 + multi-window.
   async function _pickBestRfMarket(threshold){
     try{
-      const d = await api("/scan");
+      const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.up_pct != null);
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
       const Z_MIN=2.0, W20_MIN=threshold-3, W50_MIN=threshold-8;
@@ -3218,7 +3240,7 @@ window.RFAuto = (function(){
     if(chips){ chips.setAttribute("data-running","1");
       const hint=$g("rf-tick-hint"); if(hint) hint.textContent = ticksMode==="auto" ? "AUTO is on — picking each trade based on lean strength" : "manual "+(($g("rf-ticks")||{}).value||"1")+" tick — fixed per trade"; }
     _fireOnce();
-    S.timer = setInterval(_fireOnce, 6000);
+    S.timer = setInterval(_fireOnce, 4000);
   };
   S.stop = function(reason){
     if(!S.running && !S.timer) return;
@@ -3365,7 +3387,7 @@ async function loadOuScan(){
   el.hidden = false;
   const barrier = Math.max(1, Math.min(8, parseInt(($("ou-barrier")||{}).value)||4));
   try{
-    const d = await api("/scan");
+    const d = await scanGet();
     const bySym = {};
     (d.markets || []).forEach(m => { if(m && m.symbol) bySym[m.symbol] = m; });
     const cur = ($("t-symbol")||{}).value || null;
@@ -3483,7 +3505,7 @@ window.OUAuto = (function(){
   // Pick best market across all 10 using OU-specific math.
   async function _pickBestOuMarket(threshold, barrier){
     try{
-      const d = await api("/scan");
+      const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && Array.isArray(m.freq));
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
       const Z_MIN=2.0, W20_MIN=threshold-3, W50_MIN=threshold-8;
@@ -3594,7 +3616,7 @@ window.OUAuto = (function(){
     if(chips){ chips.setAttribute("data-running","1");
       const hint=$g("ou-tick-hint"); if(hint) hint.textContent = ticksMode==="auto" ? "AUTO is on — picking each trade based on lean strength" : "manual "+(($g("ou-ticks")||{}).value||"1")+" tick — fixed per trade"; }
     _fireOnce();
-    S.timer = setInterval(_fireOnce, 6000);
+    S.timer = setInterval(_fireOnce, 4000);
   };
   S.stop = function(reason){
     if(!S.running && !S.timer) return;
@@ -3872,7 +3894,7 @@ function renderScan(d){ const el=$("scan-table"),rd=$("scan-ready"); if(!el)retu
       return `<tr class="${r.rank===1?'top':''}"><td>${r.rank===1?'▸ ':''}${esc(r.name)} ${dir}</td><td>${r.even}</td><td>${r.odd}</td><td style="color:var(--amber);font-weight:700">${r.gap}</td><td>${r.stability}</td><td>${r.quality}</td></tr>`;
     }).join("")+'</tbody></table>';
 }
-async function loadScan(){ if(GAME!=="m_pro")return; try{ const d=await api("/scan"); renderScan(d); renderDigits(d.top); }catch(_){ const el=$("scan-table"); if(el)el.innerHTML='<div class="empty">scanner offline — start the Analyser (:9000)</div>'; } }
+async function loadScan(){ if(GAME!=="m_pro")return; try{ const d=await scanGet(); renderScan(d); renderDigits(d.top); }catch(_){ const el=$("scan-table"); if(el)el.innerHTML='<div class="empty">scanner offline — start the Analyser (:9000)</div>'; } }
 function setMpMode(m){ document.querySelectorAll('#mpro-mode .segbtn').forEach(b=>b.classList.toggle('on',b.dataset.mode===m)); }
 function curMpMode(){ const b=document.querySelector('#mpro-mode .segbtn.on'); return b?b.dataset.mode:'auto'; }
 (function(){ document.querySelectorAll('#mpro-mode .segbtn').forEach(b=>b.addEventListener('click',()=>setMpMode(b.dataset.mode))); })();

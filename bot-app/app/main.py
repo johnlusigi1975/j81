@@ -905,14 +905,23 @@ def strategies() -> dict:
     return {"strategies": STRATEGIES}
 
 
+# Small in-memory cache for /scan so multiple in-flight callers (EOAuto +
+# RFAuto + OUAuto + scanner UI hitting at ~the same moment) all share one
+# computation. Observer ticks come in roughly 1/sec, so 750ms is conservative.
+_SCAN_CACHE: dict[str, tuple[float, dict]] = {}
+_SCAN_TTL = 0.75
+
+
 @app.get("/scan")
 async def scan_local() -> dict:
-    """Live Even/Odd scan over the 10 synthetic markets. Reads the local
-    observer's rolling snapshot — no analyser call needed (single-bot edition).
-    Returns one row per synthetic market with the live EVEN/ODD confidence
-    rates from the observer plus payout (if known). The observer is the
-    canonical source — the UI scanner needs all 10 rows even when the payout
-    table is still warming up after a fresh boot."""
+    """Live Even/Odd / Rise-Fall / Over-Under scan over the 10 synthetic markets.
+    Reads the local observer's rolling snapshot — no analyser call needed
+    (single-bot edition). Cached for ~750ms so concurrent calls share work."""
+    import time as _time
+    now = _time.monotonic()
+    cached = _SCAN_CACHE.get("v1")
+    if cached and (now - cached[0]) < _SCAN_TTL:
+        return cached[1]
     try:
         from app import library as _lib
         from app import observer as _obs
@@ -955,12 +964,14 @@ async def scan_local() -> dict:
     best_lean = max(ready_rows, key=_lean, default=None) if ready_rows else None
     payout_rows = [r for r in rows if r.get("payout_pct")]
     best_payout = max(payout_rows, key=lambda r: r["payout_pct"] or 0, default=None) if payout_rows else None
-    return {
+    out = {
         "markets": rows,
         "best_payout": best_payout,
         "best_lean": best_lean,
         "best": best_payout,           # legacy field — older UI code still expected `best`
     }
+    _SCAN_CACHE["v1"] = (now, out)
+    return out
 
 
 @app.get("/deriv/library")
