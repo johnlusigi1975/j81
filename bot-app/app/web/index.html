@@ -380,6 +380,34 @@
   .eo-signal-bar .rise{background:linear-gradient(135deg,#6ff0a8 0%,#12c46a 60%,#0a7c44 100%);transition:width .35s ease}
   .eo-signal-bar .fall{background:linear-gradient(135deg,#ff8aa0 0%,#e23a52 60%,#a82236 100%);transition:width .35s ease}
 
+  /* OVER/UNDER colour variants — amber (OVER, climbing past the barrier)
+     and violet (UNDER, sinking below). Distinct from EO (gold/silver) and
+     RF (green/red) so each trade type reads instantly. */
+  .eo-cell.lean-over  .big .pct{color:#ffb45a;text-shadow:0 0 12px rgba(255,180,90,.25)}
+  .eo-cell.lean-under .big .pct{color:#c8b8ff;text-shadow:0 0 12px rgba(155,140,255,.25)}
+  .eo-cell.lean-over  .big .side{color:#ffb45a;opacity:.85}
+  .eo-cell.lean-under .big .side{color:#c8b8ff;opacity:.85}
+  .eo-cell .bar .over {background:linear-gradient(135deg,#ffd28a 0%,#f0a04a 60%,#c97524 100%);transition:width .5s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 6px rgba(255,180,90,.4)}
+  .eo-cell .bar .under{background:linear-gradient(135deg,#dfd4ff 0%,#9b8cff 60%,#5e4ed1 100%);transition:width .5s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 6px rgba(155,140,255,.35)}
+  .eo-cell.strong.lean-over {border-color:rgba(255,180,90,.6);box-shadow:0 0 0 1px rgba(255,180,90,.25) inset, 0 0 24px -8px rgba(255,180,90,.55)}
+  .eo-cell.strong.lean-under{border-color:rgba(155,140,255,.6);box-shadow:0 0 0 1px rgba(155,140,255,.25) inset, 0 0 24px -8px rgba(155,140,255,.55)}
+  .eo-cell.strong.lean-over ::after{box-shadow:inset 0 0 14px -2px rgba(255,180,90,.4)}
+  .eo-cell.strong.lean-under::after{box-shadow:inset 0 0 14px -2px rgba(155,140,255,.4)}
+  .eo-cell.firm.lean-over {border-color:rgba(255,180,90,.32)}
+  .eo-cell.firm.lean-under{border-color:rgba(155,140,255,.32)}
+  /* OU signal radar */
+  .eo-signal.live-over {border-color:rgba(255,180,90,.55);box-shadow:0 0 0 1px rgba(255,180,90,.25) inset, 0 16px 36px -22px rgba(255,180,90,.55);animation:eo-sig-pulse 1.8s ease-in-out infinite}
+  .eo-signal.live-under{border-color:rgba(155,140,255,.55);box-shadow:0 0 0 1px rgba(155,140,255,.25) inset, 0 16px 36px -22px rgba(155,140,255,.55);animation:eo-sig-pulse 1.8s ease-in-out infinite}
+  .eo-signal.live-over  .eo-signal-side{color:#ffb45a}
+  .eo-signal.live-under .eo-signal-side{color:#c8b8ff}
+  .eo-signal-bar .over {background:linear-gradient(135deg,#ffd28a 0%,#f0a04a 60%,#c97524 100%);transition:width .35s ease}
+  .eo-signal-bar .under{background:linear-gradient(135deg,#dfd4ff 0%,#9b8cff 60%,#5e4ed1 100%);transition:width .35s ease}
+  /* Barrier picker chips — narrower than ticks chips (8 of them). */
+  .eo-barrier{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+  .eo-barrier button{padding:8px 0;font-family:var(--mono);font-size:12px;font-weight:800;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s ease}
+  .eo-barrier button:hover{border-color:var(--bd2);color:var(--text)}
+  .eo-barrier button.on{background:linear-gradient(135deg,#ffd28a,#f0a04a 55%,#c97524);color:#241c0a;border-color:transparent;box-shadow:0 6px 16px -6px rgba(255,180,90,.6)}
+
   /* Recent activity — clean ticker-style list, no debug-text feel. */
   .recent-list{border:1px solid var(--bd);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.18));overflow:hidden}
   .recent-empty{padding:18px 16px;text-align:center;color:var(--faint);font-size:12px;font-style:italic}
@@ -1360,6 +1388,163 @@
     <!-- ⤵ Rise/Fall direction scanner — sits BELOW the RF auto-trader.
          Distinct from the legacy #rf-scan inside #rf-scan-panel. -->
     <div id="rf-scan-grid" class="eo-scan" hidden style="margin-top:14px"></div>
+
+    <!-- ===================== OVER / UNDER AUTO-TRADER =====================
+         Mirrors EO/RF, with an extra "barrier" digit chip row (1–8) since the
+         OU side + win-probability depend on which digit you pick. -->
+    <div id="ou-auto" class="eo-auto" hidden>
+      <!-- LIVE SIGNAL radar — OVER% vs UNDER% over last 20 digits for the
+           current barrier. Updates every 400ms while OU is visible. -->
+      <div class="eo-signal" id="ou-signal">
+        <div class="eo-signal-head">
+          <div>
+            <div class="eo-signal-eyebrow">LIVE OVER/UNDER · <span id="ou-signal-market">—</span></div>
+            <div class="eo-signal-state" id="ou-signal-state">reading the tape…</div>
+          </div>
+          <div class="eo-signal-bias">
+            <span class="eo-signal-side" id="ou-signal-side">—</span>
+            <span class="eo-signal-pct" id="ou-signal-pct">—%</span>
+          </div>
+        </div>
+        <div class="eo-signal-bar">
+          <span class="over"  id="ou-signal-o" style="width:50%"></span>
+          <span class="under" id="ou-signal-u" style="width:50%"></span>
+          <span class="thr"   id="ou-signal-thr" style="left:70%"></span>
+        </div>
+        <div class="eo-signal-meta">
+          <span>OVER <b id="ou-signal-op">—</b></span>
+          <span class="thr-lab">⌖ barrier <b id="ou-signal-bar">4</b> · threshold <b id="ou-signal-thr-lab">70%</b></span>
+          <span>UNDER <b id="ou-signal-up">—</b></span>
+        </div>
+      </div>
+
+      <!-- HERO START + STOP + INLINE SESSION -->
+      <div class="eo-go-row">
+        <button class="eo-go" id="ou-go" type="button">▶ Start auto-trading</button>
+        <button class="eo-stop-ghost" id="ou-stop-all" type="button" title="Stop auto-trading + clear all auto modes on your account">■ stop</button>
+      </div>
+      <div class="eo-strip">
+        <span class="eo-pnl-inline" id="ou-pnl">+$0.00</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="ou-stat-wins">0</b> wins</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="ou-stat-losses">0</b> losses</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline">streak <b id="ou-stat-streak">0</b></span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="ou-stat-trades">0</b> trades</span>
+      </div>
+      <div class="eo-status" id="ou-status">⌗ idle — pick a preset or fine-tune below</div>
+
+      <!-- QUICK PRESETS -->
+      <div class="eo-presets" id="ou-presets">
+        <button type="button" data-preset="cautious"><span class="ic">🛡</span><span class="lab">Cautious</span><span class="sub">small wins · tight rails</span></button>
+        <button type="button" data-preset="steady" class="on"><span class="ic">⚖</span><span class="lab">Steady</span><span class="sub">balanced · default</span></button>
+        <button type="button" data-preset="bold"><span class="ic">🔥</span><span class="lab">Bold</span><span class="sub">bigger swings · looser</span></button>
+      </div>
+
+      <!-- BARRIER picker — sets which digit splits OVER vs UNDER -->
+      <div class="eo-section-lab">Barrier digit</div>
+      <div class="eo-tile" style="margin-bottom:11px">
+        <div class="eo-tile-head"><span class="eo-tile-lab">Pick a barrier (1–8)</span><span class="eo-tile-hint">OVER wins above · UNDER wins below · 5 is balanced 50/50</span></div>
+        <div class="eo-barrier" id="ou-barrier-row">
+          <button type="button" data-val="1">1</button>
+          <button type="button" data-val="2">2</button>
+          <button type="button" data-val="3">3</button>
+          <button type="button" data-val="4" class="on">4</button>
+          <button type="button" data-val="5">5</button>
+          <button type="button" data-val="6">6</button>
+          <button type="button" data-val="7">7</button>
+          <button type="button" data-val="8">8</button>
+        </div>
+        <input id="ou-barrier" type="hidden" value="4"/>
+      </div>
+
+      <!-- TARGETS -->
+      <div class="eo-section-lab">Targets</div>
+      <div class="eo-row">
+        <div class="eo-tile target-tp">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Take profit</span><span class="eo-tile-hint">stops at this win</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-1" data-tgt="ou-tp">−</button>
+            <span class="cur">$<input id="ou-tp" type="number" min="0" step="0.5" placeholder="1000"/></span>
+            <button type="button" data-step="+1" data-tgt="ou-tp">+</button>
+          </div>
+          <div class="eo-fill"><i id="ou-tp-fill"></i></div>
+        </div>
+        <div class="eo-tile target-sl">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stop loss</span><span class="eo-tile-hint">stops at this loss</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-1" data-tgt="ou-sl">−</button>
+            <span class="cur">$<input id="ou-sl" type="number" min="0" step="0.5" placeholder="1000"/></span>
+            <button type="button" data-step="+1" data-tgt="ou-sl">+</button>
+          </div>
+          <div class="eo-fill danger"><i id="ou-sl-fill"></i></div>
+        </div>
+      </div>
+
+      <!-- ENGINE -->
+      <div class="eo-section-lab">Engine</div>
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-0.5" data-tgt="ou-stake">−</button>
+            <span class="cur">$<input id="ou-stake" type="number" min="0.35" step="0.5" placeholder="50"/></span>
+            <button type="button" data-step="+0.5" data-tgt="ou-stake">+</button>
+          </div>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="ou-thr-hint">fires when OVER or UNDER leads ≥ <b id="ou-thr-display">70</b>% (with multi-window confirm)</span></div>
+          <div class="eo-slider-wrap">
+            <input id="ou-thr" type="range" min="50" max="90" value="70" class="eo-slider"/>
+            <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="ou-tick-hint">AUTO picks 1–3 based on signal strength</span></div>
+          <div class="eo-chips" id="ou-tick-seg">
+            <button type="button" class="on" data-mode="auto">AUTO</button>
+            <button type="button" data-mode="manual" data-val="1">1</button>
+            <button type="button" data-mode="manual" data-val="2">2</button>
+            <button type="button" data-mode="manual" data-val="3">3</button>
+            <button type="button" data-mode="manual" data-val="5">5</button>
+          </div>
+          <input id="ou-ticks" type="hidden" value="1"/>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Loss-streak guard</span><span class="eo-tile-hint">stops after <b id="ou-streak-display">11</b> in a row</span></div>
+          <div class="eo-dots" id="ou-streak-dots"></div>
+          <div class="eo-stepper compact">
+            <button type="button" data-step="-1" data-tgt="ou-streak">−</button>
+            <span class="cur"><input id="ou-streak" type="number" min="1" max="20" value="11"/></span>
+            <button type="button" data-step="+1" data-tgt="ou-streak">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Martingale × loss</span><span class="eo-tile-hint">stake × <b id="ou-mart-display">1.3</b> after every loss · resets on a win</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-0.1" data-tgt="ou-mart">−</button>
+            <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.3"/></span>
+            <button type="button" data-step="+0.1" data-tgt="ou-mart">+</button>
+          </div>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Live recovery</span><span class="eo-tile-hint">resets to base on a win</span></div>
+          <div class="eo-mart-state" id="ou-mart-state">
+            <div class="eo-mart-step">step <span id="ou-mart-step">0</span></div>
+            <div class="eo-mart-next">next stake <span id="ou-mart-next">$50.00</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⤵ Over/Under scanner — sits BELOW the OU auto-trader. -->
+    <div id="ou-scan-grid" class="eo-scan" hidden style="margin-top:14px"></div>
     <!-- best-payout edge banner — sits with the scanner -->
     <div id="eo-payout" hidden style="margin-top:10px"></div>
 
@@ -1486,7 +1671,7 @@ function showView(v){
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display="none";   // beach theme: ocean body gradient is the backdrop (no gold bars)
-  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ stopRfScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
+  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ stopRfScan(); }catch(_){} try{ stopOuScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} try{ window.OUAuto && window.OUAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
   // Remember the section so a refresh lands the user right back here.
@@ -2278,6 +2463,7 @@ async function openTrade(game){
   $("rf-scan-panel").hidden = true;
   const isEO = (game==="even_odd");
   const isRF = (game==="rise_fall");
+  const isOU = (game==="over_under");
   // Even/Odd surfaces
   if($("eo-scan")) $("eo-scan").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
@@ -2285,9 +2471,12 @@ async function openTrade(game){
   // Rise/Fall surfaces (new control surface + scanner — mirror of EO)
   if($("rf-auto")) $("rf-auto").hidden = !isRF;
   if($("rf-scan-grid")) $("rf-scan-grid").hidden = !isRF;
-  // Strip the legacy trade UI on EITHER auto-trader view (EO + RF) since
-  // their own panels carry all controls.
-  const stripLegacy = isEO || isRF;
+  // Over/Under surfaces (auto-trader + barrier-aware scanner — mirror of EO/RF)
+  if($("ou-auto")) $("ou-auto").hidden = !isOU;
+  if($("ou-scan-grid")) $("ou-scan-grid").hidden = !isOU;
+  // Strip the legacy trade UI on ANY auto-trader view since each panel
+  // carries all its own controls.
+  const stripLegacy = isEO || isRF || isOU;
   if($("trade-header")) $("trade-header").hidden = stripLegacy;
   if($("trade-params")) $("trade-params").hidden = stripLegacy;
   if($("trade-math")) $("trade-math").hidden = stripLegacy;
@@ -2300,12 +2489,16 @@ async function openTrade(game){
   // RF lifecycle
   if(isRF){ startRfScan(); try{ window.RFAuto && window.RFAuto.startSignal(); }catch(_){} }
   else    { stopRfScan(); try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} }
+  // OU lifecycle
+  if(isOU){ startOuScan(); try{ window.OUAuto && window.OUAuto.startSignal(); }catch(_){} }
+  else    { stopOuScan(); try{ window.OUAuto && window.OUAuto.stopSignal(); }catch(_){} }
   $("trade-buttons").className = "tgrid"
     + (game==="rise_fall" ? " compact" : "")
     + (isEO ? " eo3" : "");          // 3-column layout when EVEN/ODD/AUTO trio is present
   // Stop auto-traders on game switch so leaving the page never leaves them firing.
   if(!isEO && window.EOAuto && window.EOAuto.running) window.EOAuto.stop("game changed");
   if(!isRF && window.RFAuto && window.RFAuto.running) window.RFAuto.stop("game changed");
+  if(!isOU && window.OUAuto && window.OUAuto.running) window.OUAuto.stop("game changed");
   // Keep legacy RFScan running only when we're NOT on the new RF view (it's
   // still used elsewhere; on RF view, the new scanner replaces it).
   if(game==="rise_fall") RFScan.stop(); else RFScan.stop();
@@ -3095,6 +3288,393 @@ window.RFAuto = (function(){
   });
   // Apply Steady on first open of RF panel.
   setTimeout(()=>{ const tp = document.getElementById("rf-tp"); if(tp && !tp.value) _applyRfPreset("steady"); }, 120);
+})();
+
+// ============================================================================
+// OUAuto — Over/Under auto-trader. Mirrors EO/RF but uses a barrier digit
+// (1–8) to compute OVER% and UNDER% from the observer's freq arrays. Same
+// three filters: % lead ≥ threshold, |z|≥2σ on the barrier-specific dist,
+// multi-window agreement (freq_20 + freq_50 vs full sample).
+// ============================================================================
+let _ouScanTimer = null;
+
+// Helper: given a digit-freq array and a barrier N, return {over%, under%, n}.
+function _ouSplit(freq, barrier){
+  if(!Array.isArray(freq) || freq.length !== 10) return null;
+  const n = freq.reduce((s,v)=>s+v, 0); if(!n) return null;
+  let over = 0, under = 0;
+  for(let i = 0; i < 10; i++){
+    if(i > barrier) over  += freq[i];
+    if(i < barrier) under += freq[i];
+  }
+  return { over_pct: 100*over/n, under_pct: 100*under/n, n };
+}
+// Approximate z-score for an OVER (or UNDER) call against the structural
+// barrier probability — same shape as the EO z but barrier-aware.
+function _ouZ(freq, barrier, side){
+  if(!Array.isArray(freq) || freq.length !== 10) return 0;
+  const n = freq.reduce((s,v)=>s+v, 0); if(n < 10) return 0;
+  let count = 0;
+  for(let i = 0; i < 10; i++){
+    if(side === "over"  && i > barrier) count += freq[i];
+    if(side === "under" && i < barrier) count += freq[i];
+  }
+  const p = side === "over" ? (9 - barrier)/10 : barrier/10;
+  if(p <= 0 || p >= 1) return 0;
+  const mu = n*p, sigma = Math.sqrt(n*p*(1-p));
+  return sigma ? (count - mu)/sigma : 0;
+}
+function _ouCellHTML(m, currentSym, barrier){
+  if(!m){ return '<div class="eo-cell warm" style="opacity:.25;cursor:default"><div class="top"><span class="sym">—</span></div></div>'; }
+  const split = m.ready ? _ouSplit(m.freq, barrier) : null;
+  const ready = !!split;
+  const op = ready ? Math.round(split.over_pct) : null;
+  const up = ready ? Math.round(split.under_pct) : null;
+  const overWins = ready && op >= up;
+  const pct = ready ? Math.max(op, up) : 0;
+  const lean = ready ? Math.abs(50 - pct) + (50 - Math.min(op,up)) - 50 : 0;
+  // Above is rough; for tier classification use |pct - 50| as elsewhere
+  const tierLean = ready ? Math.abs(pct - 50) : 0;
+  const tier = tierLean >= 10 ? "strong" : tierLean >= 5 ? "firm" : "calm";
+  const leanClass = ready ? (overWins ? " lean-over" : " lean-under") : "";
+  const isHere = (currentSym && m.symbol === currentSym);
+  const z = ready ? _ouZ(m.freq, barrier, overWins ? "over" : "under") : 0;
+  const shortName = (m.name || m.symbol).replace(/^Vol\s+/, "").replace(/\s*\(1s\)$/, "");
+  const tickDot = '<span class="tick-live" title="streaming"></span>';
+  const mark = isHere ? '<span class="mark" style="color:var(--amber)" title="trading here">✓</span>' : '';
+  const sideLab = ready ? (overWins ? "OVER "+barrier : "UNDER "+barrier) : "WARMING";
+  const sidePct = ready ? pct : (m.ticks||0);
+  const sideHtml = ready
+    ? '<div class="big"><span class="side">'+sideLab+'</span><span class="pct">'+sidePct+'<span style="font-size:.55em;letter-spacing:.04em;margin-left:1px">%</span></span></div>'
+    : '<div class="big"><span class="side">WARMING</span><span class="pct">'+(m.ticks||0)+'/30</span></div>';
+  const bar = ready
+    ? '<div class="bar"><span class="over" style="width:'+op+'%"></span><span class="under" style="width:'+up+'%"></span></div>'
+    : '<div class="bar"><span class="warming" style="width:'+Math.min(100,Math.round((m.ticks||0)/30*100))+'%"></span></div>';
+  const zClass = Math.abs(z) >= 2 ? "z warn" : "z";
+  const meta = ready
+    ? '<div class="meta"><span class="'+zClass+'">z '+(z>=0?'+':'')+z.toFixed(1)+'</span><span class="pay">'+(m.payout_pct!=null?Number(m.payout_pct).toFixed(1)+'%':'—')+'</span></div>'
+    : '<div class="meta"><span>collecting</span><span>'+(m.ticks||0)+'t</span></div>';
+  return ''
+    +'<div class="eo-cell '+tier+(ready?' ready':' warm')+leanClass+(isHere?' here':'')+'" data-sym="'+esc(m.symbol)+'" title="'+esc(m.name||m.symbol)+'">'
+    +'  <div class="top"><span class="sym">'+esc(shortName)+tickDot+'</span>'+mark+'</div>'+sideHtml+bar+meta
+    +'</div>';
+}
+async function loadOuScan(){
+  const el = $("ou-scan-grid"); if(!el) return;
+  if(GAME !== "over_under"){ el.hidden = true; return; }
+  el.hidden = false;
+  const barrier = Math.max(1, Math.min(8, parseInt(($("ou-barrier")||{}).value)||4));
+  try{
+    const d = await api("/scan");
+    const bySym = {};
+    (d.markets || []).forEach(m => { if(m && m.symbol) bySym[m.symbol] = m; });
+    const cur = ($("t-symbol")||{}).value || null;
+    const readyCount = (d.markets || []).filter(m=>m.ready && Array.isArray(m.freq)).length;
+    let strongest = null;
+    (d.markets || []).forEach(m => {
+      if(!m.ready) return;
+      const sp = _ouSplit(m.freq, barrier); if(!sp) return;
+      const pct = Math.max(sp.over_pct, sp.under_pct);
+      if(!strongest || pct > strongest.pct){
+        strongest = { name:(m.name||m.symbol).replace(/^Vol\s+/,""), side: sp.over_pct >= sp.under_pct ? ("OVER "+barrier) : ("UNDER "+barrier), pct: Math.round(pct) };
+      }
+    });
+    const strongestTxt = strongest ? "strongest: "+strongest.side+" "+strongest.pct+"% on "+esc(strongest.name) : "no clear lean yet";
+    const head = ''
+      +'<div class="eo-scan-head"><div>'
+      +'  <div class="eo-scan-title"><span class="ic">📡</span>Over / Under Scan<span class="faint">· barrier '+barrier+' · 10-market sweep</span></div>'
+      +'  <div style="font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:5px;letter-spacing:.04em">'+strongestTxt+'</div>'
+      +'</div><div class="eo-scan-meta">'+readyCount+'/10 ready · tap to switch</div></div>'
+      +'<div class="eo-band-lab">2-second band</div>'
+      +'<div class="eo-grid">'+_EO_BAND_STANDARD.map(s=>_ouCellHTML(bySym[s], cur, barrier)).join("")+'</div>'
+      +'<div class="eo-band-lab">1-second band</div>'
+      +'<div class="eo-grid">'+_EO_BAND_FAST.map(s=>_ouCellHTML(bySym[s], cur, barrier)).join("")+'</div>';
+    el.innerHTML = head;
+    el.querySelectorAll(".eo-cell[data-sym]").forEach(c => c.addEventListener("click", () => {
+      const sym = c.dataset.sym; if(!sym) return;
+      const s = $("t-symbol"); if(s && s.value !== sym){ s.value = sym; s.dispatchEvent(new Event("change")); }
+    }));
+  } catch(_){
+    el.innerHTML = '<div class="faint" style="font-size:11px;padding:8px 4px">scanner warming up…</div>';
+  }
+}
+function startOuScan(){ if(_ouScanTimer) clearInterval(_ouScanTimer); loadOuScan(); _ouScanTimer = setInterval(loadOuScan, 4000); }
+function stopOuScan(){ if(_ouScanTimer){ clearInterval(_ouScanTimer); _ouScanTimer = null; } }
+
+window.OUAuto = (function(){
+  const S = { running:false, timer:null, signalTimer:null,
+              sess:{pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0}, busy:false };
+  const $g = id => document.getElementById(id);
+  const _setStatus = t => { const el=$g("ou-status"); if(el) el.innerHTML = t; };
+  function _setPnl(){ const p=$g("ou-pnl"); if(!p) return; const v=S.sess.pnl;
+    p.textContent = (v>=0?"+$":"-$")+Math.abs(v).toFixed(2);
+    p.className = "eo-pnl-inline " + (v>=0?"up":"dn"); }
+  function _setFills(){
+    const tp = parseFloat(($g("ou-tp")||{}).value)||0, sl = parseFloat(($g("ou-sl")||{}).value)||0, v = S.sess.pnl;
+    const tpEl=$g("ou-tp-fill"); if(tpEl){ const pct = tp>0 ? Math.max(0,Math.min(100,(v/tp)*100)) : 0; tpEl.style.width = pct.toFixed(0)+"%"; }
+    const slEl=$g("ou-sl-fill"); if(slEl){ const pct = sl>0 ? Math.max(0,Math.min(100,(-v/sl)*100)) : 0; slEl.style.width = pct.toFixed(0)+"%"; }
+  }
+  function _renderDots(){
+    const wrap=$g("ou-streak-dots"); if(!wrap) return;
+    const max = Math.max(1, Math.min(20, parseInt(($g("ou-streak")||{}).value)||11));
+    const lit = Math.min(max, S.sess.streak||0);
+    let html=""; for(let i=0;i<max;i++) html += '<span class="d'+(i<lit?' lit':'')+'"></span>';
+    wrap.innerHTML = html;
+  }
+  function _renderStats(){ ["wins","losses","streak","trades"].forEach(k=>{ const el=$g("ou-stat-"+k); if(el) el.textContent = S.sess[k]; }); }
+  function _mart(){ return Math.max(1, Math.min(3, parseFloat(($g("ou-mart")||{}).value)||1.3)); }
+  function _baseStake(){ return Math.max(0.35, parseFloat(($g("ou-stake")||{}).value)||0.35); }
+  function _nextStake(){ return _baseStake() * Math.pow(_mart(), S.sess.martStep||0); }
+  function _renderMart(){
+    const step=$g("ou-mart-step"); if(step) step.textContent = S.sess.martStep || 0;
+    const next=$g("ou-mart-next"); if(next) next.textContent = "$"+_nextStake().toFixed(2);
+    const state=$g("ou-mart-state"); if(state) state.classList.toggle("warming", (S.sess.martStep||0) > 0);
+  }
+  function _resetBtn(){
+    const go=$g("ou-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
+    const chips=$g("ou-tick-seg"); if(chips) chips.removeAttribute("data-running");
+    const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+  }
+  function _autoTicks(lead){ return lead >= 75 ? 1 : lead >= 65 ? 2 : 3; }
+  function _liveDigits(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
+  function _updateSignal(){
+    const sig=$g("ou-signal"); if(!sig) return;
+    const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||70));
+    const thrLine=$g("ou-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
+    const thrLab=$g("ou-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
+    const barLab=$g("ou-signal-bar"); if(barLab) barLab.textContent = barrier;
+    const mkt=$g("ou-signal-market");
+    if(mkt){ const opt=($g("t-symbol")||{}).selectedOptions?.[0]; mkt.textContent = (opt?opt.textContent:"") || "—"; }
+    const d = _liveDigits();
+    if(d.length < 20){
+      sig.classList.remove("live-over","live-under");
+      const o=$g("ou-signal-o"); if(o) o.style.width="50%";
+      const u=$g("ou-signal-u"); if(u) u.style.width="50%";
+      const sp=$g("ou-signal-pct"); if(sp) sp.textContent="—";
+      const ss=$g("ou-signal-side"); if(ss) ss.textContent="warming";
+      const op=$g("ou-signal-op"); if(op) op.textContent="—";
+      const upe=$g("ou-signal-up"); if(upe) upe.textContent="—";
+      const st=$g("ou-signal-state"); if(st) st.innerHTML = "reading the tape… <b>"+d.length+"/20</b>";
+      return;
+    }
+    const last20 = d.slice(-20);
+    const f = new Array(10).fill(0); last20.forEach(x => f[x] += 1);
+    const split = _ouSplit(f, barrier);
+    if(!split){ return; }
+    const op = Math.round(split.over_pct), up = Math.round(split.under_pct);
+    const overWins = op >= up;
+    const lead = Math.max(op, up);
+    const overThr = lead >= thr;
+    sig.classList.toggle("live-over", overThr && overWins);
+    sig.classList.toggle("live-under", overThr && !overWins);
+    const oEl=$g("ou-signal-o"); if(oEl) oEl.style.width = op+"%";
+    const uEl=$g("ou-signal-u"); if(uEl) uEl.style.width = up+"%";
+    const sp=$g("ou-signal-pct"); if(sp) sp.textContent = lead+"%";
+    const ss=$g("ou-signal-side"); if(ss) ss.textContent = (overWins?"OVER ":"UNDER ")+barrier;
+    const opTxt=$g("ou-signal-op"); if(opTxt) opTxt.textContent = op+"%";
+    const upTxt=$g("ou-signal-up"); if(upTxt) upTxt.textContent = up+"%";
+    const st=$g("ou-signal-state");
+    if(st){ const dom = (overWins?"OVER":"UNDER")+" "+barrier;
+      st.innerHTML = overThr
+        ? '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire'
+        : '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger'; }
+  }
+  // Pick best market across all 10 using OU-specific math.
+  async function _pickBestOuMarket(threshold, barrier){
+    try{
+      const d = await api("/scan");
+      const ready = (d.markets || []).filter(m => m.ready && Array.isArray(m.freq));
+      if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      const Z_MIN=2.0, W20_MIN=threshold-3, W50_MIN=threshold-8;
+      const cands = ready.map(m => {
+        const sp = _ouSplit(m.freq, barrier); if(!sp) return null;
+        const op = sp.over_pct, up = sp.under_pct;
+        const overWins = op >= up;
+        const pct = Math.round(Math.max(op, up));
+        const z = Math.abs(_ouZ(m.freq, barrier, overWins ? "over" : "under"));
+        const w20 = _ouSplit(m.freq_20, barrier);
+        const w50 = _ouSplit(m.freq_50, barrier);
+        const pct20 = w20 ? Math.round(overWins ? w20.over_pct : w20.under_pct) : null;
+        const pct50 = w50 ? Math.round(overWins ? w50.over_pct : w50.under_pct) : null;
+        return {
+          symbol:m.symbol, name:m.name||m.symbol,
+          side: overWins ? "over" : "under",
+          pct, z, pct20, pct50,
+        };
+      }).filter(Boolean);
+      const passing = cands.filter(c => {
+        if(c.pct < threshold) return false;
+        if(c.z < Z_MIN) return false;
+        if(c.pct20 != null && c.pct20 < W20_MIN) return false;
+        if(c.pct50 != null && c.pct50 < W50_MIN) return false;
+        return true;
+      }).sort((a,b)=>(b.pct+b.z)-(a.pct+a.z));
+      if(passing.length) return passing[0];
+      const best = cands.sort((a,b)=>b.pct-a.pct)[0];
+      if(!best) return {none:true, reason:"no markets had a clear lean"};
+      let why;
+      if(best.pct < threshold)             why = "best lean "+best.pct+"% "+best.side.toUpperCase()+" "+barrier+" on "+best.name+" — need ≥"+threshold+"%";
+      else if(best.z < Z_MIN)               why = best.name+" "+best.side.toUpperCase()+" "+barrier+" "+best.pct+"% but z "+best.z.toFixed(1)+" < 2.0 — not significant";
+      else if(best.pct20 != null && best.pct20 < W20_MIN) why = best.name+" 100-tick "+best.pct+"% but 20-tick disagrees ("+best.pct20+"%)";
+      else if(best.pct50 != null && best.pct50 < W50_MIN) why = best.name+" 100-tick "+best.pct+"% but 50-tick disagrees ("+best.pct50+"%)";
+      else                                  why = "no market cleared all filters";
+      return {none:true, reason: why};
+    } catch(_){ return {none:true, reason:"scanner unreachable — retrying"}; }
+  }
+  async function _fireOnce(){
+    if(!S.running || S.busy) return;
+    const base = _baseStake();
+    const mart = _mart();
+    const martStake = base * Math.pow(mart, S.sess.martStep||0);
+    const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
+    const cfg = {
+      tp:    parseFloat(($g("ou-tp")||{}).value)||0,
+      sl:    parseFloat(($g("ou-sl")||{}).value)||0,
+      stake: Math.max(0.35, martStake),
+      maxLossStreak: Math.max(1, parseInt(($g("ou-streak")||{}).value)||11),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||70)),
+      ticksMode: (document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto",
+      ticksManual:   Math.max(1, Math.min(10, parseInt(($g("ou-ticks")||{}).value)||1)),
+      barrier,
+    };
+    const pick = await _pickBestOuMarket(cfg.threshold, barrier);
+    if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
+    const sel = $g("t-symbol");
+    if(sel && sel.value !== pick.symbol){ sel.value = pick.symbol; sel.dispatchEvent(new Event("change")); try{ loadOuScan(); }catch(_){ } }
+    const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
+    if(!CUR){ S.stop("connect an account first"); return; }
+    S.busy = true;
+    if(cfg.ticksMode === "auto"){
+      const hint=$g("ou-tick-hint"); if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
+      const opts=[1,2,3,5], stepDelays=[0,120,240,360];
+      opts.forEach((v,i)=>setTimeout(()=>{ document.querySelectorAll('#ou-tick-seg button[data-mode="manual"]').forEach(b=>b.classList.toggle("scanning", b.dataset.val===String(v))); }, stepDelays[i]));
+      setTimeout(()=>{
+        document.querySelectorAll('#ou-tick-seg button[data-mode="manual"]').forEach(b=>{ b.classList.remove("scanning"); b.classList.toggle("auto-picked", b.dataset.val===String(dur)); });
+        if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
+        setTimeout(()=>document.querySelectorAll('#ou-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
+      }, 500);
+    }
+    const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
+    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+" "+barrier+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    try{
+      const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
+        account_id: CUR.id, trade_type:"over_under", symbol: pick.symbol,
+        stake: cfg.stake, duration: dur, duration_unit:"t",
+        direction: pick.side, prediction: String(barrier),
+      })});
+      const profit = (typeof r.profit === "number") ? r.profit : 0;
+      const outcome = r.outcome || "pending";
+      S.sess.trades += 1;
+      if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
+      else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
+      const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
+      _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
+      if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){ S.stop("take-profit hit");
+        showPop({kind:"win", icon:"🎉", title:"Take-profit hit!", msg:"You reached your target. Banked the win and stopped the auto-trader so the house doesn't claw it back.", pnl:S.sess.pnl}); return; }
+      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){ S.stop("stop-loss hit");
+        showPop({kind:"stop", icon:"🛑", title:"Stop-loss hit — desk paused.", msg:"You reached your daily loss line. Stepping away is the win here — come back fresh.", pnl:S.sess.pnl}); return; }
+      if(S.sess.streak >= cfg.maxLossStreak){ S.stop(cfg.maxLossStreak+"-loss streak");
+        showPop({kind:"stop", icon:"⚠️", title:cfg.maxLossStreak+" losses in a row — desk paused.", msg:"The streak guard you set just kicked in. That's discipline working — review and adjust before restarting.", pnl:S.sess.pnl}); return; }
+      pollSettle();
+    } catch(e){ _setStatus("error: "+(e&&e.message||"trade failed")); }
+    finally{ S.busy = false; }
+  }
+  S.start = function(){
+    if(S.running) return; if(!CUR){ showView("connect"); return; }
+    S.running = true;
+    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+    _setStatus("⌗ <b>running</b> — reading the tape…");
+    const go=$g("ou-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    const chips=$g("ou-tick-seg");
+    const ticksMode=(document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto";
+    if(chips){ chips.setAttribute("data-running","1");
+      const hint=$g("ou-tick-hint"); if(hint) hint.textContent = ticksMode==="auto" ? "AUTO is on — picking each trade based on lean strength" : "manual "+(($g("ou-ticks")||{}).value||"1")+" tick — fixed per trade"; }
+    _fireOnce();
+    S.timer = setInterval(_fireOnce, 6000);
+  };
+  S.stop = function(reason){
+    if(!S.running && !S.timer) return;
+    S.running = false;
+    if(S.timer){ clearInterval(S.timer); S.timer = null; }
+    _resetBtn();
+    _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
+  };
+  S._setFills = _setFills; S._renderDots = _renderDots; S._renderMart = _renderMart;
+  S._updateSignal = _updateSignal;
+  S.startSignal = function(){ if(S.signalTimer) return; _updateSignal(); S.signalTimer = setInterval(_updateSignal, 400); };
+  S.stopSignal  = function(){ if(S.signalTimer){ clearInterval(S.signalTimer); S.signalTimer=null; } };
+  S.toggle = function(){ S.running ? S.stop("manual stop") : S.start(); };
+  return S;
+})();
+
+// Wire OU controls — barrier picker, tick chips, steppers, presets, start/stop.
+(function(){
+  // Barrier digit picker (1–8)
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#ou-barrier-row button");
+    if(!t) return;
+    document.querySelectorAll("#ou-barrier-row button").forEach(b=>b.classList.toggle("on", b===t));
+    const inp=document.getElementById("ou-barrier"); if(inp){ inp.value = t.dataset.val; inp.dispatchEvent(new Event("input", {bubbles:true})); }
+    try{ window.OUAuto._updateSignal(); }catch(_){} try{ loadOuScan(); }catch(_){}
+  });
+  // Tick chips
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#ou-tick-seg button");
+    if(!t) return;
+    document.querySelectorAll("#ou-tick-seg button").forEach(b=>b.classList.toggle("on", b===t));
+    const ticks=document.getElementById("ou-ticks"); if(ticks) ticks.value = t.dataset.val || "1";
+  });
+  // Live updates from OU inputs
+  ["ou-tp","ou-sl"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener("input", () => { try{ window.OUAuto._setFills(); }catch(_){} });
+  });
+  const ouThr = document.getElementById("ou-thr");
+  function _syncOuThr(){ const d=document.getElementById("ou-thr-display"); if(d) d.textContent = ouThr.value; }
+  if(ouThr){ ouThr.addEventListener("input", _syncOuThr); _syncOuThr(); }
+  const ouStreak = document.getElementById("ou-streak");
+  function _syncOuStreak(){ const d=document.getElementById("ou-streak-display"); if(d) d.textContent = ouStreak.value;
+                            try{ window.OUAuto._renderDots(); }catch(_){ } }
+  if(ouStreak){ ouStreak.addEventListener("input", _syncOuStreak); _syncOuStreak(); }
+  const ouMart = document.getElementById("ou-mart");
+  function _syncOuMart(){ const d=document.getElementById("ou-mart-display"); if(d) d.textContent = Number(ouMart.value).toFixed(1);
+                          try{ window.OUAuto._renderMart(); }catch(_){ } }
+  if(ouMart){ ouMart.addEventListener("input", _syncOuMart); _syncOuMart(); }
+  const ouStake = document.getElementById("ou-stake");
+  if(ouStake) ouStake.addEventListener("input", ()=>{ try{ window.OUAuto._renderMart(); }catch(_){ } });
+  // Start / stop
+  const ouGo = document.getElementById("ou-go"); if(ouGo) ouGo.addEventListener("click", ()=>window.OUAuto.toggle());
+  const ouStop = document.getElementById("ou-stop-all");
+  if(ouStop) ouStop.addEventListener("click", ()=>eoStopEverything(ouStop));
+  // Quick presets — barrier defaults to 4 (~50/50 split, max EV-search room)
+  const OU_PRESETS = {
+    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5,  mart:1.2, barrier:4 },
+    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8,  mart:1.3, barrier:4 },
+    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11, mart:1.5, barrier:4 },
+  };
+  function _applyOuPreset(name){
+    const p = OU_PRESETS[name]; if(!p) return;
+    const set = (id, v) => { const el = document.getElementById(id); if(!el) return;
+      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+    set("ou-tp", p.tp); set("ou-sl", p.sl); set("ou-thr", p.thr);
+    set("ou-stake", p.stake.toFixed(2)); set("ou-streak", p.streak);
+    if(p.mart != null) set("ou-mart", p.mart.toFixed(1));
+    if(p.barrier != null){
+      const inp=document.getElementById("ou-barrier"); if(inp) inp.value = p.barrier;
+      document.querySelectorAll("#ou-barrier-row button").forEach(b=>b.classList.toggle("on", b.dataset.val===String(p.barrier)));
+    }
+    document.querySelectorAll("#ou-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
+    try{ window.OUAuto._setFills(); window.OUAuto._renderDots(); window.OUAuto._renderMart(); window.OUAuto._updateSignal(); }catch(_){ }
+  }
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#ou-presets button[data-preset]");
+    if(t) _applyOuPreset(t.dataset.preset);
+  });
+  setTimeout(()=>{ const tp = document.getElementById("ou-tp"); if(tp && !tp.value) _applyOuPreset("steady"); }, 130);
 })();
 
 (function(){

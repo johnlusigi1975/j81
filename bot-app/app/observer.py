@@ -104,6 +104,15 @@ def _market_stats(symbol: str) -> dict[str, Any]:
         return round(100 * u / (len(seq) - 1), 1)
     up_pct_20 = _upp(prices[-21:]) if len(prices) >= 21 else None
     up_pct_50 = _upp(prices[-51:]) if len(prices) >= 51 else None
+    # Multi-window digit-frequency arrays — the Over/Under auto-trader picks
+    # a barrier client-side, so we expose the raw distribution per window.
+    def _freq(arr):
+        f = [0] * 10
+        for x in arr:
+            f[x] += 1
+        return f
+    freq_20 = _freq(digits[-20:]) if len(digits) >= 20 else None
+    freq_50 = _freq(digits[-50:]) if len(digits) >= 50 else None
     return {
         "symbol": symbol, "ready": True, "ticks": n,
         "even_pct": round(100 * even / n, 1), "odd_pct": round(100 * odd / n, 1),
@@ -115,7 +124,8 @@ def _market_stats(symbol: str) -> dict[str, Any]:
         "chi_square": round(chi, 2),
         "chi_anomalous_p01": chi > 21.67,
         "current_streak": streak, "streak_side": "even" if side == 0 else "odd",
-        "freq": freq, "hot_digit": hot, "cold_digit": cold,
+        "freq": freq, "freq_20": freq_20, "freq_50": freq_50,
+        "hot_digit": hot, "cold_digit": cold,
         "last_price": prices[-1] if prices else None,
         "last_ts": s["last_ts"],
     }

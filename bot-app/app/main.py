@@ -941,6 +941,9 @@ async def scan_local() -> dict:
             "up_pct_20": m.get("up_pct_20"),
             "up_pct_50": m.get("up_pct_50"),
             "up_z": m.get("up_z"),
+            "freq": m.get("freq"),                # OU client-side barrier math
+            "freq_20": m.get("freq_20"),
+            "freq_50": m.get("freq_50"),
             "ticks": m.get("ticks") or 0,
             "ready": bool(m.get("ready")),
             "payout_pct": po.get("payout_pct"),
