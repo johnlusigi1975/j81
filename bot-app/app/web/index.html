@@ -476,6 +476,11 @@
   .eo-presets button .lab{font-family:var(--serif);font-size:12.5px;font-weight:800;letter-spacing:.01em;margin-top:2px}
   .eo-presets button .sub{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
 
+  /* Armed dot beside the "Martingale × loss" label — pulses green when the
+     auto-trader is running (martingale is active), dim grey when idle. */
+  .mart-armed{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);margin-right:7px;vertical-align:middle;transition:background .25s ease,box-shadow .25s ease;position:relative;top:-1px}
+  .mart-armed.on{background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-tick-pulse 1.4s ease-in-out infinite}
+
   /* Martingale "live recovery" tile — shows current step + next stake live. */
   .eo-mart-state{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border:1px dashed rgba(255,255,255,.10);border-radius:10px;background:rgba(0,0,0,.18);font-family:var(--mono);font-size:11.5px}
   .eo-mart-state .eo-mart-step{color:var(--dim);letter-spacing:.04em}
@@ -1229,10 +1234,10 @@
            automatically whenever the auto-trader is running. -->
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Martingale × loss</span><span class="eo-tile-hint" id="eo-mart-hint">stake × <b id="eo-mart-display">1.3</b> after every loss · resets on a win</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="mart-armed" id="eo-mart-armed"></span>Martingale × loss</span><span class="eo-tile-hint" id="eo-mart-hint">stake × <b id="eo-mart-display">1.5</b> after every loss · resets on a win</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-0.1" data-tgt="eo-mart">−</button>
-            <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.3"/></span>
+            <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
             <button type="button" data-step="+0.1" data-tgt="eo-mart">+</button>
           </div>
         </div>
@@ -1368,10 +1373,10 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Martingale × loss</span><span class="eo-tile-hint">stake × <b id="rf-mart-display">1.3</b> after every loss · resets on a win</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="mart-armed" id="rf-mart-armed"></span>Martingale × loss</span><span class="eo-tile-hint">stake × <b id="rf-mart-display">1.5</b> after every loss · resets on a win</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-0.1" data-tgt="rf-mart">−</button>
-            <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.3"/></span>
+            <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
             <button type="button" data-step="+0.1" data-tgt="rf-mart">+</button>
           </div>
         </div>
@@ -1526,10 +1531,10 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Martingale × loss</span><span class="eo-tile-hint">stake × <b id="ou-mart-display">1.3</b> after every loss · resets on a win</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="mart-armed" id="ou-mart-armed"></span>Martingale × loss</span><span class="eo-tile-hint">stake × <b id="ou-mart-display">1.5</b> after every loss · resets on a win</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-0.1" data-tgt="ou-mart">−</button>
-            <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.3"/></span>
+            <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
             <button type="button" data-step="+0.1" data-tgt="ou-mart">+</button>
           </div>
         </div>
@@ -2802,6 +2807,7 @@ window.EOAuto = (function(){
     // Clear the AUTO chip's "running" state + reset the live hint.
     const chips=$g("eo-tick-seg"); if(chips) chips.removeAttribute("data-running");
     const hint=$g("eo-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+    const armed=$g("eo-mart-armed"); if(armed) armed.classList.remove("on");
   }
   // (Old single-market _decide() removed — _pickBestMarket scans ALL 10
   // volatilities via /scan now, so the auto-trader hops between markets
@@ -2916,12 +2922,17 @@ window.EOAuto = (function(){
       })});
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
+      // Settled-trade detection — use the profit sign so practice (dry_run)
+      // and "settled" outcomes also drive the martingale ladder. Only
+      // "pending" trades skip the bookkeeping.
+      const isWin  = outcome === "won"  || (outcome !== "pending" && profit > 0);
+      const isLoss = outcome === "lost" || (outcome !== "pending" && profit < 0);
       S.sess.trades += 1;
-      if(outcome === "won"){
+      if(isWin){
         S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
         S.sess.martStep = 0;                                 // recovery: reset on a win
       }
-      else if(outcome === "lost"){
+      else if(isLoss){
         S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
         S.sess.martStep = (S.sess.martStep || 0) + 1;        // bump the martingale ladder
       }
@@ -2975,6 +2986,7 @@ window.EOAuto = (function(){
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const b=$g("eo-mix-btn"); if(b){ b.classList.add("on"); const sub=b.querySelector(".sub"); if(sub) sub.textContent="running · session 0/0"; }
     const go=$g("eo-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    const armed=$g("eo-mart-armed"); if(armed) armed.classList.add("on");
     _saveAutoSession("eo");
     // Mark the ticks chip row as running so the AUTO chip pulses + shows a
     // live green dot while the auto-trader is actively picking ticks.
@@ -3132,6 +3144,7 @@ window.RFAuto = (function(){
     const go=$g("rf-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("rf-tick-seg"); if(chips) chips.removeAttribute("data-running");
     const hint=$g("rf-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+    const armed=$g("rf-mart-armed"); if(armed) armed.classList.remove("on");
   }
   function _autoTicks(lead){ return lead >= 75 ? 1 : lead >= 65 ? 2 : 3; }
   function _livePrices(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.prices) ? LiveWS.prices() : []; }catch(_){ return []; } }
@@ -3237,8 +3250,13 @@ window.RFAuto = (function(){
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
-      if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
-      else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      // Settled-trade detection: profit-sign also counts (so dry_run/settled outcomes drive the ladder).
+      {
+        const isWin  = outcome === "won"  || (outcome !== "pending" && profit > 0);
+        const isLoss = outcome === "lost" || (outcome !== "pending" && profit < 0);
+        if(isWin){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
+        else if(isLoss){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       _saveAutoSession("rf");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
@@ -3265,6 +3283,7 @@ window.RFAuto = (function(){
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const go=$g("rf-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    const armed=$g("rf-mart-armed"); if(armed) armed.classList.add("on");
     _saveAutoSession("rf");
     const chips=$g("rf-tick-seg");
     const ticksMode=(document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto";
@@ -3323,7 +3342,7 @@ window.RFAuto = (function(){
   // Quick presets — same shape as EO but tuned for direction trading
   const RF_PRESETS = {
     cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },
-    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.3 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5 },
     bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },
   };
   function _applyRfPreset(name){
@@ -3488,6 +3507,7 @@ window.OUAuto = (function(){
     const go=$g("ou-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("ou-tick-seg"); if(chips) chips.removeAttribute("data-running");
     const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+    const armed=$g("ou-mart-armed"); if(armed) armed.classList.remove("on");
   }
   function _autoTicks(lead){ return lead >= 75 ? 1 : lead >= 65 ? 2 : 3; }
   function _liveDigits(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
@@ -3605,8 +3625,13 @@ window.OUAuto = (function(){
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
-      if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
-      else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      // Settled-trade detection: profit-sign also counts (so dry_run/settled outcomes drive the ladder).
+      {
+        const isWin  = outcome === "won"  || (outcome !== "pending" && profit > 0);
+        const isLoss = outcome === "lost" || (outcome !== "pending" && profit < 0);
+        if(isWin){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
+        else if(isLoss){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       _saveAutoSession("ou");
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
@@ -3633,6 +3658,7 @@ window.OUAuto = (function(){
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const go=$g("ou-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    const armed=$g("ou-mart-armed"); if(armed) armed.classList.add("on");
     _saveAutoSession("ou");
     const chips=$g("ou-tick-seg");
     const ticksMode=(document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto";
@@ -3699,7 +3725,7 @@ window.OUAuto = (function(){
   // Quick presets — barrier defaults to 4 (~50/50 split, max EV-search room)
   const OU_PRESETS = {
     cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2, barrier:4 },
-    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.3, barrier:4 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5, barrier:4 },
     bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5, barrier:4 },
   };
   function _applyOuPreset(name){
@@ -3782,7 +3808,7 @@ window.OUAuto = (function(){
   // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
     cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },   // very selective
-    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.3 },   // default — $1000 TP/SL · mart 1.3×
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5 },   // default — $1000 TP/SL · mart 1.5×
     bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },   // wider net but still gated
   };
   function _applyPreset(name){
