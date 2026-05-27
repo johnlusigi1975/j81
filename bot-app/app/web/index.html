@@ -356,6 +356,30 @@
   .eo-cell.warm .big .side{color:var(--faint);opacity:.7}
   .eo-cell.warm .meta{color:var(--faint);opacity:.7}
 
+  /* RISE/FALL colour variants — reuse the same visual classes from the EO
+     auto-trader but with green (RISE) / red (FALL) accents instead of
+     gold (EVEN) / silver (ODD). */
+  .eo-cell.lean-rise .big .pct{color:#6ff0a8;text-shadow:0 0 12px rgba(45,220,130,.25)}
+  .eo-cell.lean-fall .big .pct{color:#ff9aac;text-shadow:0 0 12px rgba(255,80,110,.25)}
+  .eo-cell.lean-rise .big .side{color:#6ff0a8;opacity:.85}
+  .eo-cell.lean-fall .big .side{color:#ff9aac;opacity:.85}
+  .eo-cell .bar .rise{background:linear-gradient(135deg,#6ff0a8 0%,#12c46a 60%,#0a7c44 100%);transition:width .5s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 6px rgba(45,220,130,.4)}
+  .eo-cell .bar .fall{background:linear-gradient(135deg,#ff8aa0 0%,#e23a52 60%,#a82236 100%);transition:width .5s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 6px rgba(255,80,110,.3)}
+  .eo-cell.strong.lean-rise{border-color:rgba(45,220,130,.6);box-shadow:0 0 0 1px rgba(45,220,130,.25) inset, 0 0 24px -8px rgba(45,220,130,.55)}
+  .eo-cell.strong.lean-fall{border-color:rgba(255,107,129,.6);box-shadow:0 0 0 1px rgba(255,107,129,.25) inset, 0 0 24px -8px rgba(255,107,129,.55)}
+  .eo-cell.strong.lean-rise::after{box-shadow:inset 0 0 14px -2px rgba(45,220,130,.4)}
+  .eo-cell.strong.lean-fall::after{box-shadow:inset 0 0 14px -2px rgba(255,107,129,.4)}
+  .eo-cell.firm.lean-rise{border-color:rgba(45,220,130,.32)}
+  .eo-cell.firm.lean-fall{border-color:rgba(255,107,129,.32)}
+
+  /* RF signal radar colours — green RISE side / red FALL side. */
+  .eo-signal.live-rise{border-color:rgba(45,220,130,.55);box-shadow:0 0 0 1px rgba(45,220,130,.25) inset, 0 16px 36px -22px rgba(45,220,130,.55);animation:eo-sig-pulse 1.8s ease-in-out infinite}
+  .eo-signal.live-fall{border-color:rgba(255,107,129,.55);box-shadow:0 0 0 1px rgba(255,107,129,.25) inset, 0 16px 36px -22px rgba(255,107,129,.55);animation:eo-sig-pulse 1.8s ease-in-out infinite}
+  .eo-signal.live-rise .eo-signal-side{color:#6ff0a8}
+  .eo-signal.live-fall .eo-signal-side{color:#ff9aac}
+  .eo-signal-bar .rise{background:linear-gradient(135deg,#6ff0a8 0%,#12c46a 60%,#0a7c44 100%);transition:width .35s ease}
+  .eo-signal-bar .fall{background:linear-gradient(135deg,#ff8aa0 0%,#e23a52 60%,#a82236 100%);transition:width .35s ease}
+
   /* Recent activity — clean ticker-style list, no debug-text feel. */
   .recent-list{border:1px solid var(--bd);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.18));overflow:hidden}
   .recent-empty{padding:18px 16px;text-align:center;color:var(--faint);font-size:12px;font-style:italic}
@@ -653,7 +677,6 @@
      animations are smoother and don't repaint the page on every frame. */
   .engines-pwr .dot::before, .engines-pwr.on .dot::before,
   .pipe span, .engine.live, .engine.live .ico, .engines-tip{ will-change: transform, opacity; }
-  #rf-chart{ will-change: contents; }
   /* Defer paint work for big offscreen sections (browser skips rendering until they
      scroll into view). Saves real CPU on long pages, especially on mobile. */
   .engines-wrap, #trade-recent, #home-proven, #cy-top, #lab-feed, #rf-scan{
@@ -1006,21 +1029,10 @@
       <label class="field">Ticks<input id="t-duration" type="number" value="1" min="1" max="10" style="width:70px"></label>
     </div>
 
-    <!-- LIVE price chart (Rise/Fall) — browser → Deriv public WS, no auth -->
+    <!-- Rise/Fall live read — chart removed per user request. The deeper text
+         read (multi-window bias / streak / momentum / volatility) stays. -->
     <div id="rf-panel" hidden style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px">
-        <div class="lab" style="font-size:10px">Live price <span class="faint" id="rf-sym"></span></div>
-        <div class="faint" id="rf-stats" style="font-size:11px;font-family:var(--mono)"></div>
-      </div>
-      <svg id="rf-chart" viewBox="0 0 600 120" preserveAspectRatio="none" style="width:100%;height:120px;display:block;background:rgba(255,255,255,.02);border:1px solid var(--bd);border-radius:12px"></svg>
-      <div class="faint" style="font-size:10.5px;margin-top:6px;display:flex;gap:14px;flex-wrap:wrap">
-        <span><b style="color:#eef3fb">━</b> Deriv price</span>
-        <span><b style="color:#3ddc84">▰</b> Rise zone</span>
-        <span><b style="color:#ff6b81">▰</b> Fall zone</span>
-        <span class="faint">— projected volatility range ahead, not a direction prediction</span>
-      </div>
-      <!-- DEEPER LIVE READ — multi-window bias, streak, momentum, volatility -->
-      <div id="rf-read" style="margin-top:10px"></div>
+      <div id="rf-read"></div>
     </div>
 
     <!-- live multi-market scan (Rise/Fall) — the bot sweeping all 10 volatilities -->
@@ -1206,10 +1218,148 @@
       </div>
     </div>
 
-    <!-- ⤵ Confidence scanner — now positioned BELOW the auto-trader so the
-         control surface leads and the scanner sits underneath as the live
-         reference (tap any cell to switch the active market). -->
+    <!-- ⤵ Even/Odd confidence scanner — sits BELOW the EO auto-trader. -->
     <div id="eo-scan" class="eo-scan" hidden style="margin-top:14px"></div>
+
+    <!-- ===================== RISE / FALL AUTO-TRADER =====================
+         Mirrors the EO panel pattern but trades RISE (CALL) / FALL (PUT)
+         based on the live price tick direction. Only shown when game === "rise_fall". -->
+    <div id="rf-auto" class="eo-auto" hidden>
+      <!-- LIVE SIGNAL radar — UP% vs DOWN% over the last 20 price ticks. -->
+      <div class="eo-signal" id="rf-signal">
+        <div class="eo-signal-head">
+          <div>
+            <div class="eo-signal-eyebrow">LIVE DIRECTION · <span id="rf-signal-market">—</span></div>
+            <div class="eo-signal-state" id="rf-signal-state">reading the tape…</div>
+          </div>
+          <div class="eo-signal-bias">
+            <span class="eo-signal-side" id="rf-signal-side">—</span>
+            <span class="eo-signal-pct" id="rf-signal-pct">—%</span>
+          </div>
+        </div>
+        <div class="eo-signal-bar">
+          <span class="rise" id="rf-signal-up" style="width:50%"></span>
+          <span class="fall" id="rf-signal-dn" style="width:50%"></span>
+          <span class="thr"  id="rf-signal-thr" style="left:58%"></span>
+        </div>
+        <div class="eo-signal-meta">
+          <span>RISE <b id="rf-signal-u">—</b></span>
+          <span class="thr-lab">⌖ threshold <b id="rf-signal-thr-lab">70%</b></span>
+          <span>FALL <b id="rf-signal-d">—</b></span>
+        </div>
+      </div>
+
+      <!-- HERO START + STOP + INLINE SESSION -->
+      <div class="eo-go-row">
+        <button class="eo-go" id="rf-go" type="button">▶ Start auto-trading</button>
+        <button class="eo-stop-ghost" id="rf-stop-all" type="button" title="Stop auto-trading + clear all auto modes on your account">■ stop</button>
+      </div>
+      <div class="eo-strip">
+        <span class="eo-pnl-inline" id="rf-pnl">+$0.00</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="rf-stat-wins">0</b> wins</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="rf-stat-losses">0</b> losses</span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline">streak <b id="rf-stat-streak">0</b></span>
+        <span class="eo-strip-sep">·</span>
+        <span class="eo-stat-inline"><b id="rf-stat-trades">0</b> trades</span>
+      </div>
+      <div class="eo-status" id="rf-status">⌗ idle — pick a preset or fine-tune below</div>
+
+      <!-- QUICK PRESETS -->
+      <div class="eo-presets" id="rf-presets">
+        <button type="button" data-preset="cautious"><span class="ic">🛡</span><span class="lab">Cautious</span><span class="sub">small wins · tight rails</span></button>
+        <button type="button" data-preset="steady" class="on"><span class="ic">⚖</span><span class="lab">Steady</span><span class="sub">balanced · default</span></button>
+        <button type="button" data-preset="bold"><span class="ic">🔥</span><span class="lab">Bold</span><span class="sub">bigger swings · looser</span></button>
+      </div>
+
+      <!-- TARGETS -->
+      <div class="eo-section-lab">Targets</div>
+      <div class="eo-row">
+        <div class="eo-tile target-tp">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Take profit</span><span class="eo-tile-hint">stops at this win</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-1" data-tgt="rf-tp">−</button>
+            <span class="cur">$<input id="rf-tp" type="number" min="0" step="0.5" placeholder="1000"/></span>
+            <button type="button" data-step="+1" data-tgt="rf-tp">+</button>
+          </div>
+          <div class="eo-fill"><i id="rf-tp-fill"></i></div>
+        </div>
+        <div class="eo-tile target-sl">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stop loss</span><span class="eo-tile-hint">stops at this loss</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-1" data-tgt="rf-sl">−</button>
+            <span class="cur">$<input id="rf-sl" type="number" min="0" step="0.5" placeholder="1000"/></span>
+            <button type="button" data-step="+1" data-tgt="rf-sl">+</button>
+          </div>
+          <div class="eo-fill danger"><i id="rf-sl-fill"></i></div>
+        </div>
+      </div>
+
+      <!-- ENGINE -->
+      <div class="eo-section-lab">Engine</div>
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-0.5" data-tgt="rf-stake">−</button>
+            <span class="cur">$<input id="rf-stake" type="number" min="0.35" step="0.5" placeholder="50"/></span>
+            <button type="button" data-step="+0.5" data-tgt="rf-stake">+</button>
+          </div>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Direction threshold</span><span class="eo-tile-hint" id="rf-thr-hint">fires when one side leads ≥ <b id="rf-thr-display">70</b>% (with |z|≥2σ + multi-window confirm)</span></div>
+          <div class="eo-slider-wrap">
+            <input id="rf-thr" type="range" min="50" max="90" value="70" class="eo-slider"/>
+            <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="rf-tick-hint">AUTO picks 1–3 based on signal strength</span></div>
+          <div class="eo-chips" id="rf-tick-seg">
+            <button type="button" class="on" data-mode="auto">AUTO</button>
+            <button type="button" data-mode="manual" data-val="1">1</button>
+            <button type="button" data-mode="manual" data-val="2">2</button>
+            <button type="button" data-mode="manual" data-val="3">3</button>
+            <button type="button" data-mode="manual" data-val="5">5</button>
+          </div>
+          <input id="rf-ticks" type="hidden" value="1"/>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Loss-streak guard</span><span class="eo-tile-hint">stops after <b id="rf-streak-display">11</b> in a row</span></div>
+          <div class="eo-dots" id="rf-streak-dots"></div>
+          <div class="eo-stepper compact">
+            <button type="button" data-step="-1" data-tgt="rf-streak">−</button>
+            <span class="cur"><input id="rf-streak" type="number" min="1" max="20" value="11"/></span>
+            <button type="button" data-step="+1" data-tgt="rf-streak">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Martingale × loss</span><span class="eo-tile-hint">stake × <b id="rf-mart-display">1.3</b> after every loss · resets on a win</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-0.1" data-tgt="rf-mart">−</button>
+            <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.3"/></span>
+            <button type="button" data-step="+0.1" data-tgt="rf-mart">+</button>
+          </div>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Live recovery</span><span class="eo-tile-hint">resets to base on a win</span></div>
+          <div class="eo-mart-state" id="rf-mart-state">
+            <div class="eo-mart-step">step <span id="rf-mart-step">0</span></div>
+            <div class="eo-mart-next">next stake <span id="rf-mart-next">$50.00</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⤵ Rise/Fall direction scanner — sits BELOW the RF auto-trader.
+         Distinct from the legacy #rf-scan inside #rf-scan-panel. -->
+    <div id="rf-scan-grid" class="eo-scan" hidden style="margin-top:14px"></div>
     <!-- best-payout edge banner — sits with the scanner -->
     <div id="eo-payout" hidden style="margin-top:10px"></div>
 
@@ -1336,7 +1486,7 @@ function showView(v){
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display="none";   // beach theme: ocean body gradient is the backdrop (no gold bars)
-  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
+  if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ stopRfScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
   // Remember the section so a refresh lands the user right back here.
@@ -2009,38 +2159,17 @@ const LiveWS=(function(){
     const tb=document.querySelector(sel); if(tb) tb.classList.add("sug");
     const ub=$("assist-use"); if(ub){ ub.style.display=""; ub.textContent="Use this call"; }
   }
-  // Rise/Fall: live price line chart + honest up/down stats (no prediction —
-  // ticks are independent ~50/50; this is for watching price + risk discipline).
+  // Rise/Fall: chart removed (per user request). Still compute the rolling
+  // volatility + current streak so renderDeepRead can show the honest text
+  // read below — that part keeps working unchanged.
   function renderChart(){
-    const svg=$("rf-chart"); if(!svg) return;
-    const n=prices.length; if(n<5){ svg.innerHTML=''; return; }
-    const W=600, H=120, Wh=Math.round(W*0.64);          // history = left 64%, projection = right
+    const n=prices.length; if(n<5) return;
     const hist=prices.slice(-80), hn=hist.length, P=hist[hn-1];
-    // recent per-tick volatility (std of moves) → sizes the forward zones
     let s=0,s2=0,cc=0; for(let i=Math.max(1,hn-40);i<hn;i++){ const dd=hist[i]-hist[i-1]; s+=dd; s2+=dd*dd; cc++; }
     const mean=cc?s/cc:0, vol=Math.sqrt(Math.max(0, cc? s2/cc-mean*mean : 0))||Math.abs(P)*1e-5;
-    const histRange=(Math.max(...hist)-Math.min(...hist))||(vol*4);
-    const F=28, cap=histRange*0.9; let band=Math.min(vol*Math.sqrt(F)*1.2, cap)||vol;
-    const mn=Math.min(Math.min(...hist), P-band), mx=Math.max(Math.max(...hist), P+band), rng=(mx-mn)||1;
-    const y=v=>(H-6-((v-mn)/rng)*(H-12));
-    const hcol="#eef3fb";   // real Deriv price line = white
-    const histPts=hist.map((p,i)=>`${(i/(hn-1)*Wh).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
-    const yP=y(P).toFixed(1);
-    let upP="", dnP=""; const steps=10;
-    for(let i=0;i<=steps;i++){ const t=i/steps, x=(Wh+t*(W-Wh)).toFixed(1), bb=Math.min(vol*Math.sqrt(t*F)*1.2, cap); upP+=`${x},${y(P+bb).toFixed(1)} `; dnP+=`${x},${y(P-bb).toFixed(1)} `; }
-    svg.innerHTML=
-      `<polyline points="${histPts}" fill="none" stroke="${hcol}" stroke-width="2" vector-effect="non-scaling-stroke"/>`+
-      `<line x1="${Wh}" y1="6" x2="${Wh}" y2="${H-6}" stroke="rgba(255,255,255,.16)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>`+
-      `<polygon points="${Wh},${yP} ${upP}${W},${yP}" fill="rgba(61,220,132,.18)"/>`+
-      `<polyline points="${Wh},${yP} ${upP.trim()}" fill="none" stroke="#3ddc84" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`+
-      `<polygon points="${Wh},${yP} ${dnP}${W},${yP}" fill="rgba(255,107,129,.18)"/>`+
-      `<polyline points="${Wh},${yP} ${dnP.trim()}" fill="none" stroke="#ff6b81" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`+
-      `<circle cx="${Wh}" cy="${yP}" r="3.5" fill="${hcol}"/>`;
-    let ups=0; for(let i=1;i<hn;i++){ if(hist[i]>hist[i-1]) ups++; }
-    const mv=hn-1; let sl=0, sdir=null; for(let i=hn-1;i>0;i--){ const dd=hist[i]>hist[i-1]?1:hist[i]<hist[i-1]?-1:0; if(dd===0) continue; if(sdir===null){sdir=dd;sl=1;} else if(dd===sdir) sl++; else break; }
-    const rf=$("rf-stats"); if(rf&&mv) rf.textContent=`up ${Math.round(ups/mv*100)}% · down ${Math.round((mv-ups)/mv*100)}% · run ${sl}${sdir===1?'▲':sdir===-1?'▼':''}`;
-    const sy=$("rf-sym"); if(sy) sy.textContent=want||"";
-    renderDeepRead(prices, vol, P, sl, sdir);   // richer live read under the chart
+    const mv=hn-1; let sl=0, sdir=null;
+    for(let i=hn-1;i>0;i--){ const dd=hist[i]>hist[i-1]?1:hist[i]<hist[i-1]?-1:0; if(dd===0) continue; if(sdir===null){sdir=dd;sl=1;} else if(dd===sdir) sl++; else break; }
+    renderDeepRead(prices, vol, P, sl, sdir);
   }
   return {
     start(sym){ want=sym; emptyMsg(); open(); resub(); },
@@ -2142,37 +2271,44 @@ async function openTrade(game){
   // below is the chart. Keep them visible on Over/Under where the user
   // picks a digit and the column heights are actually relevant.
   const _strength = $("live-digit-strength"); if(_strength) _strength.hidden = (game==="even_odd");
-  $("rf-panel").hidden = (game!=="rise_fall");
-  $("rf-scan-panel").hidden = (game!=="rise_fall");
-  // Even/Odd: live multi-market confidence scanner + best-payout edge + auto-trader
+  // Hide the legacy Rise/Fall panels (chart was removed; old multi-market
+  // scan table is replaced by the new #rf-scan-grid below). They stay in
+  // the DOM (renderDeepRead targets #rf-read) but the wrappers stay hidden.
+  $("rf-panel").hidden = true;
+  $("rf-scan-panel").hidden = true;
   const isEO = (game==="even_odd");
+  const isRF = (game==="rise_fall");
+  // Even/Odd surfaces
   if($("eo-scan")) $("eo-scan").hidden = !isEO;
   if($("eo-payout")) $("eo-payout").hidden = !isEO;
   if($("eo-auto")) $("eo-auto").hidden = !isEO;
-  // On EO we strip out everything the auto-trader already covers — the
-  // page becomes JUST the auto-trader at the top and the scanner below.
-  //   • trade-header (spot price + volatility name pill)
-  //   • trade-params (Market / Stake / Ticks input row)
-  //   • assist read ("J81 is analysing for you")
-  //   • trade-math (Payout / break-even / EV strip)
-  //   • trade-buttons (EVEN / ODD / AUTO trio — auto-trader has its own start)
-  //   • t-result (inline send/win/lose toast — replaced by the session stats
-  //     inside the auto-trader and the recent-activity ticker below)
-  if($("trade-header")) $("trade-header").hidden = isEO;
-  if($("trade-params")) $("trade-params").hidden = isEO;
-  if($("trade-math")) $("trade-math").hidden = isEO;
-  if($("trade-buttons")) $("trade-buttons").hidden = isEO;
-  if($("t-result")) $("t-result").hidden = isEO;
-  document.querySelectorAll(".read").forEach(r => { if(r.querySelector("#assist-msg")) r.hidden = isEO; });
+  // Rise/Fall surfaces (new control surface + scanner — mirror of EO)
+  if($("rf-auto")) $("rf-auto").hidden = !isRF;
+  if($("rf-scan-grid")) $("rf-scan-grid").hidden = !isRF;
+  // Strip the legacy trade UI on EITHER auto-trader view (EO + RF) since
+  // their own panels carry all controls.
+  const stripLegacy = isEO || isRF;
+  if($("trade-header")) $("trade-header").hidden = stripLegacy;
+  if($("trade-params")) $("trade-params").hidden = stripLegacy;
+  if($("trade-math")) $("trade-math").hidden = stripLegacy;
+  if($("trade-buttons")) $("trade-buttons").hidden = stripLegacy;
+  if($("t-result")) $("t-result").hidden = stripLegacy;
+  document.querySelectorAll(".read").forEach(r => { if(r.querySelector("#assist-msg")) r.hidden = stripLegacy; });
+  // EO lifecycle
   if(isEO){ loadEvenOddPayouts(); startEoScan(); try{ window.EOAuto && window.EOAuto.startSignal(); }catch(_){} }
   else    { stopEoScan(); try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} }
+  // RF lifecycle
+  if(isRF){ startRfScan(); try{ window.RFAuto && window.RFAuto.startSignal(); }catch(_){} }
+  else    { stopRfScan(); try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} }
   $("trade-buttons").className = "tgrid"
     + (game==="rise_fall" ? " compact" : "")
     + (isEO ? " eo3" : "");          // 3-column layout when EVEN/ODD/AUTO trio is present
-  // Stop the EO auto-trader on game switch so leaving the page never leaves
-  // it firing trades in the background.
+  // Stop auto-traders on game switch so leaving the page never leaves them firing.
   if(!isEO && window.EOAuto && window.EOAuto.running) window.EOAuto.stop("game changed");
-  if(game==="rise_fall") RFScan.start(); else RFScan.stop();
+  if(!isRF && window.RFAuto && window.RFAuto.running) window.RFAuto.stop("game changed");
+  // Keep legacy RFScan running only when we're NOT on the new RF view (it's
+  // still used elsewhere; on RF view, the new scanner replaces it).
+  if(game==="rise_fall") RFScan.stop(); else RFScan.stop();
   $("t-symbol").disabled = (game==="rise_fall" && window.AUTO_VOL!==false);   // auto-volatility controls the market
   // markets
   try{ const s=await api("/symbols"); $("t-symbol").innerHTML=s.symbols.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join(""); }catch(_){}
@@ -2624,6 +2760,341 @@ window.EOAuto = (function(){
   };
   S.toggle = function(){ S.running ? S.stop("manual stop") : S.start(); };
   return S;
+})();
+
+// ============================================================================
+// RFAuto — Rise/Fall auto-trader, parallels EOAuto but fires CALL/PUT based
+// on price direction (up_pct over all 10 markets) instead of last-digit parity.
+// Same UX patterns: live signal radar, presets, martingale, scan-and-pick
+// ticks animation, multi-window confirmation, |z|≥2σ filter.
+// ============================================================================
+let _rfScanTimer = null;
+function _rfCellHTML(m, currentSym){
+  if(!m){ return '<div class="eo-cell warm" style="opacity:.25;cursor:default"><div class="top"><span class="sym">—</span></div></div>'; }
+  const up = (m.up_pct != null) ? Math.round(m.up_pct) : null;
+  const dn = (up != null) ? 100 - up : null;
+  const z  = (m.up_z != null) ? Number(m.up_z) : 0;
+  const lean = (up != null) ? Math.abs(up - 50) : 0;
+  const tier = lean >= 10 ? "strong" : lean >= 5 ? "firm" : "calm";
+  const ready = !!m.ready && up != null;
+  const leanRise = (up != null && up >= 50);
+  const leanClass = ready ? (leanRise ? " lean-rise" : " lean-fall") : "";
+  const isHere = (currentSym && m.symbol === currentSym);
+  const shortName = (m.name || m.symbol).replace(/^Vol\s+/, "").replace(/\s*\(1s\)$/, "");
+  const tickDot = '<span class="tick-live" title="streaming"></span>';
+  const mark = isHere ? '<span class="mark" style="color:var(--amber)" title="trading here">✓</span>' : '';
+  const sideLab = ready ? (leanRise ? "RISE" : "FALL") : "WARMING";
+  const sidePct = ready ? (leanRise ? up : dn) : (m.ticks||0);
+  const sideHtml = ready
+    ? '<div class="big"><span class="side">'+sideLab+'</span><span class="pct">'+sidePct+'<span style="font-size:.55em;letter-spacing:.04em;margin-left:1px">%</span></span></div>'
+    : '<div class="big"><span class="side">WARMING</span><span class="pct">'+(m.ticks||0)+'/30</span></div>';
+  const bar = ready
+    ? '<div class="bar"><span class="rise" style="width:'+up+'%"></span><span class="fall" style="width:'+dn+'%"></span></div>'
+    : '<div class="bar"><span class="warming" style="width:'+Math.min(100,Math.round((m.ticks||0)/30*100))+'%"></span></div>';
+  const zClass = Math.abs(z) >= 2 ? "z warn" : "z";
+  const meta = ready
+    ? '<div class="meta"><span class="'+zClass+'">z '+(z>=0?'+':'')+z.toFixed(1)+'</span><span class="pay">'+(m.payout_pct!=null?Number(m.payout_pct).toFixed(1)+'%':'—')+'</span></div>'
+    : '<div class="meta"><span>collecting</span><span>'+(m.ticks||0)+'t</span></div>';
+  return ''
+    +'<div class="eo-cell '+tier+(ready?' ready':' warm')+leanClass+(isHere?' here':'')+'" data-sym="'+esc(m.symbol)+'" title="'+esc(m.name||m.symbol)+'">'
+    +'  <div class="top"><span class="sym">'+esc(shortName)+tickDot+'</span>'+mark+'</div>'+sideHtml+bar+meta
+    +'</div>';
+}
+async function loadRfScan(){
+  const el = $("rf-scan-grid"); if(!el) return;
+  if(GAME !== "rise_fall"){ el.hidden = true; return; }
+  el.hidden = false;
+  try{
+    const d = await api("/scan");
+    const bySym = {};
+    (d.markets || []).forEach(m => { if(m && m.symbol) bySym[m.symbol] = m; });
+    const cur = ($("t-symbol")||{}).value || null;
+    const readyCount = (d.markets || []).filter(m=>m.ready && m.up_pct != null).length;
+    let strongest = null;
+    (d.markets || []).forEach(m => {
+      if(!m.ready || m.up_pct == null) return;
+      const pct = Math.max(m.up_pct, 100 - m.up_pct);
+      if(!strongest || pct > strongest.pct){
+        strongest = { name:(m.name||m.symbol).replace(/^Vol\s+/,""), side: m.up_pct >= 50 ? "RISE" : "FALL", pct: Math.round(pct) };
+      }
+    });
+    const strongestTxt = strongest ? "strongest: "+strongest.side+" "+strongest.pct+"% on "+esc(strongest.name) : "no clear lean yet";
+    const head = ''
+      +'<div class="eo-scan-head"><div>'
+      +'  <div class="eo-scan-title"><span class="ic">📡</span>Rise / Fall Direction Scan<span class="faint">· 10-market sweep</span></div>'
+      +'  <div style="font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:5px;letter-spacing:.04em">'+strongestTxt+'</div>'
+      +'</div><div class="eo-scan-meta">'+readyCount+'/10 ready · tap to switch</div></div>'
+      +'<div class="eo-band-lab">2-second band</div>'
+      +'<div class="eo-grid">'+_EO_BAND_STANDARD.map(s=>_rfCellHTML(bySym[s], cur)).join("")+'</div>'
+      +'<div class="eo-band-lab">1-second band</div>'
+      +'<div class="eo-grid">'+_EO_BAND_FAST.map(s=>_rfCellHTML(bySym[s], cur)).join("")+'</div>';
+    el.innerHTML = head;
+    el.querySelectorAll(".eo-cell[data-sym]").forEach(c => c.addEventListener("click", () => {
+      const sym = c.dataset.sym; if(!sym) return;
+      const s = $("t-symbol"); if(s && s.value !== sym){ s.value = sym; s.dispatchEvent(new Event("change")); }
+    }));
+  } catch(_){
+    el.innerHTML = '<div class="faint" style="font-size:11px;padding:8px 4px">scanner warming up…</div>';
+  }
+}
+function startRfScan(){ if(_rfScanTimer) clearInterval(_rfScanTimer); loadRfScan(); _rfScanTimer = setInterval(loadRfScan, 4000); }
+function stopRfScan(){ if(_rfScanTimer){ clearInterval(_rfScanTimer); _rfScanTimer = null; } }
+
+window.RFAuto = (function(){
+  const S = { running:false, timer:null, signalTimer:null,
+              sess:{pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0}, busy:false };
+  const $g = id => document.getElementById(id);
+  const _setStatus = t => { const el = $g("rf-status"); if(el) el.innerHTML = t; };
+  function _setPnl(){ const p=$g("rf-pnl"); if(!p) return; const v=S.sess.pnl;
+    p.textContent = (v>=0?"+$":"-$")+Math.abs(v).toFixed(2);
+    p.className = "eo-pnl-inline " + (v>=0?"up":"dn"); }
+  function _setFills(){
+    const tp = parseFloat(($g("rf-tp")||{}).value)||0;
+    const sl = parseFloat(($g("rf-sl")||{}).value)||0;
+    const v = S.sess.pnl;
+    const tpEl=$g("rf-tp-fill"); if(tpEl){ const pct = tp>0 ? Math.max(0,Math.min(100,(v/tp)*100)) : 0; tpEl.style.width = pct.toFixed(0)+"%"; }
+    const slEl=$g("rf-sl-fill"); if(slEl){ const pct = sl>0 ? Math.max(0,Math.min(100,(-v/sl)*100)) : 0; slEl.style.width = pct.toFixed(0)+"%"; }
+  }
+  function _renderDots(){
+    const wrap=$g("rf-streak-dots"); if(!wrap) return;
+    const max = Math.max(1, Math.min(20, parseInt(($g("rf-streak")||{}).value)||11));
+    const lit = Math.min(max, S.sess.streak||0);
+    let html=""; for(let i=0;i<max;i++) html += '<span class="d'+(i<lit?' lit':'')+'"></span>';
+    wrap.innerHTML = html;
+  }
+  function _renderStats(){
+    ["wins","losses","streak","trades"].forEach(k=>{ const el=$g("rf-stat-"+k); if(el) el.textContent = S.sess[k]; });
+  }
+  function _mart(){ return Math.max(1, Math.min(3, parseFloat(($g("rf-mart")||{}).value)||1.3)); }
+  function _baseStake(){ return Math.max(0.35, parseFloat(($g("rf-stake")||{}).value)||0.35); }
+  function _nextStake(){ return _baseStake() * Math.pow(_mart(), S.sess.martStep||0); }
+  function _renderMart(){
+    const step=$g("rf-mart-step"); if(step) step.textContent = S.sess.martStep || 0;
+    const next=$g("rf-mart-next"); if(next) next.textContent = "$"+_nextStake().toFixed(2);
+    const state=$g("rf-mart-state"); if(state) state.classList.toggle("warming",(S.sess.martStep||0)>0);
+  }
+  function _resetBtn(){
+    const go=$g("rf-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
+    const chips=$g("rf-tick-seg"); if(chips) chips.removeAttribute("data-running");
+    const hint=$g("rf-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+  }
+  function _autoTicks(lead){ return lead >= 75 ? 1 : lead >= 65 ? 2 : 3; }
+  function _livePrices(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.prices) ? LiveWS.prices() : []; }catch(_){ return []; } }
+  function _updateSignal(){
+    const sig=$g("rf-signal"); if(!sig) return;
+    const pr = _livePrices();
+    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||70));
+    const thrLine=$g("rf-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
+    const thrLab=$g("rf-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
+    const mkt=$g("rf-signal-market");
+    if(mkt){ const opt=($g("t-symbol")||{}).selectedOptions?.[0]; mkt.textContent = (opt?opt.textContent:"") || "—"; }
+    if(pr.length < 21){
+      sig.classList.remove("live-rise","live-fall");
+      const u=$g("rf-signal-up"); if(u) u.style.width="50%";
+      const dn=$g("rf-signal-dn"); if(dn) dn.style.width="50%";
+      const sp=$g("rf-signal-pct"); if(sp) sp.textContent="—";
+      const ss=$g("rf-signal-side"); if(ss) ss.textContent="warming";
+      const e=$g("rf-signal-u"); if(e) e.textContent="—";
+      const o=$g("rf-signal-d"); if(o) o.textContent="—";
+      const st=$g("rf-signal-state"); if(st) st.innerHTML = "reading the tape… <b>"+pr.length+"/21</b>";
+      return;
+    }
+    const last21 = pr.slice(-21);
+    let ups = 0; for(let i=1;i<last21.length;i++) if(last21[i] > last21[i-1]) ups++;
+    const denom = last21.length - 1;
+    const upPct = Math.round(100 * ups / denom), dnPct = 100 - upPct;
+    const riseWins = upPct >= 50;
+    const lead = Math.max(upPct, dnPct);
+    const overThr = lead >= thr;
+    const dom = riseWins ? "RISE" : "FALL";
+    sig.classList.toggle("live-rise", overThr && riseWins);
+    sig.classList.toggle("live-fall", overThr && !riseWins);
+    const u=$g("rf-signal-up"); if(u) u.style.width=upPct+"%";
+    const dn=$g("rf-signal-dn"); if(dn) dn.style.width=dnPct+"%";
+    const sp=$g("rf-signal-pct"); if(sp) sp.textContent = lead+"%";
+    const ss=$g("rf-signal-side"); if(ss) ss.textContent = dom;
+    const eu=$g("rf-signal-u"); if(eu) eu.textContent = upPct+"%";
+    const ed=$g("rf-signal-d"); if(ed) ed.textContent = dnPct+"%";
+    const st=$g("rf-signal-state");
+    if(st){ st.innerHTML = overThr
+      ? '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire'
+      : '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger'; }
+  }
+  // Same filtered candidate pick as EO but on up_pct + |up_z|>=2 + multi-window.
+  async function _pickBestRfMarket(threshold){
+    try{
+      const d = await api("/scan");
+      const ready = (d.markets || []).filter(m => m.ready && m.up_pct != null);
+      if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      const Z_MIN=2.0, W20_MIN=threshold-3, W50_MIN=threshold-8;
+      const cands = ready.map(m => {
+        const up = Math.round(m.up_pct);
+        const riseWins = up >= 50;
+        const pct = riseWins ? up : 100-up;
+        const z = m.up_z != null ? Math.abs(Number(m.up_z)) : 0;
+        const u20 = m.up_pct_20, u50 = m.up_pct_50;
+        const p20 = u20 != null ? (riseWins ? u20 : 100-u20) : null;
+        const p50 = u50 != null ? (riseWins ? u50 : 100-u50) : null;
+        return { symbol:m.symbol, name:m.name||m.symbol, side:riseWins?"up":"down", pct, z, pct20:p20, pct50:p50 };
+      });
+      const passing = cands.filter(c => {
+        if(c.pct < threshold) return false;
+        if(c.z < Z_MIN) return false;
+        if(c.pct20 != null && c.pct20 < W20_MIN) return false;
+        if(c.pct50 != null && c.pct50 < W50_MIN) return false;
+        return true;
+      }).sort((a,b)=>(b.pct+b.z)-(a.pct+a.z));
+      if(passing.length) return passing[0];
+      const best = cands.sort((a,b)=>b.pct-a.pct)[0];
+      let why;
+      if(best.pct < threshold)            why = "best lean "+best.pct+"% "+best.side.toUpperCase()+" on "+best.name+" — need ≥"+threshold+"%";
+      else if(best.z < Z_MIN)              why = best.name+" "+best.side.toUpperCase()+" "+best.pct+"% but z "+best.z.toFixed(1)+" < 2.0 — not significant";
+      else if(best.pct20 != null && best.pct20 < W20_MIN) why = best.name+" 100-tick "+best.pct+"% but 20-tick disagrees ("+best.pct20+"%)";
+      else if(best.pct50 != null && best.pct50 < W50_MIN) why = best.name+" 100-tick "+best.pct+"% but 50-tick disagrees ("+best.pct50+"%)";
+      else                                 why = "no market cleared all filters";
+      return {none:true, reason:why};
+    } catch(_){ return {none:true, reason:"scanner unreachable — retrying"}; }
+  }
+  async function _fireOnce(){
+    if(!S.running || S.busy) return;
+    const base = _baseStake();
+    const mart = _mart();
+    const martStake = base * Math.pow(mart, S.sess.martStep||0);
+    const cfg = {
+      tp:    parseFloat(($g("rf-tp")||{}).value)||0,
+      sl:    parseFloat(($g("rf-sl")||{}).value)||0,
+      stake: Math.max(0.35, martStake),
+      maxLossStreak: Math.max(1, parseInt(($g("rf-streak")||{}).value)||11),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||70)),
+      ticksMode: (document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto",
+      ticksManual:   Math.max(1, Math.min(10, parseInt(($g("rf-ticks")||{}).value)||1)),
+    };
+    const pick = await _pickBestRfMarket(cfg.threshold);
+    if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
+    const sel = $g("t-symbol");
+    if(sel && sel.value !== pick.symbol){ sel.value = pick.symbol; sel.dispatchEvent(new Event("change")); try{ loadRfScan(); }catch(_){} }
+    const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
+    if(!CUR){ S.stop("connect an account first"); return; }
+    S.busy = true;
+    // Scan-and-pick animation on the AUTO chip + manual chips.
+    if(cfg.ticksMode === "auto"){
+      const hint=$g("rf-tick-hint"); if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
+      const opts=[1,2,3,5], stepDelays=[0,120,240,360];
+      opts.forEach((v,i)=>setTimeout(()=>{ document.querySelectorAll('#rf-tick-seg button[data-mode="manual"]').forEach(b=>b.classList.toggle("scanning", b.dataset.val===String(v))); }, stepDelays[i]));
+      setTimeout(()=>{
+        document.querySelectorAll('#rf-tick-seg button[data-mode="manual"]').forEach(b=>{ b.classList.remove("scanning"); b.classList.toggle("auto-picked", b.dataset.val===String(dur)); });
+        if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
+        setTimeout(()=>document.querySelectorAll('#rf-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
+      }, 500);
+    }
+    const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
+    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    try{
+      const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
+        account_id: CUR.id, trade_type:"rise_fall", symbol: pick.symbol,
+        stake: cfg.stake, duration: dur, duration_unit:"t", direction: pick.side,
+      })});
+      const profit = (typeof r.profit === "number") ? r.profit : 0;
+      const outcome = r.outcome || "pending";
+      S.sess.trades += 1;
+      if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
+      else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
+      const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
+      _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
+      if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){ S.stop("take-profit hit");
+        showPop({kind:"win", icon:"🎉", title:"Take-profit hit!", msg:"You reached your target. Banked the win and stopped the auto-trader so the house doesn't claw it back.", pnl:S.sess.pnl}); return; }
+      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){ S.stop("stop-loss hit");
+        showPop({kind:"stop", icon:"🛑", title:"Stop-loss hit — desk paused.", msg:"You reached your daily loss line. Stepping away is the win here — come back fresh.", pnl:S.sess.pnl}); return; }
+      if(S.sess.streak >= cfg.maxLossStreak){ S.stop(cfg.maxLossStreak+"-loss streak");
+        showPop({kind:"stop", icon:"⚠️", title:cfg.maxLossStreak+" losses in a row — desk paused.", msg:"The streak guard you set just kicked in. That's discipline working — review and adjust before restarting.", pnl:S.sess.pnl}); return; }
+      pollSettle();
+    } catch(e){ _setStatus("error: "+(e&&e.message||"trade failed")); }
+    finally{ S.busy = false; }
+  }
+  S.start = function(){
+    if(S.running) return; if(!CUR){ showView("connect"); return; }
+    S.running = true;
+    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+    _setStatus("⌗ <b>running</b> — reading the tape…");
+    const go=$g("rf-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    const chips=$g("rf-tick-seg");
+    const ticksMode=(document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto";
+    if(chips){ chips.setAttribute("data-running","1");
+      const hint=$g("rf-tick-hint"); if(hint) hint.textContent = ticksMode==="auto" ? "AUTO is on — picking each trade based on lean strength" : "manual "+(($g("rf-ticks")||{}).value||"1")+" tick — fixed per trade"; }
+    _fireOnce();
+    S.timer = setInterval(_fireOnce, 6000);
+  };
+  S.stop = function(reason){
+    if(!S.running && !S.timer) return;
+    S.running = false;
+    if(S.timer){ clearInterval(S.timer); S.timer = null; }
+    _resetBtn();
+    _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
+  };
+  S._setFills = _setFills; S._renderDots = _renderDots; S._renderMart = _renderMart;
+  S._updateSignal = _updateSignal;
+  S.startSignal = function(){ if(S.signalTimer) return; _updateSignal(); S.signalTimer = setInterval(_updateSignal, 400); };
+  S.stopSignal  = function(){ if(S.signalTimer){ clearInterval(S.signalTimer); S.signalTimer=null; } };
+  S.toggle = function(){ S.running ? S.stop("manual stop") : S.start(); };
+  return S;
+})();
+
+// Wire RF controls — steppers, slider, chips, presets, start/stop/ghost-stop.
+(function(){
+  // Tick chips (AUTO / 1 / 2 / 3 / 5) for RF panel
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#rf-tick-seg button");
+    if(!t) return;
+    document.querySelectorAll("#rf-tick-seg button").forEach(b=>b.classList.toggle("on", b===t));
+    const ticks=document.getElementById("rf-ticks"); if(ticks) ticks.value = t.dataset.val || "1";
+  });
+  // Live updates from RF inputs
+  ["rf-tp","rf-sl"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener("input", () => { try{ window.RFAuto._setFills(); }catch(_){} });
+  });
+  const rfThr = document.getElementById("rf-thr");
+  function _syncRfThr(){ const d=document.getElementById("rf-thr-display"); if(d) d.textContent = rfThr.value; }
+  if(rfThr){ rfThr.addEventListener("input", _syncRfThr); _syncRfThr(); }
+  const rfStreak = document.getElementById("rf-streak");
+  function _syncRfStreak(){ const d=document.getElementById("rf-streak-display"); if(d) d.textContent = rfStreak.value;
+                            try{ window.RFAuto._renderDots(); }catch(_){ } }
+  if(rfStreak){ rfStreak.addEventListener("input", _syncRfStreak); _syncRfStreak(); }
+  const rfMart = document.getElementById("rf-mart");
+  function _syncRfMart(){ const d=document.getElementById("rf-mart-display"); if(d) d.textContent = Number(rfMart.value).toFixed(1);
+                          try{ window.RFAuto._renderMart(); }catch(_){ } }
+  if(rfMart){ rfMart.addEventListener("input", _syncRfMart); _syncRfMart(); }
+  const rfStake = document.getElementById("rf-stake");
+  if(rfStake) rfStake.addEventListener("input", ()=>{ try{ window.RFAuto._renderMart(); }catch(_){ } });
+  // Start / stop
+  const rfGo = document.getElementById("rf-go"); if(rfGo) rfGo.addEventListener("click", ()=>window.RFAuto.toggle());
+  const rfStop = document.getElementById("rf-stop-all");
+  if(rfStop) rfStop.addEventListener("click", ()=>eoStopEverything(rfStop));
+  // Quick presets — same shape as EO but tuned for direction trading
+  const RF_PRESETS = {
+    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5,  mart:1.2 },
+    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8,  mart:1.3 },
+    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11, mart:1.5 },
+  };
+  function _applyRfPreset(name){
+    const p = RF_PRESETS[name]; if(!p) return;
+    const set = (id, v) => { const el = document.getElementById(id); if(!el) return;
+      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+    set("rf-tp", p.tp); set("rf-sl", p.sl); set("rf-thr", p.thr);
+    set("rf-stake", p.stake.toFixed(2)); set("rf-streak", p.streak);
+    if(p.mart != null) set("rf-mart", p.mart.toFixed(1));
+    document.querySelectorAll("#rf-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
+    try{ window.RFAuto._setFills(); window.RFAuto._renderDots(); window.RFAuto._renderMart(); window.RFAuto._updateSignal(); }catch(_){ }
+  }
+  document.addEventListener("click", function(ev){
+    const t = ev.target.closest && ev.target.closest("#rf-presets button[data-preset]");
+    if(t) _applyRfPreset(t.dataset.preset);
+  });
+  // Apply Steady on first open of RF panel.
+  setTimeout(()=>{ const tp = document.getElementById("rf-tp"); if(tp && !tp.value) _applyRfPreset("steady"); }, 120);
 })();
 
 (function(){

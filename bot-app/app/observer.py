@@ -97,12 +97,20 @@ def _market_stats(symbol: str) -> dict[str, Any]:
         return round(100 * sum(1 for x in arr if x % 2 == 0) / len(arr), 1) if arr else None
     even_pct_20 = _ep(digits[-20:]) if len(digits) >= 20 else None
     even_pct_50 = _ep(digits[-50:]) if len(digits) >= 50 else None
+    # Up-window stats — mirror of the EO windows but for price direction.
+    def _upp(seq):
+        if len(seq) < 2: return None
+        u = sum(1 for i in range(1, len(seq)) if seq[i] > seq[i - 1])
+        return round(100 * u / (len(seq) - 1), 1)
+    up_pct_20 = _upp(prices[-21:]) if len(prices) >= 21 else None
+    up_pct_50 = _upp(prices[-51:]) if len(prices) >= 51 else None
     return {
         "symbol": symbol, "ready": True, "ticks": n,
         "even_pct": round(100 * even / n, 1), "odd_pct": round(100 * odd / n, 1),
         "even_pct_20": even_pct_20, "even_pct_50": even_pct_50,
         "eo_z": round(eo_z, 2),
         "up_pct": round(100 * ups / mv, 1) if mv else 50.0,
+        "up_pct_20": up_pct_20, "up_pct_50": up_pct_50,
         "up_z": round(up_z, 2),
         "chi_square": round(chi, 2),
         "chi_anomalous_p01": chi > 21.67,

@@ -937,6 +937,10 @@ async def scan_local() -> dict:
             "even_pct_20": m.get("even_pct_20"),  # multi-window confirmation
             "even_pct_50": m.get("even_pct_50"),
             "eo_z": m.get("eo_z"),
+            "up_pct": m.get("up_pct"),            # rise/fall direction signal
+            "up_pct_20": m.get("up_pct_20"),
+            "up_pct_50": m.get("up_pct_50"),
+            "up_z": m.get("up_z"),
             "ticks": m.get("ticks") or 0,
             "ready": bool(m.get("ready")),
             "payout_pct": po.get("payout_pct"),
