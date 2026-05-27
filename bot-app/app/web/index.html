@@ -201,6 +201,15 @@
   /* home choose grid */
   .sec-title{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:26px 0 12px}
 
+  /* 🚨 Emergency kill switch — high-visibility red banner. */
+  .stop-all{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:14px 0 0;padding:12px 16px;border:1px solid rgba(255,120,140,.45);border-radius:13px;background:radial-gradient(120% 100% at 100% 0%,rgba(226,58,82,.20),transparent 55%),linear-gradient(180deg,rgba(36,8,12,.55),rgba(20,8,10,.55));position:relative;overflow:hidden;box-shadow:0 14px 36px -22px rgba(255,80,110,.4),inset 0 1px 0 rgba(255,255,255,.04)}
+  .stop-all-info{flex:1;min-width:200px}
+  .stop-all-lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;color:#ff9aac;font-weight:800}
+  .stop-all-sub{font-size:11.5px;color:var(--dim);margin-top:3px;line-height:1.45;max-width:480px}
+  .stop-all-btn{padding:12px 22px;border-radius:11px;border:0;background:linear-gradient(135deg,#ff8aa0 0%,#e23a52 55%,#b21d33 100%);color:#fff;font-family:var(--serif);font-size:13.5px;font-weight:800;letter-spacing:.04em;cursor:pointer;box-shadow:0 16px 36px -14px rgba(255,80,110,.65),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .12s ease,filter .15s ease}
+  .stop-all-btn:hover{transform:translateY(-1px);filter:brightness(1.07)} .stop-all-btn:active{transform:translateY(0) scale(.97)}
+  .stop-all-btn:disabled{opacity:.55;cursor:wait;transform:none}
+
   /* Trade-view balance bar — sticky, premium look with a live pulse. */
   .balbar{position:sticky;top:54px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px;padding:13px 18px;border-radius:14px;border:1px solid var(--bd2);background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.18),transparent 55%),linear-gradient(135deg,rgba(12,18,28,.92),rgba(20,28,40,.92));box-shadow:0 14px 36px -18px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05)}
   .balbar-left{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -831,6 +840,18 @@
       <div class="home-hero-sub">Pick a precision instrument below — the desk handles execution, you set the limits.</div>
     </div>
     <div class="home-hero-right" id="home-mode"></div>
+  </div>
+
+  <!-- 🚨 Emergency kill switch — instantly stops every server-side auto-mode
+       (brain_auto, proven_auto, rf_config.enabled, mpro_enabled, enabled) on
+       every connected account. Visible at all times because autonomous flags
+       persist across browser sessions. -->
+  <div class="stop-all">
+    <div class="stop-all-info">
+      <div class="stop-all-lab">🚨 EMERGENCY · auto-trading kill switch</div>
+      <div class="stop-all-sub">One tap stops every auto mode on every connected account. Use this if the bot is trading without your permission.</div>
+    </div>
+    <button class="stop-all-btn" id="stop-all-btn" type="button">■ STOP ALL AUTO</button>
   </div>
 
   <!-- Brain Auto control — toggle for the every-cycle Even/Odd auto-trade on the best-payout market. -->
@@ -1526,6 +1547,39 @@ async function refreshBrainAutoUI(){
   } catch(e){ const st=$("brain-auto-status"); if(st) st.textContent="couldn't toggle: "+e.message; }
   finally{ b.disabled=false; }
 }); })();
+
+// 🚨 Emergency kill switch — stops every server-side auto mode + the client
+// auto-trader in one tap. Asks to confirm so a stray finger doesn't disarm
+// a deliberate session, but the confirm is one click. After it runs, the
+// account row is reloaded so the brain-auto toggle reflects the new state.
+(function(){
+  const btn = document.getElementById("stop-all-btn"); if(!btn) return;
+  btn.addEventListener("click", async () => {
+    if(!confirm("Stop ALL auto-trading on every connected account?\n\nThis disables Brain Auto, Proven Auto, Rise/Fall Auto and the M Pro scanner. You'll need to switch each one back on manually if you want them later.")) return;
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = "■ stopping…";
+    try{
+      // Stop the client-side Even/Odd auto-trader first (instant local effect).
+      try{ window.EOAuto && window.EOAuto.stop && window.EOAuto.stop("emergency stop"); }catch(_){}
+      const r = await api("/accounts/stop_all_auto", {method:"POST", timeout:15000});
+      // Refresh the local CUR snapshot so the Brain Auto toggle reads correctly.
+      if(CUR){
+        try{ const a = (await api("/accounts")).find(x=>x.id===CUR.id); if(a){ CUR = a; refreshBrainAutoUI(); } }catch(_){}
+      }
+      btn.textContent = "✓ stopped " + (r.accounts_touched||0) + " account" + ((r.accounts_touched||0)===1?"":"s");
+      if(typeof showPop === "function"){
+        showPop({
+          kind:"stop", icon:"🛑",
+          title:"All auto-trading stopped",
+          msg:"Brain Auto, Proven Auto, Rise/Fall Auto, and M Pro have been disabled on every connected account ("+(r.accounts_touched||0)+"). The server-side trading loop will not place any new autonomous trades. To resume, switch the mode you want back on manually.",
+        });
+      }
+    } catch(e){
+      btn.textContent = "❌ failed — retry"; alert("Could not stop: " + (e.message||e));
+    } finally{
+      setTimeout(()=>{ btn.disabled = false; btn.textContent = orig; }, 2200);
+    }
+  });
+})();
 
 // J81 vs Deriv scoreboard, cycle history, and home cycle/strategy-engine
 // loaders were removed when those home sections were dropped per user request.

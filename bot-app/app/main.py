@@ -716,6 +716,38 @@ def account_patch(account_id: str, body: AccountPatch, request: Request) -> dict
     return {"updated": account_id}
 
 
+@app.post("/accounts/stop_all_auto")
+def stop_all_auto(request: Request) -> dict:
+    """🚨 Emergency kill switch. Sets brain_auto=false, proven_auto=false,
+    enabled=false, mpro_enabled=false, and clears rf_config.enabled on EVERY
+    account this session owns. Stops the server-side trading loop from firing
+    any further autonomous trades. Returns the count of accounts touched."""
+    store = get_store()
+    sid = request.cookies.get(SESSION_COOKIE)
+    # list_accounts_public(sid) already filters to the caller's session.
+    visible = store.list_accounts_public(sid) if sid else []
+    updated_ids: list[str] = []
+    for a in visible:
+        rf = a.get("rf_config") or {}
+        if isinstance(rf, dict):
+            rf = {**rf, "enabled": False}
+        store.update_account_settings(
+            a["id"],
+            enabled=False,
+            brain_auto=False,
+            proven_auto=False,
+            mpro_enabled=False,
+            rf_config=rf if isinstance(rf, dict) else None,
+        )
+        updated_ids.append(a["id"])
+    return {
+        "stopped": True,
+        "accounts_touched": len(updated_ids),
+        "account_ids": updated_ids,
+        "note": "all server-side auto-trading flags set to false; trading loop will not fire new trades on these accounts.",
+    }
+
+
 @app.delete("/accounts/{account_id}")
 def account_delete(account_id: str, request: Request) -> dict:
     _require_own(request, account_id)
