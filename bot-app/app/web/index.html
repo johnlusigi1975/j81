@@ -424,6 +424,15 @@
   .eo-presets button .lab{font-family:var(--serif);font-size:12.5px;font-weight:800;letter-spacing:.01em;margin-top:2px}
   .eo-presets button .sub{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
 
+  /* Martingale "live recovery" tile — shows current step + next stake live. */
+  .eo-mart-state{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border:1px dashed rgba(255,255,255,.10);border-radius:10px;background:rgba(0,0,0,.18);font-family:var(--mono);font-size:11.5px}
+  .eo-mart-state .eo-mart-step{color:var(--dim);letter-spacing:.04em}
+  .eo-mart-state .eo-mart-step span{color:var(--text);font-weight:800;font-size:13px;margin-left:4px}
+  .eo-mart-state .eo-mart-next{color:var(--dim);letter-spacing:.04em}
+  .eo-mart-state .eo-mart-next span{color:var(--amber);font-weight:800;font-size:13px;margin-left:4px}
+  .eo-mart-state.warming .eo-mart-next span{color:var(--warn)}
+  .eo-mart-state.warming{border-color:rgba(245,158,11,.35);background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(0,0,0,.22))}
+
   /* Section labels between groups in the auto-trader. */
   .eo-section-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700;margin:14px 0 7px;display:flex;align-items:center;gap:9px}
   .eo-section-lab::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
@@ -474,6 +483,11 @@
   .eo-chips button[data-mode="auto"].on.flash{animation:eo-chip-flash .8s ease-out 1}
   @keyframes eo-chip-pulse{0%,100%{box-shadow:0 6px 16px -6px rgba(212,184,122,.6)}50%{box-shadow:0 6px 22px -4px rgba(70,207,158,.7),0 0 0 1px rgba(70,207,158,.4)}}
   @keyframes eo-chip-flash{0%{box-shadow:0 0 0 0 rgba(70,207,158,.9)}100%{box-shadow:0 0 0 12px rgba(70,207,158,0)}}
+  /* Scan-and-pick: AUTO briefly highlights 1→2→3→5 ("scanning"), then the
+     picked chip lights up green for ~2s ("auto-picked"). */
+  .eo-chips button[data-mode="manual"].scanning{background:linear-gradient(135deg,rgba(212,184,122,.35),rgba(212,184,122,.15));color:var(--text);border-color:rgba(212,184,122,.45);transform:scale(1.04);transition:all .12s ease}
+  .eo-chips button[data-mode="manual"].auto-picked{background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a);color:#04200f;border-color:transparent;box-shadow:0 8px 22px -8px rgba(70,207,158,.7), 0 0 0 1px rgba(70,207,158,.5);animation:eo-chip-picked .35s ease}
+  @keyframes eo-chip-picked{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
 
   /* Loss-streak guard dots */
   .eo-dots{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;margin-bottom:2px}
@@ -1168,6 +1182,25 @@
             <button type="button" data-step="-1" data-tgt="eo-streak">−</button>
             <span class="cur"><input id="eo-streak" type="number" min="1" max="20" value="11"/></span>
             <button type="button" data-step="+1" data-tgt="eo-streak">+</button>
+          </div>
+        </div>
+      </div>
+      <!-- Martingale multiplier — recovery sizing after a loss. Active
+           automatically whenever the auto-trader is running. -->
+      <div class="eo-row">
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Martingale × loss</span><span class="eo-tile-hint" id="eo-mart-hint">stake × <b id="eo-mart-display">1.3</b> after every loss · resets on a win</span></div>
+          <div class="eo-stepper">
+            <button type="button" data-step="-0.1" data-tgt="eo-mart">−</button>
+            <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.3"/></span>
+            <button type="button" data-step="+0.1" data-tgt="eo-mart">+</button>
+          </div>
+        </div>
+        <div class="eo-tile">
+          <div class="eo-tile-head"><span class="eo-tile-lab">Live recovery</span><span class="eo-tile-hint" id="eo-mart-live-hint">resets to base on a win</span></div>
+          <div class="eo-mart-state" id="eo-mart-state">
+            <div class="eo-mart-step">step <span id="eo-mart-step">0</span></div>
+            <div class="eo-mart-next">next stake <span id="eo-mart-next">$50.00</span></div>
           </div>
         </div>
       </div>
@@ -2275,7 +2308,9 @@ function showPop({kind, icon, title, msg, pnl}){
 // take-profit, stop-loss, or consecutive-loss limit is reached and shows
 // the appropriate popup. Pauses on signal too weak — never blind-fires.
 window.EOAuto = (function(){
-  const S = { running:false, timer:null, signalTimer:null, sess:{pnl:0, wins:0, losses:0, streak:0, trades:0}, busy:false };
+  // sess.martStep = how many consecutive losses we've fed the multiplier so
+  // far this session. stake = baseStake * mart^martStep. Resets on a win.
+  const S = { running:false, timer:null, signalTimer:null, sess:{pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0}, busy:false };
   const $g = id => document.getElementById(id);
   function _setStatus(t){ const el=$g("eo-status"); if(el) el.innerHTML=t; }
   function _setPnl(){
@@ -2346,6 +2381,21 @@ window.EOAuto = (function(){
     const sr=$g("eo-stat-streak"); if(sr) sr.textContent = S.sess.streak;
     const tr=$g("eo-stat-trades"); if(tr) tr.textContent = S.sess.trades;
   }
+  function _martMultiplier(){
+    return Math.max(1, Math.min(3, parseFloat(($g("eo-mart")||{}).value)||1.3));
+  }
+  function _baseStake(){
+    return Math.max(0.35, parseFloat(($g("eo-stake")||{}).value)||0.35);
+  }
+  function _nextStake(){
+    return _baseStake() * Math.pow(_martMultiplier(), S.sess.martStep||0);
+  }
+  function _renderMart(){
+    const step = $g("eo-mart-step"); if(step) step.textContent = S.sess.martStep || 0;
+    const next = $g("eo-mart-next"); if(next) next.textContent = "$" + _nextStake().toFixed(2);
+    const state = $g("eo-mart-state");
+    if(state) state.classList.toggle("warming", (S.sess.martStep||0) > 0);
+  }
   function _resetBtn(){
     const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
     const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
@@ -2413,10 +2463,13 @@ window.EOAuto = (function(){
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
+    const baseStake = _baseStake();
+    const mart = _martMultiplier();
+    const martStake = baseStake * Math.pow(mart, S.sess.martStep || 0);
     const cfg = {
       tp:    parseFloat(($g("eo-tp")||{}).value)||0,
       sl:    parseFloat(($g("eo-sl")||{}).value)||0,
-      stake: Math.max(0.35, parseFloat(($g("eo-stake")||{}).value)||0.35),
+      stake: Math.max(0.35, martStake),   // martingale-scaled stake for this trade
       maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
       threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||70)),
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
@@ -2438,17 +2491,40 @@ window.EOAuto = (function(){
     const dur = (cfg.ticksMode==="auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
-    // If AUTO ticks: show what was picked + flash the AUTO chip on each fire.
+    // If AUTO ticks: scan-and-pick animation so the user SEES which tick was
+    // chosen. Briefly walks through 1 → 2 → 3 → 5 then settles on the picked
+    // chip with a green glow + updates the hint to "AUTO picked N ticks".
     if(cfg.ticksMode === "auto"){
       const hint = $g("eo-tick-hint");
-      if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
+      if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
       const autoChip = document.querySelector('#eo-tick-seg button[data-mode="auto"].on');
       if(autoChip){
         autoChip.classList.remove("flash");
-        // force reflow so the animation restarts on every fire
         void autoChip.offsetWidth;
         autoChip.classList.add("flash");
       }
+      const opts = [1, 2, 3, 5];
+      const stepDelays = [0, 120, 240, 360];   // ~360ms total scan
+      opts.forEach((v, i) => {
+        setTimeout(() => {
+          document.querySelectorAll('#eo-tick-seg button[data-mode="manual"]')
+            .forEach(b => b.classList.toggle("scanning", b.dataset.val === String(v)));
+        }, stepDelays[i]);
+      });
+      // After the scan, settle on the picked one + show in the hint.
+      setTimeout(() => {
+        document.querySelectorAll('#eo-tick-seg button[data-mode="manual"]')
+          .forEach(b => {
+            b.classList.remove("scanning");
+            b.classList.toggle("auto-picked", b.dataset.val === String(dur));
+          });
+        if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
+        // Clear the picked highlight after a couple of seconds so it doesn't
+        // look stuck.
+        setTimeout(() => {
+          document.querySelectorAll('#eo-tick-seg button.auto-picked').forEach(b => b.classList.remove("auto-picked"));
+        }, 2200);
+      }, 500);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
@@ -2460,11 +2536,18 @@ window.EOAuto = (function(){
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
-      if(outcome === "won"){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; }
-      else if(outcome === "lost"){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; }
-      _setPnl(); _setFills(); _renderDots(); _renderStats();
+      if(outcome === "won"){
+        S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+        S.sess.martStep = 0;                                 // recovery: reset on a win
+      }
+      else if(outcome === "lost"){
+        S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
+        S.sess.martStep = (S.sess.martStep || 0) + 1;        // bump the martingale ladder
+      }
+      _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       const tag = outcome==="won"?'<b style="color:var(--good)">WON</b>':outcome==="lost"?'<b style="color:var(--bad)">LOST</b>':'<b>'+outcome.toUpperCase()+'</b>';
-      _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak);
+      const martNote = (S.sess.martStep||0) > 0 ? " · next stake $"+_nextStake().toFixed(2) : "";
+      _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
       // Stop conditions — check AFTER each settled trade.
       if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){
         S.stop("take-profit hit");
@@ -2498,8 +2581,8 @@ window.EOAuto = (function(){
     if(S.running) return;
     if(!CUR){ showView("connect"); return; }
     S.running = true;
-    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0};
-    _setPnl(); _setFills(); _renderDots(); _renderStats();
+    S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+    _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const b=$g("eo-mix-btn"); if(b){ b.classList.add("on"); const sub=b.querySelector(".sub"); if(sub) sub.textContent="running · session 0/0"; }
     const go=$g("eo-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
@@ -2528,6 +2611,7 @@ window.EOAuto = (function(){
   // Expose for external bindings (input handlers update fills + dots live).
   S._setFills = _setFills;
   S._renderDots = _renderDots;
+  S._renderMart = _renderMart;
   S._updateSignal = _updateSignal;
   // Live signal lifecycle: poll while the auto-panel is visible (every 400ms).
   S.startSignal = function(){
@@ -2577,6 +2661,13 @@ window.EOAuto = (function(){
     const el = document.getElementById(id);
     if(el) el.addEventListener("input", () => { try{ window.EOAuto._setFills(); }catch(_){} });
   });
+  // Martingale: sync display + repaint the live recovery tile on edit.
+  const mart = document.getElementById("eo-mart");
+  function _syncMart(){ const d=document.getElementById("eo-mart-display"); if(d) d.textContent = Number(mart.value).toFixed(1);
+                        try{ window.EOAuto._renderMart(); }catch(_){ } }
+  if(mart){ mart.addEventListener("input", _syncMart); _syncMart(); }
+  const stakeEl = document.getElementById("eo-stake");
+  if(stakeEl) stakeEl.addEventListener("input", () => { try{ window.EOAuto._renderMart(); }catch(_){ } });
   const streak = document.getElementById("eo-streak");
   function _syncStreak(){ const d=document.getElementById("eo-streak-display"); if(d) d.textContent = streak.value;
                           try{ window.EOAuto._renderDots(); }catch(_){} }
@@ -2593,9 +2684,9 @@ window.EOAuto = (function(){
   // Thresholds tightened: the auto-trader now requires |z|≥2σ + multi-window
   // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5  },   // very selective
-    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8  },   // default — $1000 TP/SL
-    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11 },   // wider net but still gated
+    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5,  mart:1.2 },   // very selective
+    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8,  mart:1.3 },   // default — $1000 TP/SL · mart 1.3×
+    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11, mart:1.5 },   // wider net but still gated
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
@@ -2606,8 +2697,9 @@ window.EOAuto = (function(){
     set("eo-thr",    p.thr);
     set("eo-stake",  p.stake.toFixed(2));
     set("eo-streak", p.streak);
+    if(p.mart != null) set("eo-mart", p.mart.toFixed(1));
     document.querySelectorAll("#eo-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
-    try{ window.EOAuto._setFills(); window.EOAuto._renderDots(); window.EOAuto._updateSignal(); }catch(_){ }
+    try{ window.EOAuto._setFills(); window.EOAuto._renderDots(); window.EOAuto._renderMart(); window.EOAuto._updateSignal(); }catch(_){ }
   }
   document.addEventListener("click", function(ev){
     const t = ev.target.closest && ev.target.closest("#eo-presets button[data-preset]");
