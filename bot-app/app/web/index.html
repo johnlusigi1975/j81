@@ -673,6 +673,64 @@
   .eo-mart-state .eo-mart-next span{color:var(--amber);font-weight:800;font-size:13px;margin-left:4px}
   .eo-mart-state.warming .eo-mart-next span{color:var(--warn)}
   .eo-mart-state.warming{border-color:rgba(245,158,11,.35);background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(0,0,0,.22))}
+  /* === RECOVERY ENGINE — premium martingale console ============== */
+  .recovery-engine{margin:11px 0 14px;padding:12px 13px 13px;border:1px solid var(--bd2);border-radius:14px;background:linear-gradient(135deg,rgba(212,184,122,.05),rgba(20,28,40,.18) 40%,rgba(0,0,0,.20));position:relative;overflow:hidden}
+  .recovery-engine::before{content:"";position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,184,122,.07),transparent);animation:brain-sweep 6s ease-in-out infinite;pointer-events:none}
+  .re-head{display:flex;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:11px;position:relative;z-index:1}
+  .re-title{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--amber);font-weight:800}
+  .re-title .re-title-lab{color:var(--amber)}
+  .re-status-pill{padding:3px 9px;border:1px solid var(--bd);border-radius:6px;background:rgba(0,0,0,.30);font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--dim);font-weight:800;text-transform:uppercase}
+  .re-status-pill.warming{border-color:rgba(245,158,11,.45);background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.02));color:var(--warn)}
+  .re-status-pill.recovering{border-color:rgba(255,120,140,.45);background:linear-gradient(135deg,rgba(255,120,140,.10),rgba(255,120,140,.02));color:#ff9aac;animation:re-recover-pulse 1.6s ease-in-out infinite}
+  @keyframes re-recover-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,120,140,0)}50%{box-shadow:0 0 0 4px rgba(255,120,140,.10)}}
+  .re-strategy{display:flex;gap:5px;flex-wrap:wrap;position:relative;z-index:1}
+  .re-strategy button{padding:5px 10px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.32);color:var(--dim);font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.06em;cursor:pointer;transition:all .15s ease;text-transform:uppercase;line-height:1.4}
+  .re-strategy button:hover{border-color:var(--bd2);color:var(--text)}
+  .re-strategy button.on{background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;border-color:transparent;box-shadow:0 4px 12px -4px rgba(212,184,122,.6)}
+  .re-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;z-index:1}
+  .re-tile{padding:10px 11px;border:1px solid var(--bd);border-radius:11px;background:rgba(0,0,0,.22)}
+  .re-tile-head{display:flex;justify-content:space-between;align-items:baseline;gap:7px;margin-bottom:7px}
+  .re-tile-lab{font-family:var(--mono);font-size:10.5px;color:var(--text);font-weight:800;letter-spacing:.04em}
+  .re-tile-hint{font-family:var(--mono);font-size:9.5px;color:var(--faint);text-align:right;letter-spacing:.03em;line-height:1.35}
+  .re-tile-hint b{color:var(--amber);font-weight:800}
+  .re-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
+  .re-presets button{padding:5px 4px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.30);color:var(--dim);font-family:var(--mono);font-size:9.5px;font-weight:800;letter-spacing:.04em;cursor:pointer;transition:all .15s ease;text-transform:uppercase;line-height:1.3;text-align:center}
+  .re-presets button:hover{border-color:var(--amber);color:var(--amber);background:rgba(212,184,122,.08)}
+  .re-presets button.on{background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;border-color:transparent}
+  .re-mart-cap-hint{margin-top:6px;font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.04em;line-height:1.4}
+  .re-mart-cap-hint b{color:var(--text);font-weight:800}
+  /* Visual martingale ladder — each step rendered as a stacked bar */
+  .re-ladder{display:flex;align-items:flex-end;gap:4px;margin-top:11px;padding:8px;border:1px solid var(--bd);border-radius:11px;background:rgba(0,0,0,.26);min-height:84px;position:relative;z-index:1}
+  .re-rung{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;cursor:default;transition:transform .25s ease}
+  .re-rung .re-rung-bar{width:100%;border-radius:6px 6px 3px 3px;border:1px solid var(--bd);background:linear-gradient(180deg,rgba(212,184,122,.18),rgba(212,184,122,.03));min-height:8px;transition:all .35s ease;position:relative}
+  .re-rung .re-rung-amt{font-family:var(--mono);font-size:9px;color:var(--faint);text-align:center;font-weight:800;letter-spacing:.02em;line-height:1.2}
+  .re-rung .re-rung-step{font-family:var(--mono);font-size:8.5px;color:var(--faint);text-align:center;letter-spacing:.05em;text-transform:uppercase}
+  .re-rung.done .re-rung-bar{background:linear-gradient(180deg,rgba(255,120,140,.45),rgba(226,58,82,.10));border-color:rgba(255,120,140,.35)}
+  .re-rung.done .re-rung-amt{color:#ff9aac}
+  .re-rung.current{transform:scale(1.06)}
+  .re-rung.current .re-rung-bar{background:linear-gradient(180deg,#ecd9a8,#d4b87a 55%,#b9985a);border-color:transparent;box-shadow:0 4px 14px -3px rgba(212,184,122,.7), 0 0 0 1px rgba(212,184,122,.45) inset}
+  .re-rung.current .re-rung-amt{color:#241c0a;text-shadow:0 1px 0 rgba(255,255,255,.4);background:linear-gradient(135deg,#ecd9a8,#d4b87a);border-radius:4px;padding:1px 3px;margin-top:2px}
+  .re-rung.current .re-rung-step{color:var(--amber);font-weight:800}
+  .re-rung.future .re-rung-bar{opacity:.55}
+  .re-rung.cap .re-rung-bar{background:linear-gradient(180deg,rgba(255,120,140,.20),rgba(226,58,82,.06));border-color:rgba(255,120,140,.45);border-style:dashed}
+  .re-rung.cap .re-rung-step{color:#ff9aac}
+  /* Live readout cells under the ladder */
+  .re-readout{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:11px;position:relative;z-index:1}
+  .re-cell{padding:7px 10px;border:1px solid var(--bd);border-radius:10px;background:rgba(0,0,0,.28);display:flex;flex-direction:column;gap:2px}
+  .re-cell-lab{font-family:var(--mono);font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+  .re-cell-val{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:800;letter-spacing:.02em}
+  .re-cell.highlight{border-color:rgba(70,207,158,.40);background:linear-gradient(135deg,rgba(70,207,158,.12),rgba(70,207,158,.02))}
+  .re-cell.highlight .re-cell-val{color:#6ff0a8}
+  .re-cell.danger{border-color:rgba(255,120,140,.40);background:linear-gradient(135deg,rgba(226,58,82,.10),rgba(226,58,82,.02))}
+  .re-cell.danger .re-cell-val{color:#ff9aac}
+  @media(max-width:520px){.re-row{grid-template-columns:1fr}.re-readout{grid-template-columns:1fr 1fr}.re-cell.highlight{grid-column:1/-1}}
+  /* === Stake quick chips — balance-% row addition === */
+  .eo-stake-balance{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:5px}
+  .eo-stake-balance button{padding:6px 4px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.28);color:var(--dim);font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.04em;cursor:pointer;transition:all .15s ease;text-transform:uppercase;line-height:1.3}
+  .eo-stake-balance button:hover{border-color:var(--good);color:var(--good);background:rgba(70,207,158,.06)}
+  .eo-stake-balance button:disabled{opacity:.45;cursor:not-allowed}
+  .eo-stake-balance .esb-lab{display:block;color:var(--faint);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase}
+  .eo-stake-balance .esb-val{display:block;color:var(--text);font-size:11px;letter-spacing:.02em;text-transform:none;margin-top:1px}
 
   /* Section labels between groups in the auto-trader. */
   .eo-section-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700;margin:14px 0 7px;display:flex;align-items:center;gap:9px}
@@ -1476,6 +1534,14 @@
             <button type="button" data-val="500">$500</button>
             <button type="button" data-val="1000">$1K</button>
           </div>
+          <!-- Balance-% chips — set stake as a percentage of current
+               account balance. Live $ value shown under each label. -->
+          <div class="eo-stake-balance" id="eo-stake-balance">
+            <button type="button" data-pct="0.5" data-tgt="eo-stake"><span class="esb-lab">0.5% bal</span><span class="esb-val">—</span></button>
+            <button type="button" data-pct="1"   data-tgt="eo-stake"><span class="esb-lab">1% bal</span><span class="esb-val">—</span></button>
+            <button type="button" data-pct="2"   data-tgt="eo-stake"><span class="esb-lab">2% bal</span><span class="esb-val">—</span></button>
+            <button type="button" data-pct="5"   data-tgt="eo-stake"><span class="esb-lab">5% bal</span><span class="esb-val">—</span></button>
+          </div>
         </div>
         <div class="eo-tile">
           <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <span class="thr-display-num" id="eo-thr-display">55</span>% · auto fires every cycle on strongest</span></div>
@@ -1520,22 +1586,63 @@
           </div>
         </div>
       </div>
-      <!-- Martingale multiplier — recovery sizing after a loss. Active
-           automatically whenever the auto-trader is running. -->
-      <div class="eo-row">
-        <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="mart-armed" id="eo-mart-armed"></span>Martingale × loss</span><span class="eo-tile-hint" id="eo-mart-hint">stake × <b id="eo-mart-display">1.5</b> after every loss · resets on a win</span></div>
-          <div class="eo-stepper">
-            <button type="button" data-step="-0.1" data-tgt="eo-mart">−</button>
-            <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
-            <button type="button" data-step="+0.1" data-tgt="eo-mart">+</button>
+      <!-- ── RECOVERY ENGINE — premium martingale console.
+           Strategy (Flat × / Fibonacci / Linear +), multiplier with smart
+           presets, max-step cap that auto-banks the loss, visual step
+           ladder, and live readout (next stake / total at risk / recovery
+           target). Active automatically whenever the auto-trader runs. -->
+      <div class="recovery-engine" id="eo-re">
+        <div class="re-head">
+          <div class="re-title">
+            <span class="mart-armed" id="eo-mart-armed"></span>
+            <span class="re-title-lab">Recovery engine</span>
+            <span class="re-status-pill" id="eo-re-status">at base · step 0</span>
+          </div>
+          <div class="re-strategy" id="eo-re-strategy">
+            <button type="button" data-strat="flat" class="on">Flat ×</button>
+            <button type="button" data-strat="fib">Fibonacci</button>
+            <button type="button" data-strat="linear">Linear +</button>
           </div>
         </div>
-        <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Live recovery</span><span class="eo-tile-hint" id="eo-mart-live-hint">resets to base on a win</span></div>
-          <div class="eo-mart-state" id="eo-mart-state">
-            <div class="eo-mart-step">step <span id="eo-mart-step">0</span></div>
-            <div class="eo-mart-next">next stake <span id="eo-mart-next">$50.00</span></div>
+        <div class="re-row">
+          <div class="re-tile">
+            <div class="re-tile-head"><span class="re-tile-lab" id="eo-re-mult-lab">Multiplier</span><span class="re-tile-hint">stake × <b id="eo-mart-display">1.5</b> per step</span></div>
+            <div class="eo-stepper">
+              <button type="button" data-step="-0.1" data-tgt="eo-mart">−</button>
+              <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
+              <button type="button" data-step="+0.1" data-tgt="eo-mart">+</button>
+            </div>
+            <div class="re-presets" id="eo-mart-presets">
+              <button type="button" data-val="1.5" class="on" title="Smaller losses, partial recovery">Cautious 1.5×</button>
+              <button type="button" data-val="2.1" title="True recovery — wins cover all prior losses + small profit">Recovery 2.1×</button>
+              <button type="button" data-val="2.5" title="Aggressive — fast recovery, bigger drawdown risk">Aggressive 2.5×</button>
+            </div>
+          </div>
+          <div class="re-tile">
+            <div class="re-tile-head"><span class="re-tile-lab">Max steps</span><span class="re-tile-hint">auto-banks loss after</span></div>
+            <div class="eo-stepper">
+              <button type="button" data-step="-1" data-tgt="eo-mart-cap">−</button>
+              <span class="cur"><input id="eo-mart-cap" type="number" min="1" max="15" value="7"/></span>
+              <button type="button" data-step="+1" data-tgt="eo-mart-cap">+</button>
+            </div>
+            <div class="re-mart-cap-hint">discipline rail — at step <b id="eo-mart-cap-display">7</b> the engine accepts the loss and restarts from base instead of chasing further</div>
+          </div>
+        </div>
+        <!-- Visual step ladder — past = red, current = gold, future = dim,
+             cap step = dashed red. Each rung shows the stake at that step. -->
+        <div class="re-ladder" id="eo-re-ladder"></div>
+        <div class="re-readout">
+          <div class="re-cell">
+            <span class="re-cell-lab">next stake</span>
+            <span class="re-cell-val" id="eo-mart-next">$50.00</span>
+          </div>
+          <div class="re-cell danger">
+            <span class="re-cell-lab">total at risk</span>
+            <span class="re-cell-val" id="eo-mart-risk">$50.00</span>
+          </div>
+          <div class="re-cell highlight">
+            <span class="re-cell-lab">recovery target</span>
+            <span class="re-cell-val" id="eo-mart-target">+$0.00 net if won</span>
           </div>
         </div>
       </div>
@@ -1685,21 +1792,49 @@
           </div>
         </div>
       </div>
-      <div class="eo-row">
-        <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="mart-armed" id="rf-mart-armed"></span>Martingale × loss</span><span class="eo-tile-hint">stake × <b id="rf-mart-display">1.5</b> after every loss · resets on a win</span></div>
-          <div class="eo-stepper">
-            <button type="button" data-step="-0.1" data-tgt="rf-mart">−</button>
-            <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
-            <button type="button" data-step="+0.1" data-tgt="rf-mart">+</button>
+      <!-- Recovery Engine (see EO) -->
+      <div class="recovery-engine" id="rf-re">
+        <div class="re-head">
+          <div class="re-title">
+            <span class="mart-armed" id="rf-mart-armed"></span>
+            <span class="re-title-lab">Recovery engine</span>
+            <span class="re-status-pill" id="rf-re-status">at base · step 0</span>
+          </div>
+          <div class="re-strategy" id="rf-re-strategy">
+            <button type="button" data-strat="flat" class="on">Flat ×</button>
+            <button type="button" data-strat="fib">Fibonacci</button>
+            <button type="button" data-strat="linear">Linear +</button>
           </div>
         </div>
-        <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Live recovery</span><span class="eo-tile-hint">resets to base on a win</span></div>
-          <div class="eo-mart-state" id="rf-mart-state">
-            <div class="eo-mart-step">step <span id="rf-mart-step">0</span></div>
-            <div class="eo-mart-next">next stake <span id="rf-mart-next">$50.00</span></div>
+        <div class="re-row">
+          <div class="re-tile">
+            <div class="re-tile-head"><span class="re-tile-lab">Multiplier</span><span class="re-tile-hint">stake × <b id="rf-mart-display">1.5</b> per step</span></div>
+            <div class="eo-stepper">
+              <button type="button" data-step="-0.1" data-tgt="rf-mart">−</button>
+              <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
+              <button type="button" data-step="+0.1" data-tgt="rf-mart">+</button>
+            </div>
+            <div class="re-presets" id="rf-mart-presets">
+              <button type="button" data-val="1.5" class="on">Cautious 1.5×</button>
+              <button type="button" data-val="2.1">Recovery 2.1×</button>
+              <button type="button" data-val="2.5">Aggressive 2.5×</button>
+            </div>
           </div>
+          <div class="re-tile">
+            <div class="re-tile-head"><span class="re-tile-lab">Max steps</span><span class="re-tile-hint">auto-banks loss after</span></div>
+            <div class="eo-stepper">
+              <button type="button" data-step="-1" data-tgt="rf-mart-cap">−</button>
+              <span class="cur"><input id="rf-mart-cap" type="number" min="1" max="15" value="7"/></span>
+              <button type="button" data-step="+1" data-tgt="rf-mart-cap">+</button>
+            </div>
+            <div class="re-mart-cap-hint">at step <b id="rf-mart-cap-display">7</b> the engine accepts the loss and restarts from base</div>
+          </div>
+        </div>
+        <div class="re-ladder" id="rf-re-ladder"></div>
+        <div class="re-readout">
+          <div class="re-cell"><span class="re-cell-lab">next stake</span><span class="re-cell-val" id="rf-mart-next">$50.00</span></div>
+          <div class="re-cell danger"><span class="re-cell-lab">total at risk</span><span class="re-cell-val" id="rf-mart-risk">$50.00</span></div>
+          <div class="re-cell highlight"><span class="re-cell-lab">recovery target</span><span class="re-cell-val" id="rf-mart-target">+$0.00 net if won</span></div>
         </div>
       </div>
     </div>
@@ -1867,21 +2002,49 @@
           </div>
         </div>
       </div>
-      <div class="eo-row">
-        <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="mart-armed" id="ou-mart-armed"></span>Martingale × loss</span><span class="eo-tile-hint">stake × <b id="ou-mart-display">1.5</b> after every loss · resets on a win</span></div>
-          <div class="eo-stepper">
-            <button type="button" data-step="-0.1" data-tgt="ou-mart">−</button>
-            <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
-            <button type="button" data-step="+0.1" data-tgt="ou-mart">+</button>
+      <!-- Recovery Engine (see EO) -->
+      <div class="recovery-engine" id="ou-re">
+        <div class="re-head">
+          <div class="re-title">
+            <span class="mart-armed" id="ou-mart-armed"></span>
+            <span class="re-title-lab">Recovery engine</span>
+            <span class="re-status-pill" id="ou-re-status">at base · step 0</span>
+          </div>
+          <div class="re-strategy" id="ou-re-strategy">
+            <button type="button" data-strat="flat" class="on">Flat ×</button>
+            <button type="button" data-strat="fib">Fibonacci</button>
+            <button type="button" data-strat="linear">Linear +</button>
           </div>
         </div>
-        <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Live recovery</span><span class="eo-tile-hint">resets to base on a win</span></div>
-          <div class="eo-mart-state" id="ou-mart-state">
-            <div class="eo-mart-step">step <span id="ou-mart-step">0</span></div>
-            <div class="eo-mart-next">next stake <span id="ou-mart-next">$50.00</span></div>
+        <div class="re-row">
+          <div class="re-tile">
+            <div class="re-tile-head"><span class="re-tile-lab">Multiplier</span><span class="re-tile-hint">stake × <b id="ou-mart-display">1.5</b> per step</span></div>
+            <div class="eo-stepper">
+              <button type="button" data-step="-0.1" data-tgt="ou-mart">−</button>
+              <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
+              <button type="button" data-step="+0.1" data-tgt="ou-mart">+</button>
+            </div>
+            <div class="re-presets" id="ou-mart-presets">
+              <button type="button" data-val="1.5" class="on">Cautious 1.5×</button>
+              <button type="button" data-val="2.1">Recovery 2.1×</button>
+              <button type="button" data-val="2.5">Aggressive 2.5×</button>
+            </div>
           </div>
+          <div class="re-tile">
+            <div class="re-tile-head"><span class="re-tile-lab">Max steps</span><span class="re-tile-hint">auto-banks loss after</span></div>
+            <div class="eo-stepper">
+              <button type="button" data-step="-1" data-tgt="ou-mart-cap">−</button>
+              <span class="cur"><input id="ou-mart-cap" type="number" min="1" max="15" value="7"/></span>
+              <button type="button" data-step="+1" data-tgt="ou-mart-cap">+</button>
+            </div>
+            <div class="re-mart-cap-hint">at step <b id="ou-mart-cap-display">7</b> the engine accepts the loss and restarts from base</div>
+          </div>
+        </div>
+        <div class="re-ladder" id="ou-re-ladder"></div>
+        <div class="re-readout">
+          <div class="re-cell"><span class="re-cell-lab">next stake</span><span class="re-cell-val" id="ou-mart-next">$50.00</span></div>
+          <div class="re-cell danger"><span class="re-cell-lab">total at risk</span><span class="re-cell-val" id="ou-mart-risk">$50.00</span></div>
+          <div class="re-cell highlight"><span class="re-cell-lab">recovery target</span><span class="re-cell-val" id="ou-mart-target">+$0.00 net if won</span></div>
         </div>
       </div>
     </div>
@@ -2291,6 +2454,186 @@ function _cooldownStop(kind, manualSkip){
   if(banner && banner.parentNode) banner.parentNode.removeChild(banner);
   if(manualSkip) toast({kind:"warn", title:"Cooldown skipped", msg:"You bypassed the post-SL pause. Stake responsibly."});
 }
+
+// ===================================================================
+// RECOVERY ENGINE — premium martingale upgrade.
+//   • Strategy selector: flat (geometric) · fibonacci · linear
+//   • Per-step stake math respects the chosen strategy
+//   • Max-step cap force-resets to base when reached (discipline rail)
+//   • Visual ladder + recovery-target math
+//   • Balance-aware safety cap (caps next stake at remembered balance)
+// ===================================================================
+const _RE_STRATEGY = {eo:"flat", rf:"flat", ou:"flat"};
+const _DERIV_PAYOUT = 1.95;   // Deriv synthetic 50/50 payout (~95% profit ratio)
+
+function _reStrategy(kind){ return _RE_STRATEGY[kind] || "flat"; }
+function _reSetStrategy(kind, strat){
+  if(!["flat","fib","linear"].includes(strat)) return;
+  _RE_STRATEGY[kind] = strat;
+  document.querySelectorAll('#'+kind+'-re-strategy button').forEach(b => b.classList.toggle("on", b.dataset.strat === strat));
+  // Update multiplier label hint contextually.
+  const mlab = document.getElementById(kind+"-re-mult-lab");
+  if(mlab){
+    mlab.textContent = strat === "fib" ? "Fibonacci base" : strat === "linear" ? "Step increment" : "Multiplier";
+  }
+  try{ _renderRecoveryEngine(kind); }catch(_){}
+}
+function _reMultiplier(kind){
+  return Math.max(1, Math.min(3, parseFloat((document.getElementById(kind+"-mart")||{}).value) || 1.5));
+}
+function _reBaseStake(kind){
+  return Math.max(0.35, parseFloat((document.getElementById(kind+"-stake")||{}).value) || 0.35);
+}
+function _reMaxStep(kind){
+  return Math.max(1, Math.min(15, parseInt((document.getElementById(kind+"-mart-cap")||{}).value) || 7));
+}
+// Compute the stake at a given step under the selected strategy.
+function _reStakeAt(base, mult, step, strategy){
+  step = Math.max(0, step|0);
+  if(step === 0) return base;
+  if(strategy === "fib"){
+    // Fibonacci sequence multiplier: 1,1,2,3,5,8,13,21,...
+    // step 0 = 1×base, step 1 = 1×base, step 2 = 2×base, step 3 = 3×base, etc.
+    let a = 1, b = 1;
+    for(let i = 2; i <= step; i++){ const c = a + b; a = b; b = c; }
+    return base * b;
+  }
+  if(strategy === "linear"){
+    // Linear-add: stake = base * (1 + step * (mult - 1)). Multiplier "1.5"
+    // means add 0.5×base per step → step 3 = 2.5×base (vs flat 1.5^3 = 3.375).
+    return base * (1 + step * Math.max(0, mult - 1));
+  }
+  // flat (geometric, classic martingale)
+  return base * Math.pow(mult, step);
+}
+// Cumulative cost from step 0 through the given step (inclusive).
+function _reCumulative(base, mult, step, strategy){
+  let total = 0;
+  for(let i = 0; i <= step; i++) total += _reStakeAt(base, mult, i, strategy);
+  return total;
+}
+// "Recovery target" for the NEXT trade — if won at step N, net result.
+// On Deriv synthetics payout is ~1.95, profit fraction ~0.95.
+function _reRecoveryNet(base, mult, step, strategy){
+  if(step === 0) return base * (_DERIV_PAYOUT - 1);     // base profit on a fresh win
+  const priorLosses = _reCumulative(base, mult, step - 1, strategy);
+  const winStake    = _reStakeAt(base, mult, step, strategy);
+  const winProfit   = winStake * (_DERIV_PAYOUT - 1);
+  return winProfit - priorLosses;
+}
+// Snapshot last known balance, fed by showBalance(). Used by balance-%
+// quick-stake chips + safety cap on the next stake.
+window._LAST_BAL = {amt: null, currency: "USD"};
+function _reBalanceCap(kind, computed){
+  const bal = window._LAST_BAL && Number(window._LAST_BAL.amt);
+  if(!isFinite(bal) || bal <= 0) return computed;
+  // Hard cap: a single trade can never risk more than 50% of remaining balance.
+  const cap = bal * 0.5;
+  return Math.min(computed, cap);
+}
+// Render the visual ladder for a given controller.
+function _renderRecoveryLadder(kind, currentStep){
+  const wrap = document.getElementById(kind+"-re-ladder"); if(!wrap) return;
+  const base = _reBaseStake(kind);
+  const mult = _reMultiplier(kind);
+  const cap  = _reMaxStep(kind);
+  const strat = _reStrategy(kind);
+  const step = Math.max(0, currentStep|0);
+  // We'll show up to `cap` rungs (or step+3, whichever is bigger up to cap).
+  const rungs = Math.min(cap, Math.max(cap, step + 3));
+  // Find max stake to scale bar heights.
+  let maxStake = 0;
+  const stakes = [];
+  for(let i = 0; i < rungs; i++){ const s = _reStakeAt(base, mult, i, strat); stakes.push(s); if(s > maxStake) maxStake = s; }
+  // Cap rung is one extra dashed bar at the end to show the discipline rail.
+  const html = stakes.map((s, i) => {
+    let cls = "re-rung future";
+    if(i < step) cls = "re-rung done";
+    else if(i === step) cls = "re-rung current";
+    if(i === cap - 1) cls += " cap";
+    const h = Math.max(8, Math.round(50 * (s / (maxStake || 1))));
+    const fmt = s >= 1000 ? "$"+(s/1000).toFixed(1)+"K" : "$"+s.toFixed(s < 10 ? 2 : 0);
+    return '<div class="'+cls+'" title="step '+i+' · '+fmt+'">'+
+             '<div class="re-rung-amt">'+fmt+'</div>'+
+             '<div class="re-rung-bar" style="height:'+h+'px"></div>'+
+             '<div class="re-rung-step">'+i+'</div>'+
+           '</div>';
+  }).join("");
+  wrap.innerHTML = html;
+}
+// Update the live readout cells: next stake / total at risk / recovery
+// target / status pill. Called from each controller's _renderMart.
+function _renderRecoveryReadout(kind, currentStep){
+  const base = _reBaseStake(kind);
+  const mult = _reMultiplier(kind);
+  const strat = _reStrategy(kind);
+  const cap  = _reMaxStep(kind);
+  const step = Math.max(0, currentStep|0);
+  const next = _reStakeAt(base, mult, step, strat);
+  const totalRisk = _reCumulative(base, mult, step, strat);
+  const netIfWon = _reRecoveryNet(base, mult, step, strat);
+  const nextEl   = document.getElementById(kind+"-mart-next");
+  const riskEl   = document.getElementById(kind+"-mart-risk");
+  const targetEl = document.getElementById(kind+"-mart-target");
+  const statusEl = document.getElementById(kind+"-re-status");
+  const capLab   = document.getElementById(kind+"-mart-cap-display");
+  const fmt = v => (v >= 1000 ? "$"+(v/1000).toFixed(2)+"K" : "$"+v.toFixed(2));
+  if(nextEl) nextEl.textContent = fmt(next);
+  if(riskEl) riskEl.textContent = fmt(totalRisk);
+  if(targetEl) targetEl.innerHTML = (netIfWon >= 0 ? '+' : '−') + fmt(Math.abs(netIfWon)) + ' net if won';
+  if(capLab) capLab.textContent = cap;
+  if(statusEl){
+    statusEl.classList.remove("warming","recovering");
+    if(step === 0){
+      statusEl.textContent = "at base · step 0";
+    } else if(step >= cap - 1){
+      statusEl.textContent = "FINAL STEP " + step + " · cap " + cap;
+      statusEl.classList.add("recovering");
+    } else {
+      statusEl.textContent = "recovering · step " + step + " of " + cap;
+      statusEl.classList.add("warming");
+    }
+  }
+}
+function _renderRecoveryEngine(kind){
+  // Read the live martStep from the matching controller (safe-guarded).
+  const ctrl = kind === "eo" ? window.EOAuto : kind === "rf" ? window.RFAuto : window.OUAuto;
+  const step = ctrl && ctrl.sess ? (ctrl.sess.martStep || 0) : 0;
+  _renderRecoveryReadout(kind, step);
+  _renderRecoveryLadder(kind, step);
+}
+// Strategy chip clicks (delegated)
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest && ev.target.closest(".re-strategy button[data-strat]");
+  if(!t) return;
+  const wrap = t.closest(".re-strategy");
+  const kind = wrap && wrap.id ? wrap.id.replace("-re-strategy","") : null;
+  if(!kind) return;
+  _reSetStrategy(kind, t.dataset.strat);
+  toast({kind:"info", title:"Strategy switched", msg:"Recovery engine now using "+(t.dataset.strat === "fib" ? "Fibonacci" : t.dataset.strat === "linear" ? "Linear add" : "Flat multiplier"), ttl:2500});
+});
+// Multiplier preset clicks
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest && ev.target.closest(".re-presets button[data-val]");
+  if(!t) return;
+  const wrap = t.closest(".re-presets");
+  const kind = wrap && wrap.id ? wrap.id.replace("-mart-presets","") : null;
+  if(!kind) return;
+  const input = document.getElementById(kind+"-mart"); if(!input) return;
+  input.value = t.dataset.val;
+  input.dispatchEvent(new Event("input", {bubbles:true}));
+  document.querySelectorAll('#'+kind+'-mart-presets button').forEach(b => b.classList.toggle("on", b === t));
+  _renderRecoveryEngine(kind);
+});
+// Re-render on multiplier / cap / stake input changes
+["eo","rf","ou"].forEach(kind => {
+  ["mart","mart-cap","stake"].forEach(suffix => {
+    const el = document.getElementById(kind+"-"+suffix);
+    if(el) el.addEventListener("input", () => { try{ _renderRecoveryEngine(kind); }catch(_){} });
+  });
+});
+// Initial paint once DOM is ready.
+setTimeout(()=>{ ["eo","rf","ou"].forEach(k => { try{ _renderRecoveryEngine(k); }catch(_){} }); }, 350);
 
 // ===================================================================
 // TOAST NOTIFICATION SYSTEM — top-right slide-in alerts.
@@ -3434,7 +3777,37 @@ function showBalance(b){
   const k=$("trade-bal-kind"); if(k) k.textContent="· "+(CUR.is_demo?"demo account":"real account");
   const tb=$("trade-bal"); if(tb) tb.textContent="Balance: "+m;
   const nv=$("nav-acct-txt"); if(nv) nv.textContent=CUR.deriv_account_id+" · "+(CUR.is_demo?"demo account":"real account")+" · "+m;
+  // Stash last-known balance so the Recovery Engine + balance-% stake chips
+  // can use it for safety caps + one-tap risk sizing.
+  window._LAST_BAL = {amt: Number(b.balance), currency: b.currency || "USD"};
+  try{ _refreshBalanceChips(); }catch(_){}
 }
+// Refresh the live $ values shown on balance-% chips (called whenever the
+// balance updates). Each chip carries a data-pct attribute (e.g. 1, 2, 5).
+function _refreshBalanceChips(){
+  const bal = window._LAST_BAL && Number(window._LAST_BAL.amt);
+  document.querySelectorAll(".eo-stake-balance button[data-pct]").forEach(b => {
+    const pct = Number(b.dataset.pct);
+    const v = bal > 0 ? Math.max(0.35, +(bal * pct / 100).toFixed(2)) : null;
+    const vEl = b.querySelector(".esb-val");
+    if(vEl) vEl.textContent = v == null ? "—" : "$"+(v >= 1000 ? (v/1000).toFixed(1)+"K" : v.toFixed(2));
+    b.disabled = !(bal > 0);
+  });
+}
+// Delegated click handler — clicking a balance-% chip sets the target
+// stake input (data-tgt) to that percentage of the live balance.
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest && ev.target.closest(".eo-stake-balance button[data-pct]");
+  if(!t) return;
+  const bal = window._LAST_BAL && Number(window._LAST_BAL.amt);
+  if(!(bal > 0)){ toast({kind:"warn", title:"Balance unavailable", msg:"Connect an account to use balance-% sizing."}); return; }
+  const pct = Number(t.dataset.pct);
+  const target = document.getElementById(t.dataset.tgt || ""); if(!target) return;
+  const v = Math.max(0.35, +(bal * pct / 100).toFixed(2));
+  target.value = v.toFixed(2);
+  target.dispatchEvent(new Event("input", {bubbles:true}));
+  toast({kind:"info", title:"Stake set", msg:pct+"% of balance · $"+v.toFixed(2), ttl:2500});
+});
 async function refreshLive(){
   if(!CUR) return;
   loadBalance(CUR.id).then(showBalance);
@@ -3649,20 +4022,16 @@ window.EOAuto = (function(){
     const sr=$g("eo-stat-streak"); if(sr) sr.textContent = S.sess.streak;
     const tr=$g("eo-stat-trades"); if(tr) tr.textContent = S.sess.trades;
   }
-  function _martMultiplier(){
-    return Math.max(1, Math.min(3, parseFloat(($g("eo-mart")||{}).value)||1.3));
-  }
-  function _baseStake(){
-    return Math.max(0.35, parseFloat(($g("eo-stake")||{}).value)||0.35);
-  }
+  // Multiplier / base stake / next stake all routed through the shared
+  // Recovery Engine helpers so strategy + cap apply uniformly.
+  function _martMultiplier(){ return _reMultiplier("eo"); }
+  function _baseStake(){ return _reBaseStake("eo"); }
   function _nextStake(){
-    return _baseStake() * Math.pow(_martMultiplier(), S.sess.martStep||0);
+    const raw = _reStakeAt(_reBaseStake("eo"), _reMultiplier("eo"), S.sess.martStep||0, _reStrategy("eo"));
+    return _reBalanceCap("eo", raw);
   }
   function _renderMart(){
-    const step = $g("eo-mart-step"); if(step) step.textContent = S.sess.martStep || 0;
-    const next = $g("eo-mart-next"); if(next) next.textContent = "$" + _nextStake().toFixed(2);
-    const state = $g("eo-mart-state");
-    if(state) state.classList.toggle("warming", (S.sess.martStep||0) > 0);
+    _renderRecoveryEngine("eo");
   }
   function _resetBtn(){
     const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
@@ -3730,13 +4099,13 @@ window.EOAuto = (function(){
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
-    const baseStake = _baseStake();
-    const mart = _martMultiplier();
-    const martStake = baseStake * Math.pow(mart, S.sess.martStep || 0);
+    // Recovery Engine: compute the stake under the active strategy, then
+    // apply the balance-aware safety cap (never risks > 50% of balance).
+    const martStake = _nextStake();
     const cfg = {
       tp:    parseFloat(($g("eo-tp")||{}).value)||0,
       sl:    parseFloat(($g("eo-sl")||{}).value)||0,
-      stake: Math.max(0.35, martStake),   // martingale-scaled stake for this trade
+      stake: Math.max(0.35, martStake),   // recovery-engine stake for this trade
       maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
       threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
@@ -3817,9 +4186,27 @@ window.EOAuto = (function(){
       if(outcome !== "pending"){
         if(profit < 0 || outcome === "lost"){
           S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
-          S.sess.martStep = (S.sess.martStep || 0) + 1;
+          // Recovery Engine cap: if we'd step past max, BANK the loss and
+          // restart from base. Protects the account from runaway sequences.
+          const nextStep = (S.sess.martStep || 0) + 1;
+          const cap = _reMaxStep("eo");
+          if(nextStep >= cap){
+            S.sess.martStep = 0;
+            toast({kind:"warn", title:"Loss banked", msg:"Hit max recovery step ("+cap+") — restarting from base. Discipline saves the account.", ttl:5000});
+            try{ _brainPush("eo", "🔄", "Hit max step "+cap+" — banked loss, reset to base", "tune"); }catch(_){}
+          } else {
+            S.sess.martStep = nextStep;
+            // Quiet milestone toast at deeper recovery steps.
+            if(nextStep >= 3) toast({kind:"warn", title:"Recovery active", msg:"Step "+nextStep+" of "+cap+" · next stake $"+_nextStake().toFixed(2), ttl:3000});
+            try{ _brainPush("eo", "↗", "Recovery step "+nextStep+" · next $"+_nextStake().toFixed(2), "tune"); }catch(_){}
+          }
         } else {
+          const wasRecovering = (S.sess.martStep || 0) > 0;
           S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+          if(wasRecovering){
+            toast({kind:"win", title:"Recovery complete", msg:"Climbed back from step "+S.sess.martStep+" · +$"+Number(profit||0).toFixed(2)+" net", ttl:5000});
+            try{ _brainPush("eo", "🎯", "Recovery COMPLETE from step "+S.sess.martStep+" · +$"+Number(profit||0).toFixed(2), "win"); }catch(_){}
+          }
           S.sess.martStep = 0;
         }
       }
@@ -4056,14 +4443,13 @@ window.RFAuto = (function(){
   function _renderStats(){
     ["wins","losses","streak","trades"].forEach(k=>{ const el=$g("rf-stat-"+k); if(el) el.textContent = S.sess[k]; });
   }
-  function _mart(){ return Math.max(1, Math.min(3, parseFloat(($g("rf-mart")||{}).value)||1.3)); }
-  function _baseStake(){ return Math.max(0.35, parseFloat(($g("rf-stake")||{}).value)||0.35); }
-  function _nextStake(){ return _baseStake() * Math.pow(_mart(), S.sess.martStep||0); }
-  function _renderMart(){
-    const step=$g("rf-mart-step"); if(step) step.textContent = S.sess.martStep || 0;
-    const next=$g("rf-mart-next"); if(next) next.textContent = "$"+_nextStake().toFixed(2);
-    const state=$g("rf-mart-state"); if(state) state.classList.toggle("warming",(S.sess.martStep||0)>0);
+  function _mart(){ return _reMultiplier("rf"); }
+  function _baseStake(){ return _reBaseStake("rf"); }
+  function _nextStake(){
+    const raw = _reStakeAt(_reBaseStake("rf"), _reMultiplier("rf"), S.sess.martStep||0, _reStrategy("rf"));
+    return _reBalanceCap("rf", raw);
   }
+  function _renderMart(){ _renderRecoveryEngine("rf"); }
   function _resetBtn(){
     const go=$g("rf-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("rf-tick-seg"); if(chips) chips.removeAttribute("data-running");
@@ -4158,9 +4544,7 @@ window.RFAuto = (function(){
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
-    const base = _baseStake();
-    const mart = _mart();
-    const martStake = base * Math.pow(mart, S.sess.martStep||0);
+    const martStake = _nextStake();   // strategy-aware + balance-capped
     const cfg = {
       tp:    parseFloat(($g("rf-tp")||{}).value)||0,
       sl:    parseFloat(($g("rf-sl")||{}).value)||0,
@@ -4204,14 +4588,28 @@ window.RFAuto = (function(){
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
-      // Settled-trade detection: any non-pending outcome with non-negative
-      // profit resets the ladder; only a clear loss bumps it.
+      // Recovery Engine — strategy-aware step + cap + recovery toasts.
       if(outcome !== "pending"){
         if(profit < 0 || outcome === "lost"){
           S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
-          S.sess.martStep = (S.sess.martStep||0)+1;
+          const nextStep = (S.sess.martStep||0)+1;
+          const cap = _reMaxStep("rf");
+          if(nextStep >= cap){
+            S.sess.martStep = 0;
+            toast({kind:"warn", title:"Loss banked", msg:"Hit max recovery step ("+cap+") — restarting from base.", ttl:5000});
+            try{ _brainPush("rf", "🔄", "Hit max step "+cap+" — banked loss, reset to base", "tune"); }catch(_){}
+          } else {
+            S.sess.martStep = nextStep;
+            if(nextStep >= 3) toast({kind:"warn", title:"Recovery active", msg:"Step "+nextStep+" of "+cap+" · next stake $"+_nextStake().toFixed(2), ttl:3000});
+            try{ _brainPush("rf", "↗", "Recovery step "+nextStep+" · next $"+_nextStake().toFixed(2), "tune"); }catch(_){}
+          }
         } else {
+          const wasRecovering = (S.sess.martStep || 0) > 0;
           S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+          if(wasRecovering){
+            toast({kind:"win", title:"Recovery complete", msg:"Climbed back from step "+S.sess.martStep+" · +$"+Number(profit||0).toFixed(2)+" net", ttl:5000});
+            try{ _brainPush("rf", "🎯", "Recovery COMPLETE from step "+S.sess.martStep+" · +$"+Number(profit||0).toFixed(2), "win"); }catch(_){}
+          }
           S.sess.martStep = 0;
         }
       }
@@ -4481,14 +4879,13 @@ window.OUAuto = (function(){
     wrap.innerHTML = html;
   }
   function _renderStats(){ ["wins","losses","streak","trades"].forEach(k=>{ const el=$g("ou-stat-"+k); if(el) el.textContent = S.sess[k]; }); }
-  function _mart(){ return Math.max(1, Math.min(3, parseFloat(($g("ou-mart")||{}).value)||1.3)); }
-  function _baseStake(){ return Math.max(0.35, parseFloat(($g("ou-stake")||{}).value)||0.35); }
-  function _nextStake(){ return _baseStake() * Math.pow(_mart(), S.sess.martStep||0); }
-  function _renderMart(){
-    const step=$g("ou-mart-step"); if(step) step.textContent = S.sess.martStep || 0;
-    const next=$g("ou-mart-next"); if(next) next.textContent = "$"+_nextStake().toFixed(2);
-    const state=$g("ou-mart-state"); if(state) state.classList.toggle("warming", (S.sess.martStep||0) > 0);
+  function _mart(){ return _reMultiplier("ou"); }
+  function _baseStake(){ return _reBaseStake("ou"); }
+  function _nextStake(){
+    const raw = _reStakeAt(_reBaseStake("ou"), _reMultiplier("ou"), S.sess.martStep||0, _reStrategy("ou"));
+    return _reBalanceCap("ou", raw);
   }
+  function _renderMart(){ _renderRecoveryEngine("ou"); }
   function _resetBtn(){
     const go=$g("ou-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("ou-tick-seg"); if(chips) chips.removeAttribute("data-running");
@@ -4595,9 +4992,7 @@ window.OUAuto = (function(){
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
-    const base = _baseStake();
-    const mart = _mart();
-    const martStake = base * Math.pow(mart, S.sess.martStep||0);
+    const martStake = _nextStake();   // strategy-aware + balance-capped
     const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
     const cfg = {
       tp:    parseFloat(($g("ou-tp")||{}).value)||0,
@@ -4644,13 +5039,28 @@ window.OUAuto = (function(){
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
       // Settled-trade detection: any non-pending outcome with non-negative
-      // profit resets the ladder; only a clear loss bumps it.
+      // Recovery Engine — strategy-aware step + cap + recovery toasts.
       if(outcome !== "pending"){
         if(profit < 0 || outcome === "lost"){
           S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
-          S.sess.martStep = (S.sess.martStep||0)+1;
+          const nextStep = (S.sess.martStep||0)+1;
+          const cap = _reMaxStep("ou");
+          if(nextStep >= cap){
+            S.sess.martStep = 0;
+            toast({kind:"warn", title:"Loss banked", msg:"Hit max recovery step ("+cap+") — restarting from base.", ttl:5000});
+            try{ _brainPush("ou", "🔄", "Hit max step "+cap+" — banked loss, reset to base", "tune"); }catch(_){}
+          } else {
+            S.sess.martStep = nextStep;
+            if(nextStep >= 3) toast({kind:"warn", title:"Recovery active", msg:"Step "+nextStep+" of "+cap+" · next stake $"+_nextStake().toFixed(2), ttl:3000});
+            try{ _brainPush("ou", "↗", "Recovery step "+nextStep+" · next $"+_nextStake().toFixed(2), "tune"); }catch(_){}
+          }
         } else {
+          const wasRecovering = (S.sess.martStep || 0) > 0;
           S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+          if(wasRecovering){
+            toast({kind:"win", title:"Recovery complete", msg:"Climbed back from step "+S.sess.martStep+" · +$"+Number(profit||0).toFixed(2)+" net", ttl:5000});
+            try{ _brainPush("ou", "🎯", "Recovery COMPLETE from step "+S.sess.martStep+" · +$"+Number(profit||0).toFixed(2), "win"); }catch(_){}
+          }
           S.sess.martStep = 0;
         }
       }
