@@ -1233,7 +1233,7 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="eo-tick-hint">AUTO picks 1–5 based on signal strength</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="eo-tick-hint">AUTO picks 1–10 based on signal strength</span></div>
           <div class="eo-chips" id="eo-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
@@ -1241,6 +1241,11 @@
             <button type="button" data-mode="manual" data-val="3">3</button>
             <button type="button" data-mode="manual" data-val="4">4</button>
             <button type="button" data-mode="manual" data-val="5">5</button>
+            <button type="button" data-mode="manual" data-val="6">6</button>
+            <button type="button" data-mode="manual" data-val="7">7</button>
+            <button type="button" data-mode="manual" data-val="8">8</button>
+            <button type="button" data-mode="manual" data-val="9">9</button>
+            <button type="button" data-mode="manual" data-val="10">10</button>
           </div>
           <input id="eo-ticks" type="hidden" value="1"/>
         </div>
@@ -1375,7 +1380,7 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="rf-tick-hint">AUTO picks 1–5 based on signal strength</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="rf-tick-hint">AUTO picks 1–10 based on signal strength</span></div>
           <div class="eo-chips" id="rf-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
@@ -1383,6 +1388,11 @@
             <button type="button" data-mode="manual" data-val="3">3</button>
             <button type="button" data-mode="manual" data-val="4">4</button>
             <button type="button" data-mode="manual" data-val="5">5</button>
+            <button type="button" data-mode="manual" data-val="6">6</button>
+            <button type="button" data-mode="manual" data-val="7">7</button>
+            <button type="button" data-mode="manual" data-val="8">8</button>
+            <button type="button" data-mode="manual" data-val="9">9</button>
+            <button type="button" data-mode="manual" data-val="10">10</button>
           </div>
           <input id="rf-ticks" type="hidden" value="1"/>
         </div>
@@ -1534,7 +1544,7 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="ou-tick-hint">AUTO picks 1–5 based on signal strength</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="ou-tick-hint">AUTO picks 1–10 based on signal strength</span></div>
           <div class="eo-chips" id="ou-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
@@ -1542,6 +1552,11 @@
             <button type="button" data-mode="manual" data-val="3">3</button>
             <button type="button" data-mode="manual" data-val="4">4</button>
             <button type="button" data-mode="manual" data-val="5">5</button>
+            <button type="button" data-mode="manual" data-val="6">6</button>
+            <button type="button" data-mode="manual" data-val="7">7</button>
+            <button type="button" data-mode="manual" data-val="8">8</button>
+            <button type="button" data-mode="manual" data-val="9">9</button>
+            <button type="button" data-mode="manual" data-val="10">10</button>
           </div>
           <input id="ou-ticks" type="hidden" value="1"/>
         </div>
@@ -2937,7 +2952,7 @@ window.EOAuto = (function(){
     const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     // Clear the AUTO chip's "running" state + reset the live hint.
     const chips=$g("eo-tick-seg"); if(chips) chips.removeAttribute("data-running");
-    const hint=$g("eo-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–5 based on signal strength";
+    const hint=$g("eo-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–10 based on signal strength";
     const armed=$g("eo-mart-armed"); if(armed) armed.classList.remove("on");
   }
   // (Old single-market _decide() removed — _pickBestMarket scans ALL 10
@@ -2945,12 +2960,17 @@ window.EOAuto = (function(){
   // instead of staying glued to whatever the user opened with.)
   function _autoTicks(lead){
     // Auto-ticks: stronger lean → fewer ticks (less time for randomness to revert).
-    // 5-tier ladder: 1 / 2 / 3 / 4 / 5 ticks.
-    if(lead >= 78) return 1;
-    if(lead >= 70) return 2;
-    if(lead >= 62) return 3;
-    if(lead >= 55) return 4;
-    return 5;
+    // 10-tier ladder: 1 → 10 ticks across the 50–100% lean spectrum.
+    if(lead >= 82) return 1;
+    if(lead >= 76) return 2;
+    if(lead >= 71) return 3;
+    if(lead >= 66) return 4;
+    if(lead >= 62) return 5;
+    if(lead >= 58) return 6;
+    if(lead >= 55) return 7;
+    if(lead >= 53) return 8;
+    if(lead >= 51) return 9;
+    return 10;
   }
   // Scan ALL 10 markets and pick the one with the strongest current lean.
   // No filters — auto-trader fires every cycle on whichever market is leaning
@@ -3024,8 +3044,8 @@ window.EOAuto = (function(){
         void autoChip.offsetWidth;
         autoChip.classList.add("flash");
       }
-      const opts = [1, 2, 3, 4, 5];
-      const stepDelays = [0, 110, 220, 330, 440];   // ~440ms total scan
+      const opts = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const stepDelays = [0, 55, 110, 165, 220, 275, 330, 385, 440, 495];   // ~495ms total scan
       opts.forEach((v, i) => {
         setTimeout(() => {
           document.querySelectorAll('#eo-tick-seg button[data-mode="manual"]')
@@ -3045,7 +3065,7 @@ window.EOAuto = (function(){
         setTimeout(() => {
           document.querySelectorAll('#eo-tick-seg button.auto-picked').forEach(b => b.classList.remove("auto-picked"));
         }, 2200);
-      }, 600);
+      }, 700);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
@@ -3287,16 +3307,21 @@ window.RFAuto = (function(){
   function _resetBtn(){
     const go=$g("rf-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("rf-tick-seg"); if(chips) chips.removeAttribute("data-running");
-    const hint=$g("rf-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–5 based on signal strength";
+    const hint=$g("rf-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–10 based on signal strength";
     const armed=$g("rf-mart-armed"); if(armed) armed.classList.remove("on");
   }
   function _autoTicks(lead){
-    // 5-tier ladder: stronger lean → fewer ticks (mirror of EO).
-    if(lead >= 78) return 1;
-    if(lead >= 70) return 2;
-    if(lead >= 62) return 3;
-    if(lead >= 55) return 4;
-    return 5;
+    // 10-tier ladder: stronger lean → fewer ticks (mirror of EO).
+    if(lead >= 82) return 1;
+    if(lead >= 76) return 2;
+    if(lead >= 71) return 3;
+    if(lead >= 66) return 4;
+    if(lead >= 62) return 5;
+    if(lead >= 58) return 6;
+    if(lead >= 55) return 7;
+    if(lead >= 53) return 8;
+    if(lead >= 51) return 9;
+    return 10;
   }
   function _livePrices(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.prices) ? LiveWS.prices() : []; }catch(_){ return []; } }
   function _updateSignal(){
@@ -3383,13 +3408,13 @@ window.RFAuto = (function(){
     // Scan-and-pick animation on the AUTO chip + manual chips.
     if(cfg.ticksMode === "auto"){
       const hint=$g("rf-tick-hint"); if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
-      const opts=[1,2,3,4,5], stepDelays=[0,110,220,330,440];
+      const opts=[1,2,3,4,5,6,7,8,9,10], stepDelays=[0,55,110,165,220,275,330,385,440,495];
       opts.forEach((v,i)=>setTimeout(()=>{ document.querySelectorAll('#rf-tick-seg button[data-mode="manual"]').forEach(b=>b.classList.toggle("scanning", b.dataset.val===String(v))); }, stepDelays[i]));
       setTimeout(()=>{
         document.querySelectorAll('#rf-tick-seg button[data-mode="manual"]').forEach(b=>{ b.classList.remove("scanning"); b.classList.toggle("auto-picked", b.dataset.val===String(dur)); });
         if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
         setTimeout(()=>document.querySelectorAll('#rf-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
-      }, 600);
+      }, 700);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
@@ -3670,16 +3695,21 @@ window.OUAuto = (function(){
   function _resetBtn(){
     const go=$g("ou-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("ou-tick-seg"); if(chips) chips.removeAttribute("data-running");
-    const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–5 based on signal strength";
+    const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–10 based on signal strength";
     const armed=$g("ou-mart-armed"); if(armed) armed.classList.remove("on");
   }
   function _autoTicks(lead){
-    // 5-tier ladder: stronger lean → fewer ticks (mirror of EO).
-    if(lead >= 78) return 1;
-    if(lead >= 70) return 2;
-    if(lead >= 62) return 3;
-    if(lead >= 55) return 4;
-    return 5;
+    // 10-tier ladder: stronger lean → fewer ticks (mirror of EO).
+    if(lead >= 82) return 1;
+    if(lead >= 76) return 2;
+    if(lead >= 71) return 3;
+    if(lead >= 66) return 4;
+    if(lead >= 62) return 5;
+    if(lead >= 58) return 6;
+    if(lead >= 55) return 7;
+    if(lead >= 53) return 8;
+    if(lead >= 51) return 9;
+    return 10;
   }
   function _liveDigits(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
   function _updateSignal(){
@@ -3777,13 +3807,13 @@ window.OUAuto = (function(){
     S.busy = true;
     if(cfg.ticksMode === "auto"){
       const hint=$g("ou-tick-hint"); if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
-      const opts=[1,2,3,4,5], stepDelays=[0,110,220,330,440];
+      const opts=[1,2,3,4,5,6,7,8,9,10], stepDelays=[0,55,110,165,220,275,330,385,440,495];
       opts.forEach((v,i)=>setTimeout(()=>{ document.querySelectorAll('#ou-tick-seg button[data-mode="manual"]').forEach(b=>b.classList.toggle("scanning", b.dataset.val===String(v))); }, stepDelays[i]));
       setTimeout(()=>{
         document.querySelectorAll('#ou-tick-seg button[data-mode="manual"]').forEach(b=>{ b.classList.remove("scanning"); b.classList.toggle("auto-picked", b.dataset.val===String(dur)); });
         if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
         setTimeout(()=>document.querySelectorAll('#ou-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
-      }, 600);
+      }, 700);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+" "+barrier+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
