@@ -470,6 +470,37 @@
   .eo-signal-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
   .eo-signal-meta b{color:var(--text);font-weight:800}
   .eo-signal-meta .thr-lab{font-size:10px}
+  /* === Trading-brain live console — heartbeat + candidates strip + decision log. */
+  .brain-console{margin:11px 0 13px;padding:11px 13px;border:1px solid rgba(212,184,122,.28);border-radius:13px;background:linear-gradient(135deg,rgba(212,184,122,.07),rgba(20,28,40,.20));position:relative;overflow:hidden}
+  .brain-console::before{content:"";position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,184,122,.10),transparent);animation:brain-sweep 5s ease-in-out infinite;pointer-events:none}
+  @keyframes brain-sweep{0%{left:-100%}55%{left:140%}100%{left:140%}}
+  .brain-strip{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--dim);position:relative;z-index:1}
+  .brain-pulse{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-tick-pulse 1.2s ease-in-out infinite;flex:0 0 auto}
+  .brain-console.idle .brain-pulse{background:rgba(255,255,255,.20);box-shadow:none;animation:none}
+  .brain-eyebrow{font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--amber);font-weight:800;flex:0 0 auto}
+  .brain-status{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+  .brain-status b{color:var(--amber);font-weight:800}
+  .brain-cands{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;position:relative;z-index:1}
+  .brain-cands:empty{display:none}
+  .brain-cand{flex:1 1 110px;min-width:110px;padding:7px 10px;border:1px solid var(--bd);border-radius:10px;background:rgba(0,0,0,.30);display:flex;flex-direction:column;gap:2px;font-family:var(--mono);transition:all .35s ease}
+  .brain-cand .cand-mkt{color:var(--faint);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brain-cand .cand-val{color:var(--text);font-weight:800;font-size:13px;letter-spacing:.04em}
+  .brain-cand.top{border-color:rgba(70,207,158,.50);background:linear-gradient(135deg,rgba(70,207,158,.13),rgba(70,207,158,.02));box-shadow:0 0 0 1px rgba(70,207,158,.20) inset}
+  .brain-cand.top .cand-val{color:#6ff0a8}
+  .brain-cand.fire{animation:brain-cand-fire .7s ease-out 1}
+  @keyframes brain-cand-fire{0%{box-shadow:0 0 0 0 rgba(70,207,158,.85), 0 0 0 1px rgba(70,207,158,.50) inset;transform:scale(1.04)}100%{box-shadow:0 0 0 18px rgba(70,207,158,0), 0 0 0 1px rgba(70,207,158,.20) inset;transform:scale(1)}}
+  .brain-log{margin-top:9px;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;font-family:var(--mono);font-size:10.5px;line-height:1.45;color:var(--dim);max-height:96px;overflow-y:auto;padding-right:2px}
+  .brain-log:empty{display:none}
+  .brain-log-row{display:grid;grid-template-columns:60px 18px 1fr;gap:6px;align-items:baseline;padding:1px 4px;border-radius:5px}
+  .brain-log-row .ts{color:var(--faint);font-size:9.5px;letter-spacing:.02em}
+  .brain-log-row .ic{font-size:11px;line-height:1;text-align:center}
+  .brain-log-row .msg{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brain-log-row.fresh{animation:brain-row-fresh 1s ease-out 1}
+  @keyframes brain-row-fresh{0%{background:rgba(70,207,158,.20)}100%{background:transparent}}
+  .brain-log-row.win .msg{color:#6ff0a8}
+  .brain-log-row.loss .msg{color:#ff9aac}
+  .brain-log-row.tune .msg{color:var(--amber)}
+  @media(max-width:480px){.brain-cand{flex:1 1 100%;min-width:0}.brain-log-row{grid-template-columns:50px 16px 1fr}}
   /* Multi-window confidence row — 20t / 50t / 200t + agree chip */
   .eo-windows{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px}
   .eo-win{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 9px;border:1px solid var(--bd);border-radius:8px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em}
@@ -1246,6 +1277,21 @@
       </div>
       <div class="eo-status" id="eo-status">⌗ idle — pick a preset or fine-tune below</div>
 
+      <!-- ── TRADING BRAIN console ── live thinking panel.
+           Surfaces what the engine is doing in real time: top-3 market
+           candidates being weighed, current heartbeat, and a rolling log
+           of decisions (picks, results, AUTO tunes). Turns the black-box
+           pick-and-fire into a visible team-mate. -->
+      <div class="brain-console" id="eo-brain">
+        <div class="brain-strip">
+          <span class="brain-pulse"></span>
+          <span class="brain-eyebrow">ENGINE BRAIN</span>
+          <span class="brain-status" id="eo-brain-status">idle · awaiting start…</span>
+        </div>
+        <div class="brain-cands" id="eo-brain-cands"></div>
+        <div class="brain-log" id="eo-brain-log"></div>
+      </div>
+
       <!-- ── QUICK PRESETS ── one-tap profiles fill TP/SL/threshold/stake/streak.
            Lets the user start trading without filling every field manually. -->
       <div class="eo-presets" id="eo-presets">
@@ -1412,6 +1458,17 @@
       </div>
       <div class="eo-status" id="rf-status">⌗ idle — pick a preset or fine-tune below</div>
 
+      <!-- Trading-brain console (live thinking panel) — see EO above. -->
+      <div class="brain-console" id="rf-brain">
+        <div class="brain-strip">
+          <span class="brain-pulse"></span>
+          <span class="brain-eyebrow">ENGINE BRAIN</span>
+          <span class="brain-status" id="rf-brain-status">idle · awaiting start…</span>
+        </div>
+        <div class="brain-cands" id="rf-brain-cands"></div>
+        <div class="brain-log" id="rf-brain-log"></div>
+      </div>
+
       <!-- QUICK PRESETS -->
       <div class="eo-presets" id="rf-presets">
         <button type="button" data-preset="cautious"><span class="ic">🛡</span><span class="lab">Cautious</span><span class="sub">small wins · tight rails</span></button>
@@ -1558,6 +1615,17 @@
         <span class="eo-stat-inline"><b id="ou-stat-trades">0</b> trades</span>
       </div>
       <div class="eo-status" id="ou-status">⌗ idle — pick a preset or fine-tune below</div>
+
+      <!-- Trading-brain console (live thinking panel) — see EO above. -->
+      <div class="brain-console" id="ou-brain">
+        <div class="brain-strip">
+          <span class="brain-pulse"></span>
+          <span class="brain-eyebrow">ENGINE BRAIN</span>
+          <span class="brain-status" id="ou-brain-status">idle · awaiting start…</span>
+        </div>
+        <div class="brain-cands" id="ou-brain-cands"></div>
+        <div class="brain-log" id="ou-brain-log"></div>
+      </div>
 
       <!-- QUICK PRESETS -->
       <div class="eo-presets" id="ou-presets">
@@ -1894,6 +1962,73 @@ setInterval(() => {
     try{ _tickThrAutoFeed(kind); }catch(_){}
   });
 }, 700);
+
+// ===================================================================
+// TRADING BRAIN — live thinking console shared across EO/RF/OU.
+// Surfaces what the engine is doing: market candidates being weighed,
+// heartbeat status, and a rolling log of decisions. Turns the silent
+// pick-and-fire cycle into a visible teammate.
+// ===================================================================
+const _BRAIN_LOG = {eo:[], rf:[], ou:[]};
+const _BRAIN_MAX = 12;
+function _brainPad(n){ return String(n).padStart(2,"0"); }
+function _brainTs(d){ d = d || new Date(); return _brainPad(d.getHours())+":"+_brainPad(d.getMinutes())+":"+_brainPad(d.getSeconds()); }
+function _brainPush(kind, ic, msg, cls){
+  const arr = _BRAIN_LOG[kind]; if(!arr) return;
+  arr.unshift({ts:new Date(), ic, msg, cls: cls||""});
+  while(arr.length > _BRAIN_MAX) arr.pop();
+  _brainRenderLog(kind);
+}
+function _brainRenderLog(kind){
+  const wrap = document.getElementById(kind+"-brain-log"); if(!wrap) return;
+  const arr = _BRAIN_LOG[kind] || [];
+  wrap.innerHTML = arr.map((e, i) => (
+    '<div class="brain-log-row '+(e.cls||"")+(i===0?" fresh":"")+'">'+
+      '<span class="ts">'+_brainTs(e.ts)+'</span>'+
+      '<span class="ic">'+e.ic+'</span>'+
+      '<span class="msg">'+e.msg+'</span>'+
+    '</div>'
+  )).join("");
+}
+function _brainStatus(kind, html){
+  const el = document.getElementById(kind+"-brain-status"); if(el) el.innerHTML = html;
+}
+function _brainSetIdle(kind, idle){
+  const c = document.getElementById(kind+"-brain"); if(c) c.classList.toggle("idle", !!idle);
+}
+function _brainRenderCands(kind, cands){
+  const wrap = document.getElementById(kind+"-brain-cands"); if(!wrap) return;
+  const top3 = (cands||[]).slice(0, 3);
+  if(!top3.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = top3.map((c, i) => {
+    const isTop = i === 0;
+    const sym = String(c.symbol||"").replace(/"/g,'');
+    const name = (c.name || c.symbol || "?");
+    const side = String(c.side||"").toUpperCase();
+    return '<div class="brain-cand'+(isTop?" top":"")+'" data-sym="'+sym+'">'+
+             '<span class="cand-mkt">'+esc(name)+'</span>'+
+             '<span class="cand-val">'+(c.pct||0)+'% '+esc(side)+'</span>'+
+           '</div>';
+  }).join("");
+}
+function _brainFireCand(kind, symbol){
+  if(!symbol) return;
+  const sel = '#'+kind+'-brain-cands .brain-cand[data-sym="'+symbol.replace(/"/g,'')+'"]';
+  const card = document.querySelector(sel); if(!card) return;
+  card.classList.remove("fire"); void card.offsetWidth; card.classList.add("fire");
+  setTimeout(()=>card.classList.remove("fire"), 800);
+}
+// Pretty-formatter for trade results in the log.
+function _brainLogResult(kind, outcome, profit, streak){
+  const o = (outcome||"").toLowerCase();
+  if(profit > 0 || o === "won"){
+    _brainPush(kind, "✓", "WON +$"+Number(profit||0).toFixed(2)+" · streak reset", "win");
+  } else if(profit < 0 || o === "lost"){
+    _brainPush(kind, "✗", "LOST −$"+Math.abs(Number(profit||0)).toFixed(2)+" · streak "+(streak||0), "loss");
+  } else {
+    _brainPush(kind, "·", "settled · "+(outcome||"unknown"), "");
+  }
+}
 // Wire each AUTO chip on click — kept in the global scope so it works after
 // the controllers boot, no matter the order of script blocks.
 (function(){
@@ -2109,6 +2244,8 @@ function enterApp(){
   // Runs after a tiny delay so the controllers (defined later in the file)
   // are guaranteed to be live by the time we call them.
   setTimeout(()=>{ try{ resumeAutoSessions(); }catch(_){} }, 250);
+  // Brain consoles start in idle state until a controller is engaged.
+  setTimeout(()=>{ try{ ["eo","rf","ou"].forEach(k => _brainSetIdle(k, true)); }catch(_){} }, 260);
 }
 async function logout(){   // disconnect THIS browser → back to the front page
   try{ await api("/logout",{method:"POST",body:"{}"}); }catch(_){}
@@ -3175,7 +3312,10 @@ window.EOAuto = (function(){
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.even_pct != null);
-      if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      if(!ready.length){
+        _brainStatus("eo", '<b>warming up</b> · all 10 markets still gathering ticks');
+        return {none:true, reason:"all 10 markets still warming up"};
+      }
       const cands = ready.map(m => {
         const evp = Math.round(m.even_pct);
         const evWins = evp >= 50;
@@ -3191,8 +3331,14 @@ window.EOAuto = (function(){
       cands.sort((a, b) => (b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
+      // Brain: surface the live candidate set + heartbeat.
+      try{
+        _brainRenderCands("eo", cands);
+        _brainStatus("eo", '📡 weighing ' + cands.length + ' markets · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+      }catch(_){}
       return pick;
     } catch(_){
+      _brainStatus("eo", '<span style="color:var(--bad)">⚠ scanner unreachable — retrying</span>');
       return {none:true, reason:"scanner unreachable — retrying"};
     }
   }
@@ -3263,6 +3409,13 @@ window.EOAuto = (function(){
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    // Brain: log the pick + flash the candidate card so the trader SEES the
+    // decision land instead of guessing what just happened.
+    try{
+      _brainPush("eo", "🎯", "Picked <b>"+esc(pick.side.toUpperCase())+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      _brainFireCand("eo", pick.symbol);
+      _brainStatus("eo", '🔥 firing <b>'+esc(pick.side.toUpperCase())+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
+    }catch(_){}
     try{
       const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
         account_id: CUR.id, trade_type:"even_odd", symbol: pick.symbol,
@@ -3285,6 +3438,8 @@ window.EOAuto = (function(){
         }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      // Brain: log the trade outcome (win / loss / settling).
+      try{ if(outcome !== "pending") _brainLogResult("eo", outcome, profit, S.sess.streak); }catch(_){}
       // Auto-threshold: nudge the threshold based on session performance.
       if(S.sess.thrAuto){
         const slider = $g("eo-thr"); if(slider){
@@ -3298,6 +3453,7 @@ window.EOAuto = (function(){
             // changing silently between trades.
             try{ _flashThrChange("eo", prev, next); }catch(_){}
             try{ _tickThrAutoFeed("eo"); }catch(_){}
+            try{ _brainPush("eo", "📈", "AUTO threshold "+(next>prev?"↑":"↓")+" "+prev+"% → <b>"+next+"%</b>", "tune"); }catch(_){}
           }
         }
       }
@@ -3363,6 +3519,13 @@ window.EOAuto = (function(){
         ? "AUTO is on — picking each trade based on lean strength"
         : "manual " + (($g("eo-ticks")||{}).value || "1") + " tick — fixed per trade";
     }
+    // Brain: announce the engine starting.
+    try{
+      _brainSetIdle("eo", false);
+      const tm = ticksMode === "auto" ? "AUTO ticks" : ($g("eo-ticks")||{}).value + " ticks";
+      _brainPush("eo", "▶", "Auto-trader started · base $"+_baseStake().toFixed(2)+" · "+tm+" · streak guard "+(parseInt(($g("eo-streak")||{}).value)||11), "tune");
+      _brainStatus("eo", '<b>engine engaged</b> · scanning markets…');
+    }catch(_){}
     _fireOnce();
     S.timer = setInterval(_fireOnce, 4000);
   };
@@ -3374,6 +3537,12 @@ window.EOAuto = (function(){
     _clearAutoSession("eo");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+
                ((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
+    // Brain: announce stop.
+    try{
+      _brainPush("eo", "■", "Auto-trader stopped · "+esc(reason||"manual stop")+" · final "+S.sess.wins+"/"+S.sess.trades, "tune");
+      _brainStatus("eo", 'idle · awaiting start…');
+      _brainSetIdle("eo", true);
+    }catch(_){}
   };
   // Expose for external bindings (input handlers update fills + dots live).
   S._setFills = _setFills;
@@ -3570,7 +3739,10 @@ window.RFAuto = (function(){
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.up_pct != null);
-      if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      if(!ready.length){
+        _brainStatus("rf", '<b>warming up</b> · all 10 markets still gathering ticks');
+        return {none:true, reason:"all 10 markets still warming up"};
+      }
       const cands = ready.map(m => {
         const up = Math.round(m.up_pct);
         const riseWins = up >= 50;
@@ -3581,8 +3753,17 @@ window.RFAuto = (function(){
       cands.sort((a,b)=>(b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
+      // Brain feed
+      try{
+        const view = cands.map(c=>({...c, side: c.side==="up"?"RISE":"FALL"}));
+        _brainRenderCands("rf", view);
+        _brainStatus("rf", '📡 weighing ' + cands.length + ' markets · <b>'+esc(pick.name)+'</b> '+(pick.side==="up"?"RISE":"FALL")+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+      }catch(_){}
       return pick;
-    } catch(_){ return {none:true, reason:"scanner unreachable — retrying"}; }
+    } catch(_){
+      _brainStatus("rf", '<span style="color:var(--bad)">⚠ scanner unreachable — retrying</span>');
+      return {none:true, reason:"scanner unreachable — retrying"};
+    }
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
@@ -3619,6 +3800,12 @@ window.RFAuto = (function(){
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
     try{
+      const sideTxt = pick.side === "up" ? "RISE" : "FALL";
+      _brainPush("rf", "🎯", "Picked <b>"+sideTxt+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      _brainFireCand("rf", pick.symbol);
+      _brainStatus("rf", '🔥 firing <b>'+sideTxt+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
+    }catch(_){}
+    try{
       const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
         account_id: CUR.id, trade_type:"rise_fall", symbol: pick.symbol,
         stake: cfg.stake, duration: dur, duration_unit:"t", direction: pick.side,
@@ -3638,12 +3825,17 @@ window.RFAuto = (function(){
         }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      try{ if(outcome !== "pending") _brainLogResult("rf", outcome, profit, S.sess.streak); }catch(_){}
       if(S.sess.thrAuto){
         const slider = $g("rf-thr"); if(slider){
-          const next = _adaptThreshold(slider.value, S.sess);
-          if(Number(slider.value) !== next){
+          const prev = Number(slider.value);
+          const next = _adaptThreshold(prev, S.sess);
+          if(prev !== next){
             slider.value = next;
             slider.dispatchEvent(new Event("input", {bubbles:true}));
+            try{ _flashThrChange("rf", prev, next); }catch(_){}
+            try{ _tickThrAutoFeed("rf"); }catch(_){}
+            try{ _brainPush("rf", "📈", "AUTO threshold "+(next>prev?"↑":"↓")+" "+prev+"% → <b>"+next+"%</b>", "tune"); }catch(_){}
           }
         }
       }
@@ -3678,6 +3870,12 @@ window.RFAuto = (function(){
     const ticksMode=(document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto";
     if(chips){ chips.setAttribute("data-running","1");
       const hint=$g("rf-tick-hint"); if(hint) hint.textContent = ticksMode==="auto" ? "AUTO is on — picking each trade based on lean strength" : "manual "+(($g("rf-ticks")||{}).value||"1")+" tick — fixed per trade"; }
+    try{
+      _brainSetIdle("rf", false);
+      const tm = ticksMode === "auto" ? "AUTO ticks" : ($g("rf-ticks")||{}).value + " ticks";
+      _brainPush("rf", "▶", "Auto-trader started · base $"+_baseStake().toFixed(2)+" · "+tm+" · streak guard "+(parseInt(($g("rf-streak")||{}).value)||11), "tune");
+      _brainStatus("rf", '<b>engine engaged</b> · scanning markets…');
+    }catch(_){}
     _fireOnce();
     S.timer = setInterval(_fireOnce, 4000);
   };
@@ -3688,6 +3886,11 @@ window.RFAuto = (function(){
     _resetBtn();
     _clearAutoSession("rf");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
+    try{
+      _brainPush("rf", "■", "Auto-trader stopped · "+esc(reason||"manual stop")+" · final "+S.sess.wins+"/"+S.sess.trades, "tune");
+      _brainStatus("rf", 'idle · awaiting start…');
+      _brainSetIdle("rf", true);
+    }catch(_){}
   };
   S._setFills = _setFills; S._renderDots = _renderDots; S._renderMart = _renderMart;
   S._updateSignal = _updateSignal;
@@ -3962,7 +4165,10 @@ window.OUAuto = (function(){
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && Array.isArray(m.freq));
-      if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      if(!ready.length){
+        _brainStatus("ou", '<b>warming up</b> · all 10 markets still gathering ticks');
+        return {none:true, reason:"all 10 markets still warming up"};
+      }
       const cands = ready.map(m => {
         const sp = _ouSplit(m.freq, barrier); if(!sp) return null;
         const op = sp.over_pct, upPct = sp.under_pct;
@@ -3975,12 +4181,23 @@ window.OUAuto = (function(){
           pct, z,
         };
       }).filter(Boolean);
-      if(!cands.length) return {none:true, reason:"no markets had a clear lean"};
+      if(!cands.length){
+        _brainStatus("ou", '<b>no clear lean</b> · holding for stronger edge');
+        return {none:true, reason:"no markets had a clear lean"};
+      }
       cands.sort((a, b) => (b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
+      try{
+        const view = cands.map(c => ({...c, side: c.side.toUpperCase()+" "+barrier}));
+        _brainRenderCands("ou", view);
+        _brainStatus("ou", '📡 weighing ' + cands.length + ' markets at barrier '+barrier+' · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+      }catch(_){}
       return pick;
-    } catch(_){ return {none:true, reason:"scanner unreachable — retrying"}; }
+    } catch(_){
+      _brainStatus("ou", '<span style="color:var(--bad)">⚠ scanner unreachable — retrying</span>');
+      return {none:true, reason:"scanner unreachable — retrying"};
+    }
   }
   async function _fireOnce(){
     if(!S.running || S.busy) return;
@@ -4018,6 +4235,12 @@ window.OUAuto = (function(){
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+" "+barrier+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
     try{
+      const sideTxt = pick.side.toUpperCase()+" "+barrier;
+      _brainPush("ou", "🎯", "Picked <b>"+sideTxt+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      _brainFireCand("ou", pick.symbol);
+      _brainStatus("ou", '🔥 firing <b>'+sideTxt+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
+    }catch(_){}
+    try{
       const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
         account_id: CUR.id, trade_type:"over_under", symbol: pick.symbol,
         stake: cfg.stake, duration: dur, duration_unit:"t",
@@ -4038,12 +4261,17 @@ window.OUAuto = (function(){
         }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
+      try{ if(outcome !== "pending") _brainLogResult("ou", outcome, profit, S.sess.streak); }catch(_){}
       if(S.sess.thrAuto){
         const slider = $g("ou-thr"); if(slider){
-          const next = _adaptThreshold(slider.value, S.sess);
-          if(Number(slider.value) !== next){
+          const prev = Number(slider.value);
+          const next = _adaptThreshold(prev, S.sess);
+          if(prev !== next){
             slider.value = next;
             slider.dispatchEvent(new Event("input", {bubbles:true}));
+            try{ _flashThrChange("ou", prev, next); }catch(_){}
+            try{ _tickThrAutoFeed("ou"); }catch(_){}
+            try{ _brainPush("ou", "📈", "AUTO threshold "+(next>prev?"↑":"↓")+" "+prev+"% → <b>"+next+"%</b>", "tune"); }catch(_){}
           }
         }
       }
@@ -4078,6 +4306,13 @@ window.OUAuto = (function(){
     const ticksMode=(document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto";
     if(chips){ chips.setAttribute("data-running","1");
       const hint=$g("ou-tick-hint"); if(hint) hint.textContent = ticksMode==="auto" ? "AUTO is on — picking each trade based on lean strength" : "manual "+(($g("ou-ticks")||{}).value||"1")+" tick — fixed per trade"; }
+    try{
+      _brainSetIdle("ou", false);
+      const tm = ticksMode === "auto" ? "AUTO ticks" : ($g("ou-ticks")||{}).value + " ticks";
+      const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
+      _brainPush("ou", "▶", "Auto-trader started · base $"+_baseStake().toFixed(2)+" · barrier "+barrier+" · "+tm+" · streak guard "+(parseInt(($g("ou-streak")||{}).value)||11), "tune");
+      _brainStatus("ou", '<b>engine engaged</b> · scanning markets…');
+    }catch(_){}
     _fireOnce();
     S.timer = setInterval(_fireOnce, 4000);
   };
@@ -4088,6 +4323,11 @@ window.OUAuto = (function(){
     _resetBtn();
     _clearAutoSession("ou");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
+    try{
+      _brainPush("ou", "■", "Auto-trader stopped · "+esc(reason||"manual stop")+" · final "+S.sess.wins+"/"+S.sess.trades, "tune");
+      _brainStatus("ou", 'idle · awaiting start…');
+      _brainSetIdle("ou", true);
+    }catch(_){}
   };
   S._setFills = _setFills; S._renderDots = _renderDots; S._renderMart = _renderMart;
   S._updateSignal = _updateSignal;
