@@ -1142,9 +1142,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="eo-thr-hint">fires when one side leads ≥ <b id="eo-thr-display">58</b>%</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="eo-thr-hint">fires when one side leads ≥ <b id="eo-thr-display">70</b>% (with |z|≥2σ + multi-window confirm)</span></div>
           <div class="eo-slider-wrap">
-            <input id="eo-thr" type="range" min="50" max="90" value="58" class="eo-slider"/>
+            <input id="eo-thr" type="range" min="50" max="90" value="70" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -2289,7 +2289,7 @@ window.EOAuto = (function(){
   function _updateSignal(){
     const sig = $g("eo-signal"); if(!sig) return;
     const d = _liveDigits();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||58));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||70));
     const thrLine = $g("eo-signal-thr"); if(thrLine) thrLine.style.left = thr + "%";
     const thrLab  = $g("eo-signal-thr-lab"); if(thrLab) thrLab.textContent = thr + "%";
     const mkt = $g("eo-signal-market");
@@ -2362,28 +2362,51 @@ window.EOAuto = (function(){
     if(lead >= 65) return 2;
     return 3;
   }
-  // Scan ALL 10 markets, pick the one whose dominant side's % is highest AND
-  // above the user's threshold. Returns {symbol, name, side, pct, lean} or null.
+  // Scan ALL 10 markets, pick the strongest candidate that passes THREE filters:
+  //   1. Percent lean ≥ user threshold (over the full 100-tick rolling sample)
+  //   2. |z-score| ≥ 2.0  — the lean is statistically significant, not noise
+  //   3. Multi-window agreement — 20-tick AND 50-tick windows both side with
+  //      the dominant lean (so a very-recent fluke doesn't trigger a fire)
+  // Returns {symbol, name, side, pct, lean, z} or {none:true, reason}.
   async function _pickBestMarket(threshold){
     try{
       const d = await api("/scan");
       const ready = (d.markets || []).filter(m => m.ready && m.even_pct != null);
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
+      const Z_MIN = 2.0;            // 2σ confirmation
+      const W20_MIN = threshold - 3; // 20-tick window: allow 3% slack
+      const W50_MIN = threshold - 8; // 50-tick window: allow 8% slack
       const cands = ready.map(m => {
-        const evp = Math.round(m.even_pct), odp = 100 - evp;
-        const evWins = evp >= odp;
-        const pct = evWins ? evp : odp;
+        const evp = Math.round(m.even_pct);
+        const evWins = evp >= 50;
+        const pct = evWins ? evp : 100 - evp;
+        const z = m.eo_z != null ? Math.abs(Number(m.eo_z)) : 0;
+        const ev20 = m.even_pct_20, ev50 = m.even_pct_50;
+        const pct20 = ev20 != null ? (evWins ? ev20 : 100 - ev20) : null;
+        const pct50 = ev50 != null ? (evWins ? ev50 : 100 - ev50) : null;
         return {
           symbol: m.symbol, name: m.name || m.symbol,
           side: evWins ? "even" : "odd",
-          pct, lean: pct - 50,
+          pct, lean: pct - 50, z, pct20, pct50,
         };
       });
-      const passing = cands.filter(c => c.pct >= threshold).sort((a,b) => b.pct - a.pct);
+      const passing = cands.filter(c => {
+        if(c.pct < threshold) return false;
+        if(c.z < Z_MIN) return false;
+        if(c.pct20 != null && c.pct20 < W20_MIN) return false;
+        if(c.pct50 != null && c.pct50 < W50_MIN) return false;
+        return true;
+      }).sort((a,b) => (b.pct + b.z) - (a.pct + a.z));   // tied-pct? favour stronger z
       if(passing.length) return passing[0];
-      // Nothing above threshold — return the strongest lean for the status line.
+      // Nothing passed — pick the closest near-miss and explain WHY for the status line.
       const best = cands.sort((a,b) => b.pct - a.pct)[0];
-      return {none:true, reason: "best lean is "+best.pct+"% "+best.side.toUpperCase()+" on "+best.name+" — need ≥"+threshold+"%"};
+      let why;
+      if(best.pct < threshold)            why = "best lean "+best.pct+"% "+best.side.toUpperCase()+" on "+best.name+" — need ≥"+threshold+"%";
+      else if(best.z < Z_MIN)              why = best.name+" "+best.side.toUpperCase()+" "+best.pct+"% but z "+best.z.toFixed(1)+" < 2.0 — not significant";
+      else if(best.pct20 != null && best.pct20 < W20_MIN) why = best.name+" 100-tick "+best.pct+"% but 20-tick disagrees ("+best.pct20+"%)";
+      else if(best.pct50 != null && best.pct50 < W50_MIN) why = best.name+" 100-tick "+best.pct+"% but 50-tick disagrees ("+best.pct50+"%)";
+      else                                 why = "no market cleared all filters";
+      return {none:true, reason: why};
     } catch(_){
       return {none:true, reason:"scanner unreachable — retrying"};
     }
@@ -2395,7 +2418,7 @@ window.EOAuto = (function(){
       sl:    parseFloat(($g("eo-sl")||{}).value)||0,
       stake: Math.max(0.35, parseFloat(($g("eo-stake")||{}).value)||0.35),
       maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||58)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||70)),
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
     };
@@ -2567,10 +2590,12 @@ window.EOAuto = (function(){
   if(stop) stop.addEventListener("click", () => eoStopEverything(stop));
 
   // -- Quick presets: tap to fill TP / SL / threshold / stake / streak in one go --
+  // Thresholds tightened: the auto-trader now requires |z|≥2σ + multi-window
+  // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
-    cautious: { tp:30,  sl:15,  thr:65, stake:5,   streak:5  },   // small wins, tight rails
-    steady:   { tp:100, sl:50,  thr:58, stake:50,  streak:8  },   // balanced default ($50 stake + $50 SL)
-    bold:     { tp:200, sl:100, thr:53, stake:100, streak:11 },   // bigger swings, looser
+    cautious: { tp:30,  sl:15,  thr:75, stake:5,   streak:5  },   // very selective
+    steady:   { tp:100, sl:50,  thr:70, stake:50,  streak:8  },   // strong leans only ($50 stake + $50 SL)
+    bold:     { tp:200, sl:100, thr:62, stake:100, streak:11 },   // wider net but still gated
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;

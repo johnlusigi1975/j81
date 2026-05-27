@@ -934,6 +934,8 @@ async def scan_local() -> dict:
             "name": po.get("name") or SYMBOL_NAMES.get(sym, sym),
             "even_pct": m.get("even_pct"),
             "odd_pct": m.get("odd_pct"),
+            "even_pct_20": m.get("even_pct_20"),  # multi-window confirmation
+            "even_pct_50": m.get("even_pct_50"),
             "eo_z": m.get("eo_z"),
             "ticks": m.get("ticks") or 0,
             "ready": bool(m.get("ready")),

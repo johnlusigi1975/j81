@@ -90,9 +90,17 @@ def _market_stats(symbol: str) -> dict[str, Any]:
             break
     hot = max(range(10), key=lambda d: freq[d])
     cold = min(range(10), key=lambda d: freq[d])
+    # Multi-window even% — used by the auto-trader's confidence confirmation
+    # so a very-recent fluke doesn't trigger a fire if the medium window
+    # disagrees. None if not enough ticks for the window yet.
+    def _ep(arr):
+        return round(100 * sum(1 for x in arr if x % 2 == 0) / len(arr), 1) if arr else None
+    even_pct_20 = _ep(digits[-20:]) if len(digits) >= 20 else None
+    even_pct_50 = _ep(digits[-50:]) if len(digits) >= 50 else None
     return {
         "symbol": symbol, "ready": True, "ticks": n,
         "even_pct": round(100 * even / n, 1), "odd_pct": round(100 * odd / n, 1),
+        "even_pct_20": even_pct_20, "even_pct_50": even_pct_50,
         "eo_z": round(eo_z, 2),
         "up_pct": round(100 * ups / mv, 1) if mv else 50.0,
         "up_z": round(up_z, 2),
