@@ -525,6 +525,26 @@
   /* Armed dot beside the threshold label — green pulse when AUTO threshold is on. */
   .thr-auto-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);margin-right:7px;vertical-align:middle;transition:all .25s ease;position:relative;top:-1px}
   .thr-auto-dot.on{background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-tick-pulse 1.4s ease-in-out infinite}
+  /* AUTO chip "thinking" animation — when AUTO is on it gently breathes
+     so the user sees the system is actively working in the background. */
+  .thr-auto-chip.on{animation:thr-auto-breathe 2.2s ease-in-out infinite}
+  @keyframes thr-auto-breathe{0%,100%{box-shadow:0 4px 12px -4px rgba(70,207,158,.6)}50%{box-shadow:0 4px 18px -2px rgba(70,207,158,.9), 0 0 0 3px rgba(70,207,158,.18)}}
+  /* Live "auto-tune feed" — small ticker line under the slider that shows
+     what the AUTO is currently thinking. Only visible when AUTO is on. */
+  .thr-auto-feed{display:none;margin-top:7px;padding:5px 9px;border:1px solid rgba(70,207,158,.25);border-radius:8px;background:linear-gradient(135deg,rgba(70,207,158,.07),rgba(70,207,158,.01));font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--dim);line-height:1.45}
+  .thr-auto-feed.on{display:flex;align-items:center;gap:8px}
+  .thr-auto-feed .thr-feed-pulse{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 6px var(--good);animation:thr-feed-pulse 1s ease-in-out infinite;flex:0 0 auto}
+  @keyframes thr-feed-pulse{0%,100%{opacity:.5;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+  .thr-auto-feed .thr-feed-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .thr-auto-feed .thr-feed-next{color:var(--text);font-weight:800}
+  .thr-auto-feed.bump{animation:thr-feed-bump .6s ease-out 1}
+  @keyframes thr-feed-bump{0%{background:rgba(70,207,158,.30)}100%{background:linear-gradient(135deg,rgba(70,207,158,.07),rgba(70,207,158,.01))}}
+  /* Slider flash when AUTO adjusts the threshold — brief gold pulse so the
+     trader SEES the change instead of finding it changed silently later. */
+  .eo-slider-wrap.thr-flash .eo-slider{animation:thr-slider-flash .55s ease-out 1}
+  @keyframes thr-slider-flash{0%{filter:brightness(1.5) saturate(1.3);box-shadow:0 0 14px rgba(212,184,122,.7)}100%{filter:none;box-shadow:none}}
+  .eo-tile-head .thr-display-num{display:inline-block;transition:transform .25s ease, color .25s ease}
+  .eo-tile-head .thr-display-num.bump{transform:scale(1.25);color:#6ff0a8}
   /* When AUTO is on, soften the slider visually so the user sees it's being driven by the system. */
   .eo-slider-wrap.locked{opacity:.55;pointer-events:none}
 
@@ -1280,10 +1300,17 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <b id="eo-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
-          <div class="eo-slider-wrap">
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <span class="thr-display-num" id="eo-thr-display">55</span>% · auto fires every cycle on strongest</span></div>
+          <div class="eo-slider-wrap" id="eo-thr-wrap">
             <input id="eo-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
+          </div>
+          <!-- Live AUTO-tune feed — surfaces what the auto-threshold is thinking
+               right now so the trader sees it working alongside them instead of
+               just sitting there. Hidden until the AUTO chip is pressed. -->
+          <div class="thr-auto-feed" id="eo-thr-feed">
+            <span class="thr-feed-pulse"></span>
+            <span class="thr-feed-txt"><span id="eo-thr-feed-msg">auto-tune armed · watching session…</span></span>
           </div>
         </div>
       </div>
@@ -1816,10 +1843,57 @@ function _setThrAutoUI(kind, on){
   const dot  = document.getElementById(kind+"-thr-auto-dot");
   const slider = document.getElementById(kind+"-thr");
   const wrap = slider ? slider.closest(".eo-slider-wrap") : null;
+  const feed = document.getElementById(kind+"-thr-feed");
   if(chip)  chip.classList.toggle("on", !!on);
   if(dot)   dot.classList.toggle("on",  !!on);
   if(wrap)  wrap.classList.toggle("locked", !!on);
+  if(feed)  feed.classList.toggle("on", !!on);
+  // Kick the live ticker immediately so the trader sees something happen on click.
+  if(on) try{ _tickThrAutoFeed(kind); }catch(_){}
 }
+// Live "auto-tune feed" — runs every ~700ms while AUTO is on. Reads the
+// current session and shows what the threshold WOULD become next, with a
+// human reason. This is what makes AUTO feel like a teammate working with
+// the trader instead of a chip that just sits there.
+function _tickThrAutoFeed(kind){
+  const ctrl = kind === "eo" ? window.EOAuto : kind === "rf" ? window.RFAuto : window.OUAuto;
+  if(!ctrl || !ctrl.sess || !ctrl.sess.thrAuto) return;
+  const msg = document.getElementById(kind+"-thr-feed-msg"); if(!msg) return;
+  const slider = document.getElementById(kind+"-thr"); if(!slider) return;
+  const cur = Number(slider.value) || 55;
+  const next = _adaptThreshold(cur, ctrl.sess);
+  const delta = +(next - cur).toFixed(1);
+  const trades = ctrl.sess.trades || 0, wins = ctrl.sess.wins || 0, streak = ctrl.sess.streak || 0;
+  let reason = "";
+  if(trades === 0)            reason = "watching the tape — no trades yet to learn from";
+  else if(streak >= 3)         reason = streak+"-loss streak — tightening to be pickier";
+  else if(streak === 2)        reason = "2 in a row down — nudging threshold up";
+  else if(streak === 0 && wins > 0) reason = wins+" win"+(wins===1?"":"s")+" banked, no streak — easing threshold";
+  else                         reason = "steady · "+wins+"/"+trades+" win rate";
+  const arrow = delta > 0 ? "↑" : delta < 0 ? "↓" : "·";
+  const nextHtml = delta === 0
+    ? '<span class="thr-feed-next">holding '+cur+'%</span>'
+    : '<span class="thr-feed-next">'+arrow+' next: '+next+'%</span>';
+  msg.innerHTML = nextHtml + ' · ' + reason;
+}
+// Pulse the feed + flash the slider when the threshold actually CHANGES
+// (called from inside each controller's _fireOnce after the slider value is
+// updated). Visible feedback turns a silent self-tune into a team handoff.
+function _flashThrChange(kind, from, to){
+  const wrap = document.getElementById(kind+"-thr-wrap");
+  const disp = document.getElementById(kind+"-thr-display");
+  const feed = document.getElementById(kind+"-thr-feed");
+  if(wrap){ wrap.classList.remove("thr-flash"); void wrap.offsetWidth; wrap.classList.add("thr-flash"); setTimeout(()=>wrap.classList.remove("thr-flash"), 700); }
+  if(disp){ disp.classList.remove("bump");      void disp.offsetWidth; disp.classList.add("bump");      setTimeout(()=>disp.classList.remove("bump"),      400); }
+  if(feed){ feed.classList.remove("bump");      void feed.offsetWidth; feed.classList.add("bump");      setTimeout(()=>feed.classList.remove("bump"),      700); }
+}
+// Heartbeat: drive the live AUTO-tune feed every 700ms regardless of trade
+// activity, so the trader sees the system reasoning continuously.
+setInterval(() => {
+  ["eo","rf","ou"].forEach(kind => {
+    try{ _tickThrAutoFeed(kind); }catch(_){}
+  });
+}, 700);
 // Wire each AUTO chip on click — kept in the global scope so it works after
 // the controllers boot, no matter the order of script blocks.
 (function(){
@@ -3214,10 +3288,16 @@ window.EOAuto = (function(){
       // Auto-threshold: nudge the threshold based on session performance.
       if(S.sess.thrAuto){
         const slider = $g("eo-thr"); if(slider){
-          const next = _adaptThreshold(slider.value, S.sess);
-          if(Number(slider.value) !== next){
+          const prev = Number(slider.value);
+          const next = _adaptThreshold(prev, S.sess);
+          if(prev !== next){
             slider.value = next;
             slider.dispatchEvent(new Event("input", {bubbles:true}));
+            // Visible feedback — flash the slider + bump the value + pulse the
+            // feed line so the trader SEES the auto-tune happen instead of it
+            // changing silently between trades.
+            try{ _flashThrChange("eo", prev, next); }catch(_){}
+            try{ _tickThrAutoFeed("eo"); }catch(_){}
           }
         }
       }
