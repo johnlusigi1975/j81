@@ -286,43 +286,73 @@
   .tbtn.auto.on .mix{background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a);color:#04200f;animation:eo-mix-pulse 1.4s ease-in-out infinite}
   @keyframes eo-mix-pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,207,158,.7)}50%{box-shadow:0 0 0 6px rgba(70,207,158,0)}}
 
-  /* Even/Odd multi-market confidence scanner — compact 5×2 grid, no scroll.
+  /* Even/Odd multi-market intelligence — premium dashboard card.
      Row 1 = standard 2-sec volatilities (R_*), Row 2 = the 1-second family. */
-  .eo-scan{padding:10px 12px;border:1px solid var(--bd);border-radius:14px;background:linear-gradient(135deg,rgba(54,214,200,.04),rgba(212,184,122,.03))}
-  .eo-scan-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:9px}
-  .eo-scan-title{font-family:var(--serif);font-size:13.5px;font-weight:800}
-  .eo-scan-title .faint{font-weight:400;letter-spacing:0;text-transform:none}
-  .eo-scan-meta{font-size:10.5px;font-family:var(--mono);letter-spacing:.04em}
-  .eo-band-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin:6px 0 6px}
-  .eo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
-  @media(max-width:560px){.eo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  .eo-cell{padding:10px 10px 9px;border:1px solid var(--bd);border-radius:11px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.32));cursor:pointer;transition:transform .12s ease,border-color .2s ease,box-shadow .2s ease;display:flex;flex-direction:column;gap:6px;min-height:88px;position:relative;overflow:hidden}
-  .eo-cell:hover{transform:translateY(-2px);border-color:var(--bd2);box-shadow:0 8px 22px -14px rgba(0,0,0,.6)}
-  .eo-cell.here{border-color:var(--amber);background:linear-gradient(180deg,rgba(212,184,122,.10),rgba(0,0,0,.38));box-shadow:0 0 0 1px rgba(212,184,122,.3) inset, 0 12px 28px -14px rgba(212,184,122,.55)}
-  .eo-cell.strong.lean-even{border-color:rgba(240,200,90,.55);box-shadow:0 0 0 1px rgba(240,200,90,.20) inset}
-  .eo-cell.strong.lean-odd{border-color:rgba(170,176,189,.55);box-shadow:0 0 0 1px rgba(170,176,189,.20) inset}
-  .eo-cell.firm{border-color:rgba(240,200,90,.32)}
-  .eo-cell.warm{opacity:.62}
-  .eo-cell.strong::before{content:"";position:absolute;inset:-1px;border-radius:11px;pointer-events:none;animation:eo-cell-pulse 2.4s ease-in-out infinite}
-  .eo-cell.strong.lean-even::before{box-shadow:0 0 0 0 rgba(240,200,90,.4) inset}
-  .eo-cell.strong.lean-odd::before{box-shadow:0 0 0 0 rgba(170,176,189,.35) inset}
-  @keyframes eo-cell-pulse{0%,100%{opacity:.0}50%{opacity:.55}}
-  .eo-cell .top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
-  .eo-cell .sym{font-family:var(--serif);font-size:13px;font-weight:800;letter-spacing:.01em;color:var(--text)}
-  .eo-cell .mark{font-size:13px;line-height:1}
-  .eo-cell .big{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:-1px}
-  .eo-cell .big .side{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);font-weight:700}
-  .eo-cell .big .pct{font-family:var(--serif);font-size:24px;font-weight:800;line-height:1;letter-spacing:-.01em}
-  .eo-cell.lean-even .big .pct{color:#f0c64a}
-  .eo-cell.lean-odd .big .pct{color:#dfe2eb}
-  .eo-cell .bar{position:relative;display:flex;height:7px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.05)}
-  .eo-cell .bar .even{background:linear-gradient(135deg,#fff0c2 0%,#f0c64a 60%,#cf9e2a 100%);transition:width .35s ease}
-  .eo-cell .bar .odd{background:linear-gradient(135deg,#eef0f5 0%,#aab0bd 60%,#7c8290 100%);transition:width .35s ease}
-  .eo-cell .meta{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.04em;font-weight:600}
-  .eo-cell .meta .z{color:var(--text)} .eo-cell .meta .z.warn{color:var(--amber)}
+  .eo-scan{padding:14px 16px;border:1px solid var(--bd);border-radius:16px;background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.08),transparent 55%),radial-gradient(120% 100% at 100% 0%,rgba(212,184,122,.08),transparent 55%),linear-gradient(180deg,rgba(20,28,40,.55),rgba(10,14,22,.55));box-shadow:0 24px 60px -32px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);position:relative;overflow:hidden}
+  .eo-scan-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .eo-scan-title{font-family:var(--serif);font-size:15px;font-weight:800;letter-spacing:-.005em;display:flex;align-items:center;gap:8px}
+  .eo-scan-title .ic{font-size:14px}
+  .eo-scan-title .faint{font-weight:400;letter-spacing:0;text-transform:none;font-family:var(--sans);font-size:11px;color:var(--faint);margin-left:3px}
+  .eo-scan-meta{font-size:10.5px;font-family:var(--mono);letter-spacing:.06em;color:var(--dim);display:flex;align-items:center;gap:7px}
+  .eo-scan-meta::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-scan-pulse 1.8s ease-in-out infinite}
+  @keyframes eo-scan-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.4);opacity:1}}
+  .eo-band-lab{display:flex;align-items:center;gap:10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);margin:10px 0 8px;font-weight:700}
+  .eo-band-lab::before{content:"▸";color:var(--amber);font-size:11px;font-weight:800}
+  .eo-band-lab::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.06),transparent)}
+  .eo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  @media(max-width:560px){.eo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+
+  /* Individual market cell — a mini "ticker card" per volatility. */
+  .eo-cell{padding:11px 11px 10px;border:1px solid var(--bd);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.34));cursor:pointer;transition:transform .18s cubic-bezier(.2,.7,.3,1),border-color .25s ease,box-shadow .3s ease,background .25s ease;display:flex;flex-direction:column;gap:7px;min-height:106px;position:relative;overflow:hidden;backdrop-filter:blur(2px)}
+  .eo-cell::before{content:"";position:absolute;inset:0;border-radius:12px;background:radial-gradient(120% 100% at 0% 0%,transparent,transparent);pointer-events:none;transition:background .35s ease}
+  .eo-cell:hover{transform:translateY(-3px);border-color:var(--bd2);box-shadow:0 16px 36px -18px rgba(0,0,0,.7)}
+  .eo-cell:hover::before{background:radial-gradient(120% 100% at 0% 0%,rgba(255,255,255,.04),transparent 60%)}
+  .eo-cell.here{border-color:var(--amber);background:linear-gradient(180deg,rgba(212,184,122,.12),rgba(0,0,0,.4));box-shadow:0 0 0 1px rgba(212,184,122,.35) inset, 0 18px 38px -16px rgba(212,184,122,.6)}
+  .eo-cell.here::before{background:radial-gradient(120% 100% at 0% 0%,rgba(212,184,122,.12),transparent 60%)}
+  .eo-cell.firm.lean-even{border-color:rgba(240,200,90,.35);box-shadow:0 0 0 1px rgba(240,200,90,.12) inset}
+  .eo-cell.firm.lean-odd{border-color:rgba(170,176,189,.35);box-shadow:0 0 0 1px rgba(170,176,189,.12) inset}
+  .eo-cell.strong.lean-even{border-color:rgba(240,200,90,.6);box-shadow:0 0 0 1px rgba(240,200,90,.25) inset, 0 0 24px -8px rgba(240,200,90,.55)}
+  .eo-cell.strong.lean-odd{border-color:rgba(170,176,189,.6);box-shadow:0 0 0 1px rgba(170,176,189,.25) inset, 0 0 24px -8px rgba(170,176,189,.55)}
+  .eo-cell.strong::after{content:"";position:absolute;inset:-1px;border-radius:12px;pointer-events:none;animation:eo-cell-aura 2.4s ease-in-out infinite}
+  .eo-cell.strong.lean-even::after{box-shadow:inset 0 0 14px -2px rgba(240,200,90,.4)}
+  .eo-cell.strong.lean-odd::after{box-shadow:inset 0 0 14px -2px rgba(170,176,189,.45)}
+  @keyframes eo-cell-aura{0%,100%{opacity:.4}50%{opacity:.95}}
+  .eo-cell.warm{opacity:.58}
+  .eo-cell.warm:hover{opacity:.78}
+
+  /* Top row — market name + live tick dot + active marker */
+  .eo-cell .top{display:flex;align-items:center;justify-content:space-between;gap:6px;position:relative;z-index:1}
+  .eo-cell .sym{font-family:var(--serif);font-size:13.5px;font-weight:800;letter-spacing:-.005em;color:var(--text);line-height:1}
+  .eo-cell .tick-live{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--good);box-shadow:0 0 6px var(--good);animation:eo-tick-pulse 1.6s ease-in-out infinite;margin-left:5px;vertical-align:middle}
+  .eo-cell.warm .tick-live{background:var(--amber);box-shadow:0 0 6px var(--amber);animation-duration:1s}
+  @keyframes eo-tick-pulse{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}
+  .eo-cell .mark{font-size:13px;line-height:1;filter:drop-shadow(0 0 6px currentColor)}
+
+  /* Big serif percentage — the headline of each cell */
+  .eo-cell .big{display:flex;flex-direction:column;align-items:flex-start;gap:1px;position:relative;z-index:1;margin-top:1px}
+  .eo-cell .big .side{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);font-weight:700;line-height:1}
+  .eo-cell .big .pct{font-family:var(--serif);font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em;margin-top:2px}
+  .eo-cell.lean-even .big .pct{color:#f5d168;text-shadow:0 0 12px rgba(240,200,90,.2)}
+  .eo-cell.lean-odd .big .pct{color:#e8ebf2;text-shadow:0 0 12px rgba(170,176,189,.2)}
+  .eo-cell.lean-even .big .side{color:#f0c64a;opacity:.8}
+  .eo-cell.lean-odd .big .side{color:#aab0bd;opacity:.8}
+
+  /* Thin split bar — visual reinforcement of the % above */
+  .eo-cell .bar{position:relative;display:flex;height:4px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.05);box-shadow:inset 0 1px 0 rgba(0,0,0,.4)}
+  .eo-cell .bar .even{background:linear-gradient(135deg,#fff0c2 0%,#f0c64a 60%,#cf9e2a 100%);transition:width .5s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 6px rgba(240,200,90,.4)}
+  .eo-cell .bar .odd{background:linear-gradient(135deg,#eef0f5 0%,#aab0bd 60%,#7c8290 100%);transition:width .5s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 6px rgba(170,176,189,.3)}
+
+  /* Bottom meta — z-score + payout in compact mono */
+  .eo-cell .meta{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.06em;font-weight:700;line-height:1}
+  .eo-cell .meta .z{color:var(--text)}
+  .eo-cell .meta .z.warn{color:var(--amber)}
+  .eo-cell .meta .pay{color:var(--faint)}
+  .eo-cell.here .meta .pay{color:var(--amber)}
+
+  /* Warming state — first 30 ticks. Subtle progress fill, muted text. */
   .eo-cell.warm .bar{background:rgba(255,255,255,.04)}
-  .eo-cell.warm .warming{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(54,214,200,.18),rgba(54,214,200,.55));border-radius:4px;transition:width .4s ease}
-  .eo-cell.warm .big .pct{font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.06em}
+  .eo-cell.warm .warming{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(54,214,200,.25),rgba(54,214,200,.6));border-radius:3px;transition:width .5s ease;box-shadow:0 0 8px rgba(54,214,200,.35)}
+  .eo-cell.warm .big .pct{font-family:var(--mono);font-size:13px;color:var(--faint);font-weight:700;letter-spacing:.06em;text-shadow:none}
   .eo-cell.warm .big .side{color:var(--faint);opacity:.7}
   .eo-cell.warm .meta{color:var(--faint);opacity:.7}
 
@@ -451,7 +481,7 @@
   /* Start button + slim "stop" ghost beside it (cancels every server-side
      auto flag in one tap — calm UX, no scary banner). */
   .eo-go-row{display:flex;gap:9px;align-items:stretch}
-  .eo-go{flex:1;min-width:0;padding:14px;border:0;border-radius:13px;font-family:var(--serif);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;box-shadow:0 18px 46px -16px rgba(212,184,122,.65);transition:transform .12s,filter .12s}
+  .eo-go{position:relative;flex:1;min-width:0;padding:14px;border:0;border-radius:13px;font-family:var(--serif);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;box-shadow:0 18px 46px -16px rgba(212,184,122,.65);transition:background .25s ease,box-shadow .35s ease,transform .12s,filter .12s}
   .eo-stop-ghost{flex:0 0 auto;padding:0 16px;border:1px solid var(--bd);border-radius:13px;background:rgba(0,0,0,.28);color:var(--dim);font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:lowercase;cursor:pointer;transition:all .15s ease}
   .eo-stop-ghost:hover{border-color:rgba(255,120,140,.45);color:#ff9aac;background:rgba(226,58,82,.10)}
   .eo-stop-ghost:active{transform:scale(.96)}
@@ -459,8 +489,38 @@
   /* legacy single-button rule below is shadowed by .eo-go-row .eo-go above */
   .eo-go-legacy-marker{display:none}
   .eo-go:hover{filter:brightness(1.06)} .eo-go:active{transform:scale(.985)}
-  .eo-go.running{background:linear-gradient(135deg,#13502c 0%,#46cf9e 55%,#1f8a5a);color:#04200f;box-shadow:0 18px 46px -14px rgba(70,207,158,.55);animation:eo-go-pulse 1.6s ease-in-out infinite}
-  @keyframes eo-go-pulse{0%,100%{box-shadow:0 18px 46px -14px rgba(70,207,158,.45)}50%{box-shadow:0 18px 54px -10px rgba(70,207,158,.75)}}
+  /* RUNNING state — continuous bright green glow + outward halo pulse.
+     Halo is a ::before pseudo-element so it doesn't affect layout. When the
+     .running class is removed (manual stop / TP / SL / streak limit), the
+     glow + halo disappear immediately. */
+  .eo-go.running{
+    background:linear-gradient(135deg,#13502c 0%,#46cf9e 55%,#1f8a5a);
+    color:#04200f;
+    box-shadow:
+      0 0 0 1px rgba(70,207,158,.55) inset,
+      0 0 22px rgba(70,207,158,.85),
+      0 0 60px rgba(70,207,158,.55),
+      0 18px 50px -12px rgba(70,207,158,.7);
+    animation:eo-go-glow 2s ease-in-out infinite;
+  }
+  @keyframes eo-go-glow{
+    0%,100%{box-shadow:0 0 0 1px rgba(70,207,158,.55) inset, 0 0 22px rgba(70,207,158,.75), 0 0 60px rgba(70,207,158,.45), 0 18px 50px -12px rgba(70,207,158,.6)}
+    50%   {box-shadow:0 0 0 1px rgba(70,207,158,.75) inset, 0 0 30px rgba(70,207,158,1),   0 0 76px rgba(70,207,158,.7),  0 18px 60px -8px  rgba(70,207,158,.85)}
+  }
+  /* Outer halo ring — expands outward and fades, on loop. */
+  .eo-go.running::before{
+    content:"";
+    position:absolute;
+    inset:-3px;
+    border-radius:15px;
+    border:2px solid rgba(70,207,158,.5);
+    pointer-events:none;
+    animation:eo-go-ring 2.4s ease-out infinite;
+  }
+  @keyframes eo-go-ring{
+    0%  {transform:scale(1);    opacity:.85}
+    100%{transform:scale(1.10); opacity:0}
+  }
   .eo-status{margin-top:11px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--dim);letter-spacing:.04em}
   .eo-status b{color:var(--text)}
 
@@ -1720,7 +1780,7 @@ const _EO_BAND_FAST     = ["1HZ10V","1HZ25V","1HZ50V","1HZ75V","1HZ100V"];
 
 function _eoCellHTML(m, bestPayoutSym, currentSym){
   if(!m){
-    return '<div class="eo-cell warm" style="opacity:.3;cursor:default"><div class="top"><span class="sym">—</span></div></div>';
+    return '<div class="eo-cell warm" style="opacity:.25;cursor:default"><div class="top"><span class="sym">—</span></div></div>';
   }
   const evp = (m.even_pct != null) ? Math.round(m.even_pct) : null;
   const odp = (evp != null) ? 100 - evp : null;
@@ -1734,25 +1794,28 @@ function _eoCellHTML(m, bestPayoutSym, currentSym){
   const isBestPayout = (bestPayoutSym && m.symbol === bestPayoutSym);
   // Compact name: drop the "Vol " prefix for tighter cells (Vol 100 → 100).
   const shortName = (m.name || m.symbol).replace(/^Vol\s+/, "").replace(/\s*\(1s\)$/, "");
-  const mark = isHere ? '<span class="mark" title="trading here">✓</span>'
+  // Live tick pulse dot — small green/amber dot next to the market name.
+  const tickDot = '<span class="tick-live" title="streaming"></span>';
+  // Top-right marker — ✓ for trading-here, 💰 for best payout.
+  const mark = isHere ? '<span class="mark" style="color:var(--amber)" title="trading here">✓</span>'
               : isBestPayout ? '<span class="mark" title="best payout">💰</span>'
               : '';
-  // The dominant side + its % — big serif number is the "headline" read.
-  const sideLab = ready ? (leanEven ? "EVEN" : "ODD") : "WARM";
+  // Headline — side label small, % big in serif.
+  const sideLab = ready ? (leanEven ? "EVEN" : "ODD") : "WARMING";
   const sidePct = ready ? (leanEven ? evp : odp) : (m.ticks||0);
   const sideHtml = ready
-    ? '<div class="big"><span class="side">'+sideLab+'</span><span class="pct">'+sidePct+'%</span></div>'
+    ? '<div class="big"><span class="side">'+sideLab+'</span><span class="pct">'+sidePct+'<span style="font-size:.55em;letter-spacing:.04em;margin-left:1px">%</span></span></div>'
     : '<div class="big"><span class="side">WARMING</span><span class="pct">'+(m.ticks||0)+'/30</span></div>';
   const bar = ready
     ? '<div class="bar"><span class="even" style="width:'+evp+'%"></span><span class="odd" style="width:'+odp+'%"></span></div>'
     : '<div class="bar"><span class="warming" style="width:'+Math.min(100,Math.round((m.ticks||0)/30*100))+'%"></span></div>';
   const zClass = Math.abs(z) >= 2 ? "z warn" : "z";
   const meta = ready
-    ? '<div class="meta"><span class="'+zClass+'">z '+(z>=0?'+':'')+z.toFixed(1)+'</span><span>'+(m.payout_pct!=null?Number(m.payout_pct).toFixed(1)+'%':'—')+'</span></div>'
-    : '<div class="meta"><span>collecting</span><span>'+(m.ticks||0)+' ticks</span></div>';
+    ? '<div class="meta"><span class="'+zClass+'">z '+(z>=0?'+':'')+z.toFixed(1)+'</span><span class="pay">'+(m.payout_pct!=null?Number(m.payout_pct).toFixed(1)+'%':'—')+'</span></div>'
+    : '<div class="meta"><span>collecting</span><span>'+(m.ticks||0)+'t</span></div>';
   return ''
     +'<div class="eo-cell '+tier+(ready?' ready':' warm')+leanClass+(isHere?' here':'')+'" data-sym="'+esc(m.symbol)+'" title="'+esc(m.name||m.symbol)+'">'
-    +'  <div class="top"><span class="sym">'+esc(shortName)+'</span>'+mark+'</div>'
+    +'  <div class="top"><span class="sym">'+esc(shortName)+tickDot+'</span>'+mark+'</div>'
     +    sideHtml
     +    bar
     +    meta
@@ -1770,14 +1833,27 @@ async function loadEoScan(){
     const bestPayoutSym = (d.best_payout || d.best || {}).symbol || null;
     const cur = ($("t-symbol")||{}).value || null;
     const readyCount = (d.markets || []).filter(m=>m.ready).length;
+    // Find the strongest lean across all markets for the header headline.
+    let strongest = null;
+    (d.markets || []).forEach(m => {
+      if(!m.ready || m.even_pct == null) return;
+      const pct = Math.max(m.even_pct, 100 - m.even_pct);
+      if(!strongest || pct > strongest.pct){
+        strongest = { name: (m.name||m.symbol).replace(/^Vol\s+/,""), side: m.even_pct >= 50 ? "EVEN" : "ODD", pct: Math.round(pct) };
+      }
+    });
+    const strongestTxt = strongest ? "strongest: "+strongest.side+" "+strongest.pct+"% on "+esc(strongest.name) : "no clear lean yet";
     const head = ''
       +'<div class="eo-scan-head">'
-      +'  <div class="eo-scan-title">📡 Even / Odd confidence scanner <span class="faint">10 markets at a glance</span></div>'
-      +'  <div class="eo-scan-meta faint">'+readyCount+'/10 ready · tap any to switch</div>'
+      +'  <div>'
+      +'    <div class="eo-scan-title"><span class="ic">📡</span>Even / Odd Intelligence<span class="faint">· 10-market scan</span></div>'
+      +'    <div style="font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:5px;letter-spacing:.04em">'+strongestTxt+'</div>'
+      +'  </div>'
+      +'  <div class="eo-scan-meta">'+readyCount+'/10 ready · tap to switch</div>'
       +'</div>'
-      +'<div class="eo-band-lab">Standard volatilities (2-sec)</div>'
+      +'<div class="eo-band-lab">2-second band</div>'
       +'<div class="eo-grid">'+_EO_BAND_STANDARD.map(s=>_eoCellHTML(bySym[s], bestPayoutSym, cur)).join("")+'</div>'
-      +'<div class="eo-band-lab">1-second volatilities</div>'
+      +'<div class="eo-band-lab">1-second band</div>'
       +'<div class="eo-grid">'+_EO_BAND_FAST.map(s=>_eoCellHTML(bySym[s], bestPayoutSym, cur)).join("")+'</div>';
     el.innerHTML = head;
     el.querySelectorAll(".eo-cell[data-sym]").forEach(c => c.addEventListener("click", () => {
