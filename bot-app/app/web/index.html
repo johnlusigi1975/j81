@@ -470,6 +470,87 @@
   .eo-signal-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
   .eo-signal-meta b{color:var(--text);font-weight:800}
   .eo-signal-meta .thr-lab{font-size:10px}
+  /* === Premium toast notification system (top-right slide-in) === */
+  .toast-host{position:fixed;top:14px;right:14px;z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:min(380px,calc(100vw - 28px))}
+  .toast{pointer-events:auto;display:flex;align-items:flex-start;gap:11px;padding:11px 13px 11px 11px;border:1px solid var(--bd);border-radius:13px;background:linear-gradient(135deg,rgba(20,28,40,.95),rgba(0,0,0,.92));box-shadow:0 18px 40px -14px rgba(0,0,0,.65), 0 0 0 1px rgba(212,184,122,.18) inset;font-family:var(--mono);font-size:12px;letter-spacing:.02em;color:var(--text);min-width:240px;animation:toast-in .35s cubic-bezier(.18,.96,.30,1) 1;position:relative;overflow:hidden}
+  .toast.win{border-color:rgba(70,207,158,.50);box-shadow:0 18px 40px -14px rgba(70,207,158,.40), 0 0 0 1px rgba(70,207,158,.30) inset}
+  .toast.loss{border-color:rgba(255,120,140,.50);box-shadow:0 18px 40px -14px rgba(226,58,82,.35), 0 0 0 1px rgba(226,58,82,.28) inset}
+  .toast.warn{border-color:rgba(212,184,122,.55);box-shadow:0 18px 40px -14px rgba(212,184,122,.40), 0 0 0 1px rgba(212,184,122,.32) inset}
+  .toast.info{border-color:rgba(180,200,255,.40);box-shadow:0 18px 40px -14px rgba(120,160,255,.25), 0 0 0 1px rgba(140,180,255,.25) inset}
+  .toast.out{animation:toast-out .3s ease-in 1 forwards}
+  @keyframes toast-in{0%{transform:translateX(120%);opacity:0}100%{transform:translateX(0);opacity:1}}
+  @keyframes toast-out{0%{transform:translateX(0);opacity:1}100%{transform:translateX(120%);opacity:0}}
+  .toast-ic{flex:0 0 auto;font-size:18px;line-height:1;margin-top:1px}
+  .toast.win .toast-ic,.toast.win .toast-title{color:#6ff0a8}
+  .toast.loss .toast-ic,.toast.loss .toast-title{color:#ff9aac}
+  .toast.warn .toast-ic,.toast.warn .toast-title{color:var(--amber)}
+  .toast.info .toast-ic,.toast.info .toast-title{color:#9ec3ff}
+  .toast-body{flex:1;min-width:0}
+  .toast-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--amber);margin-bottom:2px}
+  .toast-msg{color:var(--text);font-size:11.5px;line-height:1.4}
+  .toast-close{flex:0 0 auto;background:transparent;border:0;color:var(--faint);font-size:18px;line-height:1;cursor:pointer;padding:0 0 0 4px;font-weight:300}
+  .toast-close:hover{color:var(--text)}
+  .toast::after{content:"";position:absolute;left:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--amber),transparent);animation:toast-bar 4s linear 1}
+  .toast.win::after{background:linear-gradient(90deg,#6ff0a8,transparent)}
+  .toast.loss::after{background:linear-gradient(90deg,#ff9aac,transparent)}
+  @keyframes toast-bar{0%{width:100%}100%{width:0}}
+  /* === Keyboard shortcuts help overlay === */
+  .kbd-help{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;animation:kbd-fade .25s ease 1}
+  @keyframes kbd-fade{0%{opacity:0}100%{opacity:1}}
+  .kbd-help-card{max-width:420px;width:100%;padding:22px 24px;border:1px solid var(--bd2);border-radius:18px;background:linear-gradient(135deg,rgba(20,28,40,.96),rgba(0,0,0,.95));box-shadow:0 30px 80px -20px rgba(0,0,0,.7), 0 0 0 1px rgba(212,184,122,.22) inset}
+  .kbd-help-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:11px;border-bottom:1px solid var(--bd)}
+  .kbd-help-title{font-family:var(--serif);font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.01em}
+  .kbd-help-close{background:transparent;border:0;color:var(--faint);font-size:26px;line-height:1;cursor:pointer;padding:0 4px}
+  .kbd-help-close:hover{color:var(--text)}
+  .kbd-help-row{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:12px;padding:7px 0;font-family:var(--mono);font-size:12px;color:var(--dim);border-top:1px solid rgba(255,255,255,.04)}
+  .kbd-help-row:first-of-type{border-top:0}
+  .kbd-help-row kbd{display:inline-block;padding:4px 10px;background:linear-gradient(135deg,rgba(212,184,122,.20),rgba(212,184,122,.08));border:1px solid rgba(212,184,122,.35);border-radius:6px;color:var(--amber);font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;text-align:center;box-shadow:0 2px 0 rgba(212,184,122,.20)}
+  .kbd-help-row span{color:var(--text)}
+  /* === API health pulse in nav === */
+  .api-pulse{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--bd);border-radius:8px;background:rgba(0,0,0,.32);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--dim);margin-right:6px;transition:all .25s ease}
+  .api-pulse-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);transition:all .25s ease}
+  .api-pulse.good .api-pulse-dot{background:var(--good);box-shadow:0 0 6px var(--good);animation:eo-tick-pulse 1.6s ease-in-out infinite}
+  .api-pulse.slow .api-pulse-dot{background:var(--amber);box-shadow:0 0 6px var(--amber);animation:eo-tick-pulse 1.6s ease-in-out infinite}
+  .api-pulse.bad .api-pulse-dot{background:var(--bad);box-shadow:0 0 6px var(--bad)}
+  .api-pulse.good{border-color:rgba(70,207,158,.30);color:var(--good)}
+  .api-pulse.slow{border-color:rgba(212,184,122,.30);color:var(--amber)}
+  .api-pulse.bad{border-color:rgba(255,120,140,.30);color:#ff9aac}
+  @media(max-width:560px){.api-pulse-lat{display:none}.api-pulse{padding:4px 5px}}
+  /* === Risk Position Gauge — shows session P/L between -SL and +TP === */
+  .risk-gauge{margin:9px 0 13px;padding:9px 12px;border:1px solid var(--bd);border-radius:12px;background:linear-gradient(135deg,rgba(20,28,40,.30),rgba(0,0,0,.20))}
+  .risk-gauge-head{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+  .risk-gauge-head .risk-gauge-tag{color:var(--amber);font-weight:800;letter-spacing:.14em}
+  .risk-gauge-head .risk-gauge-val{color:var(--text);font-family:var(--mono);font-size:11.5px;letter-spacing:.02em;text-transform:none}
+  .risk-gauge-track{position:relative;height:14px;border-radius:8px;background:linear-gradient(90deg,rgba(226,58,82,.18) 0%,rgba(226,58,82,.08) 40%,rgba(255,255,255,.04) 50%,rgba(70,207,158,.08) 60%,rgba(70,207,158,.18) 100%);overflow:hidden}
+  .risk-gauge-track .risk-zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.35)}
+  .risk-gauge-track .risk-fill-pos{position:absolute;left:50%;top:0;bottom:0;background:linear-gradient(90deg,rgba(70,207,158,.45),rgba(70,207,158,.85));border-radius:0 8px 8px 0;transition:width .35s ease}
+  .risk-gauge-track .risk-fill-neg{position:absolute;right:50%;top:0;bottom:0;background:linear-gradient(270deg,rgba(226,58,82,.45),rgba(226,58,82,.85));border-radius:8px 0 0 8px;transition:width .35s ease}
+  .risk-gauge-track .risk-marker{position:absolute;top:-3px;width:4px;height:20px;background:linear-gradient(180deg,#ecd9a8,#d4b87a 55%,#b9985a);border-radius:2px;box-shadow:0 0 8px rgba(212,184,122,.7);transform:translateX(-2px);transition:left .35s ease}
+  .risk-gauge-marks{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.04em}
+  .risk-gauge-marks .risk-mark-tp{color:var(--good);font-weight:800}
+  .risk-gauge-marks .risk-mark-sl{color:#ff9aac;font-weight:800}
+  /* === Composite Confidence Score — prominent ring in the live signal head === */
+  .eo-signal-bias{position:relative}
+  .conf-score{display:flex;align-items:center;gap:7px;margin-top:5px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+  .conf-score .conf-num{font-family:var(--serif);font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;padding:1px 7px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.30);min-width:36px;text-align:center;transition:all .35s ease}
+  .conf-score.high .conf-num{border-color:rgba(70,207,158,.45);background:linear-gradient(135deg,rgba(70,207,158,.13),rgba(70,207,158,.02));color:#6ff0a8;box-shadow:0 0 0 1px rgba(70,207,158,.18) inset}
+  .conf-score.mid  .conf-num{border-color:rgba(212,184,122,.35);background:rgba(212,184,122,.06);color:var(--amber)}
+  .conf-score.low  .conf-num{border-color:rgba(255,120,140,.30);background:rgba(226,58,82,.06);color:#ff9aac}
+  /* === Per-market W/L session memory pill on candidate cards === */
+  .brain-cand .cand-mem{display:flex;gap:5px;align-items:center;font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+  .brain-cand .cand-mem .cm-w{color:#6ff0a8;font-weight:800}
+  .brain-cand .cand-mem .cm-l{color:#ff9aac;font-weight:800}
+  .brain-cand .cand-mem .cm-empty{color:var(--faint)}
+  /* === Auto-cooldown banner (after SL hit) === */
+  .cooldown-banner{margin:9px 0 13px;padding:11px 14px;border:1px solid rgba(226,58,82,.40);border-radius:13px;background:linear-gradient(135deg,rgba(226,58,82,.10),rgba(226,58,82,.02));display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:12px;color:var(--text);position:relative;overflow:hidden;animation:cooldown-pulse 2s ease-in-out infinite}
+  @keyframes cooldown-pulse{0%,100%{box-shadow:0 0 0 0 rgba(226,58,82,.0)}50%{box-shadow:0 0 0 8px rgba(226,58,82,.06)}}
+  .cooldown-banner .cool-ic{font-size:18px;flex:0 0 auto}
+  .cooldown-banner .cool-msg{flex:1;min-width:0}
+  .cooldown-banner .cool-msg b{color:#ff9aac;font-weight:800}
+  .cooldown-banner .cool-msg .cool-sub{display:block;color:var(--faint);font-size:10.5px;margin-top:2px;letter-spacing:.04em}
+  .cooldown-banner .cool-count{font-family:var(--serif);font-size:24px;font-weight:800;color:#ff9aac;letter-spacing:-.02em;min-width:38px;text-align:right}
+  .cooldown-banner .cool-skip{background:rgba(0,0,0,.36);border:1px solid var(--bd);color:var(--dim);padding:6px 12px;border-radius:8px;font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.06em;cursor:pointer;text-transform:uppercase}
+  .cooldown-banner .cool-skip:hover{border-color:var(--text);color:var(--text)}
   /* === Trading-brain live console — heartbeat + candidates strip + decision log. */
   .brain-console{margin:11px 0 13px;padding:11px 13px;border:1px solid rgba(212,184,122,.28);border-radius:13px;background:linear-gradient(135deg,rgba(212,184,122,.07),rgba(20,28,40,.20));position:relative;overflow:hidden}
   .brain-console::before{content:"";position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,184,122,.10),transparent);animation:brain-sweep 5s ease-in-out infinite;pointer-events:none}
@@ -876,15 +957,41 @@
 
 <div id="money-bg" aria-hidden="true"></div>
 
+<!-- ── TOAST NOTIFICATION HOST ──────────────────────────────────────────
+     Premium top-right toast feed. Used for fire/settle/cooldown alerts
+     and keyboard-shortcut feedback. Toasts auto-dismiss after 4s and
+     slide out gracefully. -->
+<div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+<!-- ── KEYBOARD SHORTCUTS HELP OVERLAY (toggled with ?) ──────────────── -->
+<div id="kbd-help" class="kbd-help" hidden>
+  <div class="kbd-help-card">
+    <div class="kbd-help-head">
+      <span class="kbd-help-title">Keyboard shortcuts</span>
+      <button class="kbd-help-close" type="button" onclick="document.getElementById('kbd-help').hidden=true">×</button>
+    </div>
+    <div class="kbd-help-row"><kbd>Space</kbd><span>Start / stop the active auto-trader</span></div>
+    <div class="kbd-help-row"><kbd>Esc</kbd><span>Emergency stop — kills every running auto</span></div>
+    <div class="kbd-help-row"><kbd>1</kbd><span>Switch to Even/Odd</span></div>
+    <div class="kbd-help-row"><kbd>2</kbd><span>Switch to Rise/Fall</span></div>
+    <div class="kbd-help-row"><kbd>3</kbd><span>Switch to Over/Under</span></div>
+    <div class="kbd-help-row"><kbd>?</kbd><span>Show this overlay</span></div>
+  </div>
+</div>
+
 <nav class="nav"><div class="nav-in">
   <button class="navbtn" id="nav-back" hidden onclick="navBack()" title="Back" style="margin-right:6px;padding:6px 11px">← Back</button>
   <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
+  <!-- API health pulse — green/amber/red dot showing live API connectivity.
+       Pings /version every 12s; latency is shown on hover. -->
+  <span class="api-pulse" id="api-pulse" title="API connection status"><span class="api-pulse-dot"></span><span class="api-pulse-lat" id="api-pulse-lat">—</span></span>
   <span class="chip" id="nav-member" hidden title="Your membership" style="color:var(--amber);border-color:var(--bd2)"></span>
   <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
   <span class="chip" id="nav-session" hidden title="Deriv sessions last ~1 hour. Reconnect when it runs out." style="cursor:pointer" onclick="startDeriv()"></span>
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="startDeriv()">Connect with Deriv</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
+  <button class="navbtn" id="nav-help" type="button" title="Keyboard shortcuts (?)" onclick="document.getElementById('kbd-help').hidden=false" style="padding:6px 11px">?</button>
   <button class="navbtn" id="nav-exit" hidden onclick="logout()">Log out</button>
 </div></nav>
 
@@ -1226,6 +1333,10 @@
           <div class="eo-signal-bias" id="eo-signal-bias">
             <span class="eo-signal-side" id="eo-signal-side">—</span>
             <span class="eo-signal-pct" id="eo-signal-pct">—%</span>
+            <!-- Composite confidence — blends lean magnitude + multi-window
+                 agreement + z-score into a single 0-100 score. The trader's
+                 single-glance "should I trust this?" indicator. -->
+            <div class="conf-score" id="eo-conf-score"><span>confidence</span><span class="conf-num" id="eo-conf-num">—</span></div>
           </div>
         </div>
         <div class="eo-signal-bar">
@@ -1320,6 +1431,27 @@
             <button type="button" data-step="+1" data-tgt="eo-sl">+</button>
           </div>
           <div class="eo-fill danger"><i id="eo-sl-fill"></i></div>
+        </div>
+      </div>
+
+      <!-- ── RISK POSITION GAUGE — visual representation of where the
+           session P/L sits between -SL and +TP. The gold marker glides
+           toward whichever boundary the trader is approaching. -->
+      <div class="risk-gauge">
+        <div class="risk-gauge-head">
+          <span class="risk-gauge-tag">Risk position</span>
+          <span class="risk-gauge-val" id="eo-risk-val">$0.00 · 0% of range</span>
+        </div>
+        <div class="risk-gauge-track">
+          <div class="risk-zero"></div>
+          <div class="risk-fill-neg" id="eo-risk-neg" style="width:0"></div>
+          <div class="risk-fill-pos" id="eo-risk-pos" style="width:0"></div>
+          <div class="risk-marker" id="eo-risk-marker" style="left:50%"></div>
+        </div>
+        <div class="risk-gauge-marks">
+          <span class="risk-mark-sl">SL $<b id="eo-risk-sl-lab">—</b></span>
+          <span>break-even</span>
+          <span class="risk-mark-tp">TP $<b id="eo-risk-tp-lab">—</b></span>
         </div>
       </div>
 
@@ -1499,6 +1631,13 @@
         </div>
       </div>
 
+      <!-- Risk Position Gauge (see EO) -->
+      <div class="risk-gauge">
+        <div class="risk-gauge-head"><span class="risk-gauge-tag">Risk position</span><span class="risk-gauge-val" id="rf-risk-val">$0.00 · 0% of range</span></div>
+        <div class="risk-gauge-track"><div class="risk-zero"></div><div class="risk-fill-neg" id="rf-risk-neg" style="width:0"></div><div class="risk-fill-pos" id="rf-risk-pos" style="width:0"></div><div class="risk-marker" id="rf-risk-marker" style="left:50%"></div></div>
+        <div class="risk-gauge-marks"><span class="risk-mark-sl">SL $<b id="rf-risk-sl-lab">—</b></span><span>break-even</span><span class="risk-mark-tp">TP $<b id="rf-risk-tp-lab">—</b></span></div>
+      </div>
+
       <!-- ENGINE -->
       <div class="eo-section-lab">Engine</div>
       <div class="eo-row">
@@ -1672,6 +1811,13 @@
           </div>
           <div class="eo-fill danger"><i id="ou-sl-fill"></i></div>
         </div>
+      </div>
+
+      <!-- Risk Position Gauge (see EO) -->
+      <div class="risk-gauge">
+        <div class="risk-gauge-head"><span class="risk-gauge-tag">Risk position</span><span class="risk-gauge-val" id="ou-risk-val">$0.00 · 0% of range</span></div>
+        <div class="risk-gauge-track"><div class="risk-zero"></div><div class="risk-fill-neg" id="ou-risk-neg" style="width:0"></div><div class="risk-fill-pos" id="ou-risk-pos" style="width:0"></div><div class="risk-marker" id="ou-risk-marker" style="left:50%"></div></div>
+        <div class="risk-gauge-marks"><span class="risk-mark-sl">SL $<b id="ou-risk-sl-lab">—</b></span><span>break-even</span><span class="risk-mark-tp">TP $<b id="ou-risk-tp-lab">—</b></span></div>
       </div>
 
       <!-- ENGINE -->
@@ -2005,9 +2151,16 @@ function _brainRenderCands(kind, cands){
     const sym = String(c.symbol||"").replace(/"/g,'');
     const name = (c.name || c.symbol || "?");
     const side = String(c.side||"").toUpperCase();
+    // Per-market memory: render W/L tally if we've traded this market in
+    // this session, otherwise show "fresh" hint.
+    const mem = _marketMemFor(kind, sym);
+    const memHtml = mem
+      ? '<div class="cand-mem"><span class="cm-w">W'+mem.w+'</span><span class="cm-l">L'+mem.l+'</span></div>'
+      : '<div class="cand-mem"><span class="cm-empty">fresh market</span></div>';
     return '<div class="brain-cand'+(isTop?" top":"")+'" data-sym="'+sym+'">'+
              '<span class="cand-mkt">'+esc(name)+'</span>'+
              '<span class="cand-val">'+(c.pct||0)+'% '+esc(side)+'</span>'+
+             memHtml+
            '</div>';
   }).join("");
 }
@@ -2018,17 +2171,221 @@ function _brainFireCand(kind, symbol){
   card.classList.remove("fire"); void card.offsetWidth; card.classList.add("fire");
   setTimeout(()=>card.classList.remove("fire"), 800);
 }
-// Pretty-formatter for trade results in the log.
-function _brainLogResult(kind, outcome, profit, streak){
+// Pretty-formatter for trade results in the log. Also records to the
+// per-market memory + fires a toast for the high-emotion events (win/loss).
+function _brainLogResult(kind, outcome, profit, streak, symbol, market){
   const o = (outcome||"").toLowerCase();
   if(profit > 0 || o === "won"){
     _brainPush(kind, "✓", "WON +$"+Number(profit||0).toFixed(2)+" · streak reset", "win");
+    if(symbol) _marketMemRecord(kind, symbol, "won", profit);
+    toast({kind:"win", title:"Trade won", msg:"+$"+Number(profit||0).toFixed(2)+(market?" on "+market:""), icon:"✓"});
   } else if(profit < 0 || o === "lost"){
     _brainPush(kind, "✗", "LOST −$"+Math.abs(Number(profit||0)).toFixed(2)+" · streak "+(streak||0), "loss");
+    if(symbol) _marketMemRecord(kind, symbol, "lost", profit);
+    toast({kind:"loss", title:"Trade lost", msg:"−$"+Math.abs(Number(profit||0)).toFixed(2)+(market?" on "+market:"")+" · streak "+(streak||0), icon:"✗"});
   } else {
     _brainPush(kind, "·", "settled · "+(outcome||"unknown"), "");
   }
 }
+
+// ===================================================================
+// RISK POSITION GAUGE — updates the bar showing where session P/L sits
+// between -SL and +TP. Marker glides smoothly toward whichever line
+// the trader is approaching.
+// ===================================================================
+function _renderRiskGauge(kind, pnl, tp, sl){
+  const val   = document.getElementById(kind+"-risk-val");
+  const pos   = document.getElementById(kind+"-risk-pos");
+  const neg   = document.getElementById(kind+"-risk-neg");
+  const mark  = document.getElementById(kind+"-risk-marker");
+  const tpLab = document.getElementById(kind+"-risk-tp-lab");
+  const slLab = document.getElementById(kind+"-risk-sl-lab");
+  if(!val || !pos || !neg || !mark) return;
+  if(tpLab) tpLab.textContent = tp > 0 ? tp.toFixed(0) : "—";
+  if(slLab) slLab.textContent = sl > 0 ? sl.toFixed(0) : "—";
+  // Range: -SL → 0 → +TP. If either is 0, treat that side as $100 default
+  // so the marker still moves (cosmetic only — the auto-stop only fires
+  // when the real TP/SL is set anyway).
+  const negRange = sl > 0 ? sl : 100;
+  const posRange = tp > 0 ? tp : 100;
+  let pctOfRange = 0;
+  let leftPct = 50;
+  if(pnl > 0){
+    const f = Math.min(1, pnl / posRange);
+    leftPct = 50 + (50 * f);
+    pos.style.width = (50 * f) + "%";
+    neg.style.width = "0";
+    pctOfRange = Math.round(f * 100);
+  } else if(pnl < 0){
+    const f = Math.min(1, Math.abs(pnl) / negRange);
+    leftPct = 50 - (50 * f);
+    neg.style.width = (50 * f) + "%";
+    pos.style.width = "0";
+    pctOfRange = -Math.round(f * 100);
+  } else {
+    pos.style.width = "0";
+    neg.style.width = "0";
+  }
+  mark.style.left = leftPct + "%";
+  const sign = pnl >= 0 ? "+$" : "−$";
+  val.innerHTML = sign + Math.abs(pnl).toFixed(2) + " · " +
+                  (pctOfRange === 0 ? "at break-even" :
+                   pctOfRange > 0 ? pctOfRange + "% toward TP" :
+                                    Math.abs(pctOfRange) + "% toward SL");
+}
+
+// ===================================================================
+// PER-MARKET SESSION MEMORY — keeps a tally of wins/losses per market
+// per controller per session. Shown in brain candidate pills as W:n L:n
+// to give the trader contextual memory of which markets have worked.
+// ===================================================================
+const _MARKET_MEM = {eo:{}, rf:{}, ou:{}};
+function _marketMemRecord(kind, symbol, outcome, profit){
+  if(!symbol) return;
+  const bag = _MARKET_MEM[kind] || (_MARKET_MEM[kind] = {});
+  const cell = bag[symbol] || (bag[symbol] = {w:0, l:0});
+  if(profit > 0 || outcome === "won") cell.w += 1;
+  else if(profit < 0 || outcome === "lost") cell.l += 1;
+}
+function _marketMemReset(kind){ _MARKET_MEM[kind] = {}; }
+function _marketMemFor(kind, symbol){
+  const bag = _MARKET_MEM[kind]; if(!bag) return null;
+  return bag[symbol] || null;
+}
+
+// ===================================================================
+// AUTO-COOLDOWN AFTER STOP-LOSS — when a controller hits its SL, we
+// inject a 60s mandatory cooldown banner above the Start button so the
+// trader can't immediately re-fire on emotion. Skippable but visible.
+// ===================================================================
+const _COOLDOWN = {eo:null, rf:null, ou:null};
+function _cooldownStart(kind, seconds){
+  seconds = Math.max(15, Math.min(300, seconds||60));
+  if(_COOLDOWN[kind]) _cooldownStop(kind);
+  const panel = document.getElementById(kind+"-auto"); if(!panel) return;
+  // Don't double-add
+  if(panel.querySelector(".cooldown-banner")) return;
+  const banner = document.createElement("div");
+  banner.className = "cooldown-banner";
+  banner.id = kind+"-cooldown";
+  banner.innerHTML = '<span class="cool-ic">🛑</span>'+
+    '<div class="cool-msg"><b>Cooldown active</b> — desk paused after stop-loss <span class="cool-sub">Step away briefly so you don\'t chase the loss. Re-engage with a clear head.</span></div>'+
+    '<span class="cool-count" id="'+kind+'-cool-count">'+seconds+'</span>'+
+    '<button class="cool-skip" type="button">Skip</button>';
+  // Insert at the top of the auto panel (right after the signal radar)
+  const sig = panel.querySelector(".eo-signal");
+  if(sig && sig.nextSibling) panel.insertBefore(banner, sig.nextSibling);
+  else panel.insertBefore(banner, panel.firstChild);
+  banner.querySelector(".cool-skip").addEventListener("click", ()=>_cooldownStop(kind, true));
+  let left = seconds;
+  const count = banner.querySelector(".cool-count");
+  _COOLDOWN[kind] = setInterval(() => {
+    left -= 1;
+    if(count) count.textContent = left;
+    if(left <= 0) _cooldownStop(kind);
+  }, 1000);
+}
+function _cooldownStop(kind, manualSkip){
+  if(_COOLDOWN[kind]){ clearInterval(_COOLDOWN[kind]); _COOLDOWN[kind] = null; }
+  const banner = document.getElementById(kind+"-cooldown");
+  if(banner && banner.parentNode) banner.parentNode.removeChild(banner);
+  if(manualSkip) toast({kind:"warn", title:"Cooldown skipped", msg:"You bypassed the post-SL pause. Stake responsibly."});
+}
+
+// ===================================================================
+// TOAST NOTIFICATION SYSTEM — top-right slide-in alerts.
+// Used for trade-settled events, cooldown warnings, kbd-shortcut hints.
+// ===================================================================
+function toast(opts){
+  // opts: {kind:"win|loss|warn|info", title, msg, icon, ttl}
+  const host = document.getElementById("toast-host"); if(!host) return;
+  const kind = opts.kind || "info";
+  const icon = opts.icon || (kind==="win"?"✓":kind==="loss"?"✗":kind==="warn"?"⚠":"ⓘ");
+  const ttl  = opts.ttl != null ? opts.ttl : 4000;
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.innerHTML = '<span class="toast-ic">'+icon+'</span>'+
+                 '<div class="toast-body">'+
+                   '<div class="toast-title">'+(opts.title||kind)+'</div>'+
+                   '<div class="toast-msg">'+(opts.msg||"")+'</div>'+
+                 '</div>'+
+                 '<button class="toast-close" type="button" aria-label="Dismiss">×</button>';
+  host.appendChild(el);
+  const dismiss = () => { el.classList.add("out"); setTimeout(()=>{ try{host.removeChild(el);}catch(_){} }, 320); };
+  el.querySelector(".toast-close").addEventListener("click", dismiss);
+  if(ttl > 0) setTimeout(dismiss, ttl);
+  return dismiss;
+}
+
+// ===================================================================
+// API HEALTH PULSE — pings /version every 12s, classifies latency
+// into good (<350ms), slow (<1200ms), bad (timeout/error).
+// ===================================================================
+async function _apiPulseTick(){
+  const pulse = document.getElementById("api-pulse");
+  const lat   = document.getElementById("api-pulse-lat");
+  if(!pulse || !lat) return;
+  const t0 = performance.now();
+  let cls = "bad", ms = -1;
+  try{
+    const r = await fetch("/version", {method:"GET", cache:"no-store"});
+    if(r.ok){
+      ms = Math.round(performance.now() - t0);
+      cls = ms < 350 ? "good" : ms < 1200 ? "slow" : "bad";
+    }
+  }catch(_){ cls = "bad"; }
+  pulse.classList.remove("good","slow","bad");
+  pulse.classList.add(cls);
+  lat.textContent = ms >= 0 ? ms+"ms" : "off";
+  pulse.title = cls==="good" ? "API healthy · "+ms+"ms"
+              : cls==="slow" ? "API slow · "+ms+"ms" : "API unreachable";
+}
+setTimeout(()=>{ try{ _apiPulseTick(); }catch(_){} }, 1200);
+setInterval(()=>{ try{ _apiPulseTick(); }catch(_){} }, 12000);
+
+// ===================================================================
+// KEYBOARD SHORTCUTS — Space (toggle), Esc (stop all), 1/2/3 (switch
+// game), ? (help overlay). Ignored while typing into inputs.
+// ===================================================================
+document.addEventListener("keydown", (ev) => {
+  // Ignore typing in inputs/textareas/selects.
+  const tag = (ev.target && ev.target.tagName || "").toLowerCase();
+  if(tag === "input" || tag === "textarea" || tag === "select" || ev.target.isContentEditable) return;
+  // Help overlay
+  if(ev.key === "?" || (ev.shiftKey && ev.key === "/")){
+    const h = document.getElementById("kbd-help"); if(h){ h.hidden = !h.hidden; }
+    ev.preventDefault(); return;
+  }
+  // Esc — close help if open; else emergency stop everything.
+  if(ev.key === "Escape"){
+    const h = document.getElementById("kbd-help");
+    if(h && !h.hidden){ h.hidden = true; ev.preventDefault(); return; }
+    let stopped = 0;
+    ["EOAuto","RFAuto","OUAuto"].forEach(name => {
+      try{ if(window[name] && window[name].running){ window[name].stop("kbd ESC"); stopped++; } }catch(_){}
+    });
+    if(stopped > 0) toast({kind:"warn", title:"Emergency stop", msg:"Stopped "+stopped+" running auto-trader"+(stopped===1?"":"s"), icon:"■"});
+    ev.preventDefault(); return;
+  }
+  // Space — toggle active controller for current game view
+  if(ev.code === "Space"){
+    const view = document.getElementById("view-trade");
+    if(view && !view.hidden && typeof GAME === "string"){
+      const ctrl = GAME === "even_odd" ? window.EOAuto : GAME === "rise_fall" ? window.RFAuto : GAME === "over_under" ? window.OUAuto : null;
+      if(ctrl && ctrl.toggle){ ctrl.toggle(); ev.preventDefault(); }
+    }
+    return;
+  }
+  // 1/2/3 switch game (only on trade view)
+  if(ev.key === "1" || ev.key === "2" || ev.key === "3"){
+    const view = document.getElementById("view-trade");
+    if(view && !view.hidden){
+      const game = ev.key === "1" ? "even_odd" : ev.key === "2" ? "rise_fall" : "over_under";
+      try{ if(typeof setGame === "function") setGame(game); }catch(_){}
+      ev.preventDefault();
+    }
+  }
+});
 // Wire each AUTO chip on click — kept in the global scope so it works after
 // the controllers boot, no matter the order of script blocks.
 (function(){
@@ -3219,6 +3576,34 @@ window.EOAuto = (function(){
       const cEl=$g("eo-cold-digit"); if(cEl) cEl.textContent = String(cold);
       const lEl=$g("eo-last-digit"); if(lEl) lEl.textContent = String(d[d.length-1]);
     }
+    // -- COMPOSITE CONFIDENCE SCORE (0–100). Blends three factors:
+    //    • lean magnitude  (50 points max) — how far above 50/50 we are
+    //    • multi-window agreement (30 points) — short/mid/long all on side
+    //    • z-score punch (20 points) — capped to keep sample-luck honest
+    // This gives the trader a single "trust score" without staring at 4 charts.
+    let conf = 0;
+    conf += Math.min(50, Math.max(0, (lead - 50) * 2.5));  // 50%→0, 70%→50
+    const winSides = [w20, w50, w200].map(v => v==null ? null : (v >= 50));
+    const valid = winSides.filter(v=>v!=null);
+    if(valid.length >= 2){
+      const allAgree = valid.every(v=>v===valid[0]);
+      conf += allAgree ? 30 : (valid.filter(v=>v===valid[0]).length === valid.length-1 ? 12 : 0);
+    }
+    // Simple z-magnitude → up to 20 pts (z=2.5+ saturates)
+    const lastDigit = d[d.length-1];
+    if(d.length >= 30){
+      const ev2 = d.filter(x=>x%2===0).length;
+      const n = d.length;
+      const z = Math.abs((2*ev2 - n) / Math.sqrt(n));
+      conf += Math.min(20, z * 8);
+    }
+    conf = Math.round(Math.max(0, Math.min(100, conf)));
+    const cs = $g("eo-conf-score"); const cn = $g("eo-conf-num");
+    if(cn) cn.textContent = conf;
+    if(cs){
+      cs.classList.remove("high","mid","low");
+      cs.classList.add(conf >= 65 ? "high" : conf >= 40 ? "mid" : "low");
+    }
   }
   // -- Quick-stake chips: one tap sets #eo-stake, triggers an input event so
   // the rest of the UI (next-stake hint etc.) refreshes. Highlights the chip
@@ -3249,6 +3634,7 @@ window.EOAuto = (function(){
     const v = S.sess.pnl;
     const tpEl=$g("eo-tp-fill"); if(tpEl){ const pct = tp>0 ? Math.max(0,Math.min(100,(v/tp)*100)) : 0; tpEl.style.width = pct.toFixed(0)+"%"; }
     const slEl=$g("eo-sl-fill"); if(slEl){ const pct = sl>0 ? Math.max(0,Math.min(100,(-v/sl)*100)) : 0; slEl.style.width = pct.toFixed(0)+"%"; }
+    try{ _renderRiskGauge("eo", v, tp, sl); }catch(_){}
   }
   function _renderDots(){
     const wrap=$g("eo-streak-dots"); if(!wrap) return;
@@ -3439,7 +3825,7 @@ window.EOAuto = (function(){
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       // Brain: log the trade outcome (win / loss / settling).
-      try{ if(outcome !== "pending") _brainLogResult("eo", outcome, profit, S.sess.streak); }catch(_){}
+      try{ if(outcome !== "pending") _brainLogResult("eo", outcome, profit, S.sess.streak, pick.symbol, pick.name); }catch(_){}
       // Auto-threshold: nudge the threshold based on session performance.
       if(S.sess.thrAuto){
         const slider = $g("eo-thr"); if(slider){
@@ -3471,6 +3857,7 @@ window.EOAuto = (function(){
       }
       if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){
         S.stop("stop-loss hit");
+        try{ _cooldownStart("eo", 60); }catch(_){}
         showPop({kind:"stop", icon:"🛑", title:"Stop-loss hit — desk paused.",
                  msg:"You reached your daily loss line. Stepping away is the win here — come back fresh.",
                  pnl: S.sess.pnl});
@@ -3493,6 +3880,8 @@ window.EOAuto = (function(){
   S.start = function(opts){
     if(S.running) return;
     if(!CUR){ showView("connect"); return; }
+    // Block re-start during the post-SL cooldown unless explicitly skipped.
+    if(_COOLDOWN.eo){ toast({kind:"warn", title:"Cooldown active", msg:"Wait or click Skip on the banner above before re-engaging."}); return; }
     // Only one auto-trader fires on the account at a time — kill anything
     // else that's running so we don't conflict.
     try{ if(window.RFAuto && window.RFAuto.running) window.RFAuto.stop("EO auto started"); }catch(_){}
@@ -3501,6 +3890,7 @@ window.EOAuto = (function(){
     // resume:true skips the sess reset so localStorage-restored sessions keep their P/L.
     if(!(opts && opts.resume)){
       S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+      try{ _marketMemReset("eo"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
@@ -3654,6 +4044,7 @@ window.RFAuto = (function(){
     const v = S.sess.pnl;
     const tpEl=$g("rf-tp-fill"); if(tpEl){ const pct = tp>0 ? Math.max(0,Math.min(100,(v/tp)*100)) : 0; tpEl.style.width = pct.toFixed(0)+"%"; }
     const slEl=$g("rf-sl-fill"); if(slEl){ const pct = sl>0 ? Math.max(0,Math.min(100,(-v/sl)*100)) : 0; slEl.style.width = pct.toFixed(0)+"%"; }
+    try{ _renderRiskGauge("rf", v, tp, sl); }catch(_){}
   }
   function _renderDots(){
     const wrap=$g("rf-streak-dots"); if(!wrap) return;
@@ -3825,7 +4216,7 @@ window.RFAuto = (function(){
         }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
-      try{ if(outcome !== "pending") _brainLogResult("rf", outcome, profit, S.sess.streak); }catch(_){}
+      try{ if(outcome !== "pending") _brainLogResult("rf", outcome, profit, S.sess.streak, pick.symbol, pick.name); }catch(_){}
       if(S.sess.thrAuto){
         const slider = $g("rf-thr"); if(slider){
           const prev = Number(slider.value);
@@ -3845,7 +4236,7 @@ window.RFAuto = (function(){
       _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
       if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){ S.stop("take-profit hit");
         showPop({kind:"win", icon:"🎉", title:"Take-profit hit!", msg:"You reached your target. Banked the win and stopped the auto-trader so the house doesn't claw it back.", pnl:S.sess.pnl}); return; }
-      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){ S.stop("stop-loss hit");
+      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){ S.stop("stop-loss hit"); try{ _cooldownStart("rf", 60); }catch(_){}
         showPop({kind:"stop", icon:"🛑", title:"Stop-loss hit — desk paused.", msg:"You reached your daily loss line. Stepping away is the win here — come back fresh.", pnl:S.sess.pnl}); return; }
       if(S.sess.streak >= cfg.maxLossStreak){ S.stop(cfg.maxLossStreak+"-loss streak");
         showPop({kind:"stop", icon:"⚠️", title:cfg.maxLossStreak+" losses in a row — desk paused.", msg:"The streak guard you set just kicked in. That's discipline working — review and adjust before restarting.", pnl:S.sess.pnl}); return; }
@@ -3855,11 +4246,13 @@ window.RFAuto = (function(){
   }
   S.start = function(opts){
     if(S.running) return; if(!CUR){ showView("connect"); return; }
+    if(_COOLDOWN.rf){ toast({kind:"warn", title:"Cooldown active", msg:"Wait or click Skip on the banner above before re-engaging."}); return; }
     try{ if(window.EOAuto && window.EOAuto.running) window.EOAuto.stop("RF auto started"); }catch(_){}
     try{ if(window.OUAuto && window.OUAuto.running) window.OUAuto.stop("RF auto started"); }catch(_){}
     S.running = true;
     if(!(opts && opts.resume)){
       S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+      try{ _marketMemReset("rf"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
@@ -4078,6 +4471,7 @@ window.OUAuto = (function(){
     const tp = parseFloat(($g("ou-tp")||{}).value)||0, sl = parseFloat(($g("ou-sl")||{}).value)||0, v = S.sess.pnl;
     const tpEl=$g("ou-tp-fill"); if(tpEl){ const pct = tp>0 ? Math.max(0,Math.min(100,(v/tp)*100)) : 0; tpEl.style.width = pct.toFixed(0)+"%"; }
     const slEl=$g("ou-sl-fill"); if(slEl){ const pct = sl>0 ? Math.max(0,Math.min(100,(-v/sl)*100)) : 0; slEl.style.width = pct.toFixed(0)+"%"; }
+    try{ _renderRiskGauge("ou", v, tp, sl); }catch(_){}
   }
   function _renderDots(){
     const wrap=$g("ou-streak-dots"); if(!wrap) return;
@@ -4261,7 +4655,7 @@ window.OUAuto = (function(){
         }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
-      try{ if(outcome !== "pending") _brainLogResult("ou", outcome, profit, S.sess.streak); }catch(_){}
+      try{ if(outcome !== "pending") _brainLogResult("ou", outcome, profit, S.sess.streak, pick.symbol, pick.name); }catch(_){}
       if(S.sess.thrAuto){
         const slider = $g("ou-thr"); if(slider){
           const prev = Number(slider.value);
@@ -4281,7 +4675,7 @@ window.OUAuto = (function(){
       _setStatus("⌗ "+tag+" · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak + martNote);
       if(cfg.tp > 0 && S.sess.pnl >= cfg.tp){ S.stop("take-profit hit");
         showPop({kind:"win", icon:"🎉", title:"Take-profit hit!", msg:"You reached your target. Banked the win and stopped the auto-trader so the house doesn't claw it back.", pnl:S.sess.pnl}); return; }
-      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){ S.stop("stop-loss hit");
+      if(cfg.sl > 0 && S.sess.pnl <= -cfg.sl){ S.stop("stop-loss hit"); try{ _cooldownStart("ou", 60); }catch(_){}
         showPop({kind:"stop", icon:"🛑", title:"Stop-loss hit — desk paused.", msg:"You reached your daily loss line. Stepping away is the win here — come back fresh.", pnl:S.sess.pnl}); return; }
       if(S.sess.streak >= cfg.maxLossStreak){ S.stop(cfg.maxLossStreak+"-loss streak");
         showPop({kind:"stop", icon:"⚠️", title:cfg.maxLossStreak+" losses in a row — desk paused.", msg:"The streak guard you set just kicked in. That's discipline working — review and adjust before restarting.", pnl:S.sess.pnl}); return; }
@@ -4291,11 +4685,13 @@ window.OUAuto = (function(){
   }
   S.start = function(opts){
     if(S.running) return; if(!CUR){ showView("connect"); return; }
+    if(_COOLDOWN.ou){ toast({kind:"warn", title:"Cooldown active", msg:"Wait or click Skip on the banner above before re-engaging."}); return; }
     try{ if(window.EOAuto && window.EOAuto.running) window.EOAuto.stop("OU auto started"); }catch(_){}
     try{ if(window.RFAuto && window.RFAuto.running) window.RFAuto.stop("OU auto started"); }catch(_){}
     S.running = true;
     if(!(opts && opts.resume)){
       S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+      try{ _marketMemReset("ou"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
