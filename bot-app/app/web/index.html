@@ -403,10 +403,18 @@
   .eo-signal-bar .over {background:linear-gradient(135deg,#ffd28a 0%,#f0a04a 60%,#c97524 100%);transition:width .35s ease}
   .eo-signal-bar .under{background:linear-gradient(135deg,#dfd4ff 0%,#9b8cff 60%,#5e4ed1 100%);transition:width .35s ease}
   /* Barrier picker chips — narrower than ticks chips (8 of them). */
-  .eo-barrier{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
-  .eo-barrier button{padding:8px 0;font-family:var(--mono);font-size:12px;font-weight:800;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s ease}
+  .eo-barrier{display:grid;grid-template-columns:1.4fr repeat(8,1fr);gap:5px}
+  .eo-barrier button{padding:8px 0;font-family:var(--mono);font-size:12px;font-weight:800;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s ease;position:relative}
   .eo-barrier button:hover{border-color:var(--bd2);color:var(--text)}
   .eo-barrier button.on{background:linear-gradient(135deg,#ffd28a,#f0a04a 55%,#c97524);color:#241c0a;border-color:transparent;box-shadow:0 6px 16px -6px rgba(255,180,90,.6)}
+  /* AUTO chip — green when active (parallels the AUTO ticks chip) */
+  .eo-barrier button[data-mode="auto"]{letter-spacing:.12em}
+  .eo-barrier button[data-mode="auto"].on{background:linear-gradient(135deg,#bff7b6,#46cf9e 55%,#1f8a5a);color:#04200f;border-color:transparent;box-shadow:0 6px 16px -6px rgba(70,207,158,.55)}
+  .eo-barrier[data-running="1"] button[data-mode="auto"].on::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-tick-pulse 1.2s ease-in-out infinite}
+  /* Auto-picked barrier highlight (gold ring) — flashes when AUTO locks on */
+  .eo-barrier button[data-mode="manual"].auto-picked{background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;border-color:transparent;box-shadow:0 8px 22px -8px rgba(212,184,122,.7), 0 0 0 1px rgba(212,184,122,.5);animation:eo-chip-picked .35s ease}
+  .eo-barrier button[data-mode="manual"].scanning{background:linear-gradient(135deg,rgba(212,184,122,.30),rgba(212,184,122,.10));color:var(--text);border-color:rgba(212,184,122,.4);transform:scale(1.04);transition:all .12s ease}
+  @media(max-width:520px){.eo-barrier{grid-template-columns:repeat(5,1fr)}.eo-barrier button[data-mode="auto"]{grid-column:1/-1}}
 
   /* Recent activity — clean ticker-style list, no debug-text feel. */
   .recent-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:22px 0 8px}
@@ -1908,19 +1916,22 @@
         <button type="button" data-preset="bold"><span class="ic">🔥</span><span class="lab">Bold</span><span class="sub">bigger swings · looser</span></button>
       </div>
 
-      <!-- BARRIER picker — sets which digit splits OVER vs UNDER -->
+      <!-- BARRIER picker — sets which digit splits OVER vs UNDER.
+           AUTO mode iterates all 8 barriers across all 10 markets every
+           cycle and locks onto the strongest (market, barrier, side). -->
       <div class="eo-section-lab">Barrier digit</div>
       <div class="eo-tile" style="margin-bottom:11px">
-        <div class="eo-tile-head"><span class="eo-tile-lab">Pick a barrier (1–8)</span><span class="eo-tile-hint">OVER wins above · UNDER wins below · 5 is balanced 50/50</span></div>
+        <div class="eo-tile-head"><span class="eo-tile-lab">Pick a barrier (1–8)</span><span class="eo-tile-hint" id="ou-barrier-hint">AUTO scans 1–8 every cycle · picks the strongest lean</span></div>
         <div class="eo-barrier" id="ou-barrier-row">
-          <button type="button" data-val="1">1</button>
-          <button type="button" data-val="2">2</button>
-          <button type="button" data-val="3">3</button>
-          <button type="button" data-val="4" class="on">4</button>
-          <button type="button" data-val="5">5</button>
-          <button type="button" data-val="6">6</button>
-          <button type="button" data-val="7">7</button>
-          <button type="button" data-val="8">8</button>
+          <button type="button" data-mode="auto" class="on" title="Auto-pick the barrier with the strongest lean each cycle">AUTO</button>
+          <button type="button" data-mode="manual" data-val="1">1</button>
+          <button type="button" data-mode="manual" data-val="2">2</button>
+          <button type="button" data-mode="manual" data-val="3">3</button>
+          <button type="button" data-mode="manual" data-val="4">4</button>
+          <button type="button" data-mode="manual" data-val="5">5</button>
+          <button type="button" data-mode="manual" data-val="6">6</button>
+          <button type="button" data-mode="manual" data-val="7">7</button>
+          <button type="button" data-mode="manual" data-val="8">8</button>
         </div>
         <input id="ou-barrier" type="hidden" value="4"/>
       </div>
@@ -4891,6 +4902,8 @@ window.OUAuto = (function(){
     const chips=$g("ou-tick-seg"); if(chips) chips.removeAttribute("data-running");
     const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–10 based on signal strength";
     const armed=$g("ou-mart-armed"); if(armed) armed.classList.remove("on");
+    const brow=$g("ou-barrier-row"); if(brow) brow.removeAttribute("data-running");
+    const bh=$g("ou-barrier-hint"); if(bh) bh.textContent = "AUTO scans 1–8 every cycle · picks the strongest lean";
   }
   function _autoTicks(lead){
     // 10-tier ladder: stronger lean → fewer ticks (mirror of EO).
@@ -4949,10 +4962,15 @@ window.OUAuto = (function(){
         ? '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire'
         : '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger'; }
   }
-  // Pick best market across all 10 using OU-specific math.
-  async function _pickBestOuMarket(threshold, barrier){
-    // No filter rejection — fire every cycle on the strongest OVER/UNDER
-    // lean for the chosen barrier. Threshold is informational only now.
+  // Read "barrier mode" — AUTO scans every barrier 1-8 across every
+  // market and locks onto the strongest combo. Manual fixes one barrier.
+  function _barrierMode(){
+    return (document.querySelector('#ou-barrier-row button.on')||{}).dataset?.mode || "auto";
+  }
+  // Pick best (market, barrier, side) triple. If mode=auto, iterates
+  // every barrier 1-8 across every market and returns the strongest.
+  // If mode=manual, uses the fixed barrier from the picker.
+  async function _pickBestOuMarket(threshold, barrierManual){
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && Array.isArray(m.freq));
@@ -4960,18 +4978,25 @@ window.OUAuto = (function(){
         _brainStatus("ou", '<b>warming up</b> · all 10 markets still gathering ticks');
         return {none:true, reason:"all 10 markets still warming up"};
       }
-      const cands = ready.map(m => {
-        const sp = _ouSplit(m.freq, barrier); if(!sp) return null;
-        const op = sp.over_pct, upPct = sp.under_pct;
-        const overWins = op >= upPct;
-        const pct = Math.round(Math.max(op, upPct));
-        const z = Math.abs(_ouZ(m.freq, barrier, overWins ? "over" : "under"));
-        return {
-          symbol:m.symbol, name:m.name||m.symbol,
-          side: overWins ? "over" : "under",
-          pct, z,
-        };
-      }).filter(Boolean);
+      const auto = _barrierMode() === "auto";
+      // Build candidates: in auto mode we expand market × barrier (8 each),
+      // in manual mode we just compute over the single chosen barrier.
+      const barriers = auto ? [1,2,3,4,5,6,7,8] : [barrierManual];
+      const cands = [];
+      for(const m of ready){
+        for(const bar of barriers){
+          const sp = _ouSplit(m.freq, bar); if(!sp) continue;
+          const op = sp.over_pct, upPct = sp.under_pct;
+          const overWins = op >= upPct;
+          const pct = Math.round(Math.max(op, upPct));
+          const z = Math.abs(_ouZ(m.freq, bar, overWins ? "over" : "under"));
+          cands.push({
+            symbol:m.symbol, name:m.name||m.symbol,
+            side: overWins ? "over" : "under",
+            barrier: bar, pct, z,
+          });
+        }
+      }
       if(!cands.length){
         _brainStatus("ou", '<b>no clear lean</b> · holding for stronger edge');
         return {none:true, reason:"no markets had a clear lean"};
@@ -4980,9 +5005,11 @@ window.OUAuto = (function(){
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
       try{
-        const view = cands.map(c => ({...c, side: c.side.toUpperCase()+" "+barrier}));
+        // Top 3 for the brain — include the barrier when AUTO mode picks across.
+        const view = cands.slice(0, 8).map(c => ({...c, side: c.side.toUpperCase()+" "+c.barrier}));
         _brainRenderCands("ou", view);
-        _brainStatus("ou", '📡 weighing ' + cands.length + ' markets at barrier '+barrier+' · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+        const barLab = auto ? 'AUTO→<b>'+pick.barrier+'</b>' : 'barrier '+pick.barrier;
+        _brainStatus("ou", '📡 weighing ' + cands.length + (auto ? ' (market×barrier)' : ' markets') + ' · '+barLab+' · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2));
       }catch(_){}
       return pick;
     } catch(_){
@@ -4993,7 +5020,8 @@ window.OUAuto = (function(){
   async function _fireOnce(){
     if(!S.running || S.busy) return;
     const martStake = _nextStake();   // strategy-aware + balance-capped
-    const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
+    const barrierManual = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
+    const barrierMode = _barrierMode();
     const cfg = {
       tp:    parseFloat(($g("ou-tp")||{}).value)||0,
       sl:    parseFloat(($g("ou-sl")||{}).value)||0,
@@ -5002,10 +5030,25 @@ window.OUAuto = (function(){
       threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("ou-ticks")||{}).value)||1)),
-      barrier,
+      barrierMode,
+      barrierManual,
     };
-    const pick = await _pickBestOuMarket(cfg.threshold, barrier);
+    const pick = await _pickBestOuMarket(cfg.threshold, barrierManual);
     if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
+    // AUTO barrier may have picked a different one — use whatever the picker
+    // returned (pick.barrier always carries the actual chosen barrier).
+    const barrier = pick.barrier;
+    // Sync the hidden input + UI so other code (signal radar, scanner) sees
+    // the auto-selected barrier without losing AUTO mode.
+    if(barrierMode === "auto" && barrier !== barrierManual){
+      const inp = $g("ou-barrier"); if(inp){ inp.value = String(barrier); inp.dispatchEvent(new Event("input", {bubbles:true})); }
+      // Flash the picked barrier chip so the user SEES which barrier locked in.
+      document.querySelectorAll('#ou-barrier-row button[data-mode="manual"]').forEach(b => {
+        b.classList.remove("auto-picked");
+        if(b.dataset.val === String(barrier)){ void b.offsetWidth; b.classList.add("auto-picked"); setTimeout(()=>b.classList.remove("auto-picked"), 2200); }
+      });
+      const bh = $g("ou-barrier-hint"); if(bh) bh.innerHTML = '<b style="color:var(--good)">AUTO locked barrier '+barrier+'</b> · '+pick.pct+'% '+pick.side.toUpperCase()+' lean';
+    }
     const sel = $g("t-symbol");
     if(sel && sel.value !== pick.symbol){ sel.value = pick.symbol; sel.dispatchEvent(new Event("change")); try{ loadOuScan(); }catch(_){ } }
     const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
@@ -5021,11 +5064,13 @@ window.OUAuto = (function(){
         setTimeout(()=>document.querySelectorAll('#ou-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
       }, 700);
     }
+    const barTag = barrierMode === "auto" ? 'AUTO→<b>'+barrier+'</b>' : '<b>'+barrier+'</b>';
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
-    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+" "+barrier+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> bar "+barTag+" on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
     try{
       const sideTxt = pick.side.toUpperCase()+" "+barrier;
-      _brainPush("ou", "🎯", "Picked <b>"+sideTxt+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      const barLog = barrierMode === "auto" ? "AUTO→"+barrier : ""+barrier;
+      _brainPush("ou", "🎯", "Picked <b>"+sideTxt+"</b> (barrier "+barLog+") on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
       _brainFireCand("ou", pick.symbol);
       _brainStatus("ou", '🔥 firing <b>'+sideTxt+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
     }catch(_){}
@@ -5116,8 +5161,11 @@ window.OUAuto = (function(){
       _brainSetIdle("ou", false);
       const tm = ticksMode === "auto" ? "AUTO ticks" : ($g("ou-ticks")||{}).value + " ticks";
       const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
-      _brainPush("ou", "▶", "Auto-trader started · base $"+_baseStake().toFixed(2)+" · barrier "+barrier+" · "+tm+" · streak guard "+(parseInt(($g("ou-streak")||{}).value)||11), "tune");
+      const barrierLbl = _barrierMode() === "auto" ? "AUTO barrier" : "barrier "+barrier;
+      _brainPush("ou", "▶", "Auto-trader started · base $"+_baseStake().toFixed(2)+" · "+barrierLbl+" · "+tm+" · streak guard "+(parseInt(($g("ou-streak")||{}).value)||11), "tune");
       _brainStatus("ou", '<b>engine engaged</b> · scanning markets…');
+      // Show the running pulse on the AUTO barrier chip too
+      const brow = $g("ou-barrier-row"); if(brow) brow.setAttribute("data-running", "1");
     }catch(_){}
     _fireOnce();
     S.timer = setInterval(_fireOnce, 4000);
@@ -5145,12 +5193,26 @@ window.OUAuto = (function(){
 
 // Wire OU controls — barrier picker, tick chips, steppers, presets, start/stop.
 (function(){
-  // Barrier digit picker (1–8)
+  // Barrier digit picker (AUTO + 1-8). AUTO chip flips the row into
+  // auto-scan mode (engine iterates all 8 barriers each cycle). Manual
+  // chips set a fixed barrier and update the hidden input.
   document.addEventListener("click", function(ev){
     const t = ev.target.closest && ev.target.closest("#ou-barrier-row button");
     if(!t) return;
-    document.querySelectorAll("#ou-barrier-row button").forEach(b=>b.classList.toggle("on", b===t));
-    const inp=document.getElementById("ou-barrier"); if(inp){ inp.value = t.dataset.val; inp.dispatchEvent(new Event("input", {bubbles:true})); }
+    document.querySelectorAll("#ou-barrier-row button").forEach(b=>{
+      b.classList.toggle("on", b===t);
+      // Clear any stale auto-picked highlight from prior cycles.
+      b.classList.remove("auto-picked");
+    });
+    if(t.dataset.mode === "manual"){
+      const inp=document.getElementById("ou-barrier"); if(inp){ inp.value = t.dataset.val; inp.dispatchEvent(new Event("input", {bubbles:true})); }
+      const bh = document.getElementById("ou-barrier-hint");
+      if(bh) bh.textContent = "fixed barrier "+t.dataset.val+" · auto-trader uses this each cycle";
+    } else {
+      // AUTO mode — restore the descriptive hint
+      const bh = document.getElementById("ou-barrier-hint");
+      if(bh) bh.textContent = "AUTO scans 1–8 every cycle · picks the strongest lean";
+    }
     try{ window.OUAuto._updateSignal(); }catch(_){} try{ loadOuScan(); }catch(_){}
   });
   // Tick chips
@@ -5182,11 +5244,12 @@ window.OUAuto = (function(){
   const ouGo = document.getElementById("ou-go"); if(ouGo) ouGo.addEventListener("click", ()=>window.OUAuto.toggle());
   const ouStop = document.getElementById("ou-stop-all");
   if(ouStop) ouStop.addEventListener("click", ()=>eoStopEverything(ouStop));
-  // Quick presets — barrier defaults to 4 (~50/50 split, max EV-search room)
+  // Quick presets — leave the barrier picker alone so the user's choice
+  // (AUTO by default, or whatever they manually set) is preserved.
   const OU_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2, barrier:4 },
-    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5, barrier:4 },
-    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5, barrier:4 },
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5 },
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },
   };
   function _applyOuPreset(name){
     const p = OU_PRESETS[name]; if(!p) return;
@@ -5195,10 +5258,6 @@ window.OUAuto = (function(){
     set("ou-tp", p.tp); set("ou-sl", p.sl); set("ou-thr", p.thr);
     set("ou-stake", p.stake.toFixed(2)); set("ou-streak", p.streak);
     if(p.mart != null) set("ou-mart", p.mart.toFixed(1));
-    if(p.barrier != null){
-      const inp=document.getElementById("ou-barrier"); if(inp) inp.value = p.barrier;
-      document.querySelectorAll("#ou-barrier-row button").forEach(b=>b.classList.toggle("on", b.dataset.val===String(p.barrier)));
-    }
     document.querySelectorAll("#ou-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
     try{ window.OUAuto._setFills(); window.OUAuto._renderDots(); window.OUAuto._renderMart(); window.OUAuto._updateSignal(); }catch(_){ }
   }
