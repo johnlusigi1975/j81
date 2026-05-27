@@ -1196,9 +1196,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="eo-thr-hint">fires when one side leads ≥ <b id="eo-thr-display">70</b>% (with |z|≥2σ + multi-window confirm)</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <b id="eo-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
-            <input id="eo-thr" type="range" min="50" max="90" value="70" class="eo-slider"/>
+            <input id="eo-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -1337,9 +1337,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Direction threshold</span><span class="eo-tile-hint" id="rf-thr-hint">fires when one side leads ≥ <b id="rf-thr-display">70</b>% (with |z|≥2σ + multi-window confirm)</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Direction threshold</span><span class="eo-tile-hint" id="rf-thr-hint">preferred lean ≥ <b id="rf-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
-            <input id="rf-thr" type="range" min="50" max="90" value="70" class="eo-slider"/>
+            <input id="rf-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -1495,9 +1495,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="ou-thr-hint">fires when OVER or UNDER leads ≥ <b id="ou-thr-display">70</b>% (with multi-window confirm)</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Signal threshold</span><span class="eo-tile-hint" id="ou-thr-hint">preferred lean ≥ <b id="ou-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
-            <input id="ou-thr" type="range" min="50" max="90" value="70" class="eo-slider"/>
+            <input id="ou-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -2675,7 +2675,7 @@ window.EOAuto = (function(){
   function _updateSignal(){
     const sig = $g("eo-signal"); if(!sig) return;
     const d = _liveDigits();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||70));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||55));
     const thrLine = $g("eo-signal-thr"); if(thrLine) thrLine.style.left = thr + "%";
     const thrLab  = $g("eo-signal-thr-lab"); if(thrLab) thrLab.textContent = thr + "%";
     const mkt = $g("eo-signal-market");
@@ -2763,51 +2763,32 @@ window.EOAuto = (function(){
     if(lead >= 65) return 2;
     return 3;
   }
-  // Scan ALL 10 markets, pick the strongest candidate that passes THREE filters:
-  //   1. Percent lean ≥ user threshold (over the full 100-tick rolling sample)
-  //   2. |z-score| ≥ 2.0  — the lean is statistically significant, not noise
-  //   3. Multi-window agreement — 20-tick AND 50-tick windows both side with
-  //      the dominant lean (so a very-recent fluke doesn't trigger a fire)
-  // Returns {symbol, name, side, pct, lean, z} or {none:true, reason}.
+  // Scan ALL 10 markets and pick the one with the strongest current lean.
+  // No filters — auto-trader fires every cycle on whichever market is leaning
+  // hardest right now. Threshold/z/multi-window indicators are still rendered
+  // in the radar + scanner as info, but they don't gate firing. Safety rails
+  // (TP, SL, loss-streak, martingale cap) are what stops bad runs.
   async function _pickBestMarket(threshold){
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.even_pct != null);
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
-      const Z_MIN = 2.0;            // 2σ confirmation
-      const W20_MIN = threshold - 3; // 20-tick window: allow 3% slack
-      const W50_MIN = threshold - 8; // 50-tick window: allow 8% slack
       const cands = ready.map(m => {
         const evp = Math.round(m.even_pct);
         const evWins = evp >= 50;
         const pct = evWins ? evp : 100 - evp;
         const z = m.eo_z != null ? Math.abs(Number(m.eo_z)) : 0;
-        const ev20 = m.even_pct_20, ev50 = m.even_pct_50;
-        const pct20 = ev20 != null ? (evWins ? ev20 : 100 - ev20) : null;
-        const pct50 = ev50 != null ? (evWins ? ev50 : 100 - ev50) : null;
         return {
           symbol: m.symbol, name: m.name || m.symbol,
           side: evWins ? "even" : "odd",
-          pct, lean: pct - 50, z, pct20, pct50,
+          pct, lean: pct - 50, z,
         };
       });
-      const passing = cands.filter(c => {
-        if(c.pct < threshold) return false;
-        if(c.z < Z_MIN) return false;
-        if(c.pct20 != null && c.pct20 < W20_MIN) return false;
-        if(c.pct50 != null && c.pct50 < W50_MIN) return false;
-        return true;
-      }).sort((a,b) => (b.pct + b.z) - (a.pct + a.z));   // tied-pct? favour stronger z
-      if(passing.length) return passing[0];
-      // Nothing passed — pick the closest near-miss and explain WHY for the status line.
-      const best = cands.sort((a,b) => b.pct - a.pct)[0];
-      let why;
-      if(best.pct < threshold)            why = "best lean "+best.pct+"% "+best.side.toUpperCase()+" on "+best.name+" — need ≥"+threshold+"%";
-      else if(best.z < Z_MIN)              why = best.name+" "+best.side.toUpperCase()+" "+best.pct+"% but z "+best.z.toFixed(1)+" < 2.0 — not significant";
-      else if(best.pct20 != null && best.pct20 < W20_MIN) why = best.name+" 100-tick "+best.pct+"% but 20-tick disagrees ("+best.pct20+"%)";
-      else if(best.pct50 != null && best.pct50 < W50_MIN) why = best.name+" 100-tick "+best.pct+"% but 50-tick disagrees ("+best.pct50+"%)";
-      else                                 why = "no market cleared all filters";
-      return {none:true, reason: why};
+      // Tied lean? favour the higher z-score (still useful as a tiebreaker).
+      cands.sort((a, b) => (b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
+      const pick = cands[0];
+      pick.aboveThreshold = pick.pct >= threshold;
+      return pick;
     } catch(_){
       return {none:true, reason:"scanner unreachable — retrying"};
     }
@@ -2822,7 +2803,7 @@ window.EOAuto = (function(){
       sl:    parseFloat(($g("eo-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),   // martingale-scaled stake for this trade
       maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||70)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
     };
@@ -3098,7 +3079,7 @@ window.RFAuto = (function(){
   function _updateSignal(){
     const sig=$g("rf-signal"); if(!sig) return;
     const pr = _livePrices();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||70));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||55));
     const thrLine=$g("rf-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
     const thrLab=$g("rf-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
     const mkt=$g("rf-signal-market");
@@ -3137,37 +3118,22 @@ window.RFAuto = (function(){
   }
   // Same filtered candidate pick as EO but on up_pct + |up_z|>=2 + multi-window.
   async function _pickBestRfMarket(threshold){
+    // No filter rejection — fire every cycle on the strongest direction lean.
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.up_pct != null);
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
-      const Z_MIN=2.0, W20_MIN=threshold-3, W50_MIN=threshold-8;
       const cands = ready.map(m => {
         const up = Math.round(m.up_pct);
         const riseWins = up >= 50;
         const pct = riseWins ? up : 100-up;
         const z = m.up_z != null ? Math.abs(Number(m.up_z)) : 0;
-        const u20 = m.up_pct_20, u50 = m.up_pct_50;
-        const p20 = u20 != null ? (riseWins ? u20 : 100-u20) : null;
-        const p50 = u50 != null ? (riseWins ? u50 : 100-u50) : null;
-        return { symbol:m.symbol, name:m.name||m.symbol, side:riseWins?"up":"down", pct, z, pct20:p20, pct50:p50 };
+        return { symbol:m.symbol, name:m.name||m.symbol, side:riseWins?"up":"down", pct, z };
       });
-      const passing = cands.filter(c => {
-        if(c.pct < threshold) return false;
-        if(c.z < Z_MIN) return false;
-        if(c.pct20 != null && c.pct20 < W20_MIN) return false;
-        if(c.pct50 != null && c.pct50 < W50_MIN) return false;
-        return true;
-      }).sort((a,b)=>(b.pct+b.z)-(a.pct+a.z));
-      if(passing.length) return passing[0];
-      const best = cands.sort((a,b)=>b.pct-a.pct)[0];
-      let why;
-      if(best.pct < threshold)            why = "best lean "+best.pct+"% "+best.side.toUpperCase()+" on "+best.name+" — need ≥"+threshold+"%";
-      else if(best.z < Z_MIN)              why = best.name+" "+best.side.toUpperCase()+" "+best.pct+"% but z "+best.z.toFixed(1)+" < 2.0 — not significant";
-      else if(best.pct20 != null && best.pct20 < W20_MIN) why = best.name+" 100-tick "+best.pct+"% but 20-tick disagrees ("+best.pct20+"%)";
-      else if(best.pct50 != null && best.pct50 < W50_MIN) why = best.name+" 100-tick "+best.pct+"% but 50-tick disagrees ("+best.pct50+"%)";
-      else                                 why = "no market cleared all filters";
-      return {none:true, reason:why};
+      cands.sort((a,b)=>(b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
+      const pick = cands[0];
+      pick.aboveThreshold = pick.pct >= threshold;
+      return pick;
     } catch(_){ return {none:true, reason:"scanner unreachable — retrying"}; }
   }
   async function _fireOnce(){
@@ -3180,7 +3146,7 @@ window.RFAuto = (function(){
       sl:    parseFloat(($g("rf-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),
       maxLossStreak: Math.max(1, parseInt(($g("rf-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||70)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("rf-ticks")||{}).value)||1)),
     };
@@ -3290,9 +3256,9 @@ window.RFAuto = (function(){
   if(rfStop) rfStop.addEventListener("click", ()=>eoStopEverything(rfStop));
   // Quick presets — same shape as EO but tuned for direction trading
   const RF_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5,  mart:1.2 },
-    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8,  mart:1.3 },
-    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11, mart:1.5 },
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.3 },
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },
   };
   function _applyRfPreset(name){
     const p = RF_PRESETS[name]; if(!p) return;
@@ -3462,7 +3428,7 @@ window.OUAuto = (function(){
   function _updateSignal(){
     const sig=$g("ou-signal"); if(!sig) return;
     const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
-    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||70));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||55));
     const thrLine=$g("ou-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
     const thrLab=$g("ou-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
     const barLab=$g("ou-signal-bar"); if(barLab) barLab.textContent = barrier;
@@ -3504,44 +3470,29 @@ window.OUAuto = (function(){
   }
   // Pick best market across all 10 using OU-specific math.
   async function _pickBestOuMarket(threshold, barrier){
+    // No filter rejection — fire every cycle on the strongest OVER/UNDER
+    // lean for the chosen barrier. Threshold is informational only now.
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && Array.isArray(m.freq));
       if(!ready.length) return {none:true, reason:"all 10 markets still warming up"};
-      const Z_MIN=2.0, W20_MIN=threshold-3, W50_MIN=threshold-8;
       const cands = ready.map(m => {
         const sp = _ouSplit(m.freq, barrier); if(!sp) return null;
-        const op = sp.over_pct, up = sp.under_pct;
-        const overWins = op >= up;
-        const pct = Math.round(Math.max(op, up));
+        const op = sp.over_pct, upPct = sp.under_pct;
+        const overWins = op >= upPct;
+        const pct = Math.round(Math.max(op, upPct));
         const z = Math.abs(_ouZ(m.freq, barrier, overWins ? "over" : "under"));
-        const w20 = _ouSplit(m.freq_20, barrier);
-        const w50 = _ouSplit(m.freq_50, barrier);
-        const pct20 = w20 ? Math.round(overWins ? w20.over_pct : w20.under_pct) : null;
-        const pct50 = w50 ? Math.round(overWins ? w50.over_pct : w50.under_pct) : null;
         return {
           symbol:m.symbol, name:m.name||m.symbol,
           side: overWins ? "over" : "under",
-          pct, z, pct20, pct50,
+          pct, z,
         };
       }).filter(Boolean);
-      const passing = cands.filter(c => {
-        if(c.pct < threshold) return false;
-        if(c.z < Z_MIN) return false;
-        if(c.pct20 != null && c.pct20 < W20_MIN) return false;
-        if(c.pct50 != null && c.pct50 < W50_MIN) return false;
-        return true;
-      }).sort((a,b)=>(b.pct+b.z)-(a.pct+a.z));
-      if(passing.length) return passing[0];
-      const best = cands.sort((a,b)=>b.pct-a.pct)[0];
-      if(!best) return {none:true, reason:"no markets had a clear lean"};
-      let why;
-      if(best.pct < threshold)             why = "best lean "+best.pct+"% "+best.side.toUpperCase()+" "+barrier+" on "+best.name+" — need ≥"+threshold+"%";
-      else if(best.z < Z_MIN)               why = best.name+" "+best.side.toUpperCase()+" "+barrier+" "+best.pct+"% but z "+best.z.toFixed(1)+" < 2.0 — not significant";
-      else if(best.pct20 != null && best.pct20 < W20_MIN) why = best.name+" 100-tick "+best.pct+"% but 20-tick disagrees ("+best.pct20+"%)";
-      else if(best.pct50 != null && best.pct50 < W50_MIN) why = best.name+" 100-tick "+best.pct+"% but 50-tick disagrees ("+best.pct50+"%)";
-      else                                  why = "no market cleared all filters";
-      return {none:true, reason: why};
+      if(!cands.length) return {none:true, reason:"no markets had a clear lean"};
+      cands.sort((a, b) => (b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
+      const pick = cands[0];
+      pick.aboveThreshold = pick.pct >= threshold;
+      return pick;
     } catch(_){ return {none:true, reason:"scanner unreachable — retrying"}; }
   }
   async function _fireOnce(){
@@ -3555,7 +3506,7 @@ window.OUAuto = (function(){
       sl:    parseFloat(($g("ou-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),
       maxLossStreak: Math.max(1, parseInt(($g("ou-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||70)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("ou-ticks")||{}).value)||1)),
       barrier,
@@ -3674,9 +3625,9 @@ window.OUAuto = (function(){
   if(ouStop) ouStop.addEventListener("click", ()=>eoStopEverything(ouStop));
   // Quick presets — barrier defaults to 4 (~50/50 split, max EV-search room)
   const OU_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5,  mart:1.2, barrier:4 },
-    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8,  mart:1.3, barrier:4 },
-    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11, mart:1.5, barrier:4 },
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2, barrier:4 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.3, barrier:4 },
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5, barrier:4 },
   };
   function _applyOuPreset(name){
     const p = OU_PRESETS[name]; if(!p) return;
@@ -3757,9 +3708,9 @@ window.OUAuto = (function(){
   // Thresholds tightened: the auto-trader now requires |z|≥2σ + multi-window
   // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:75, stake:5,   streak:5,  mart:1.2 },   // very selective
-    steady:   { tp:1000, sl:1000, thr:70, stake:50,  streak:8,  mart:1.3 },   // default — $1000 TP/SL · mart 1.3×
-    bold:     { tp:2000, sl:2000, thr:62, stake:100, streak:11, mart:1.5 },   // wider net but still gated
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },   // very selective
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.3 },   // default — $1000 TP/SL · mart 1.3×
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },   // wider net but still gated
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
@@ -3982,7 +3933,7 @@ async function updateAutoStatus(){
 window.RF_THRESHOLD=60;
 let RFAUTO={on:false,target:50,rounds:0,stake:0.35,busy:false,timer:null};
 function rfAutoStatus(t){ const s=$("auto-status"); if(s) s.textContent=t; }
-function rfReadThreshold(){ window.RF_THRESHOLD=Math.max(50,Math.min(95,parseInt($("auto-conf").value||"70",10)||70)); const mk=$("rf-conf-mark"); if(mk) mk.style.left=window.RF_THRESHOLD+"%"; return window.RF_THRESHOLD; }
+function rfReadThreshold(){ window.RF_THRESHOLD=Math.max(50,Math.min(95,parseInt($("auto-conf").value||"70",10)||55)); const mk=$("rf-conf-mark"); if(mk) mk.style.left=window.RF_THRESHOLD+"%"; return window.RF_THRESHOLD; }
 // dispatcher: background (server, keeps trading if you close the app) or this-tab
 async function rfStart(){ const thr=rfReadThreshold(); if($("auto-bg").checked) await rfStartServer(thr); else rfAutoStart(thr); }
 async function rfStop(){
