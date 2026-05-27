@@ -201,15 +201,6 @@
   /* home choose grid */
   .sec-title{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:26px 0 12px}
 
-  /* 🚨 Emergency kill switch — high-visibility red banner. */
-  .stop-all{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:14px 0 0;padding:12px 16px;border:1px solid rgba(255,120,140,.45);border-radius:13px;background:radial-gradient(120% 100% at 100% 0%,rgba(226,58,82,.20),transparent 55%),linear-gradient(180deg,rgba(36,8,12,.55),rgba(20,8,10,.55));position:relative;overflow:hidden;box-shadow:0 14px 36px -22px rgba(255,80,110,.4),inset 0 1px 0 rgba(255,255,255,.04)}
-  .stop-all-info{flex:1;min-width:200px}
-  .stop-all-lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;color:#ff9aac;font-weight:800}
-  .stop-all-sub{font-size:11.5px;color:var(--dim);margin-top:3px;line-height:1.45;max-width:480px}
-  .stop-all-btn{padding:12px 22px;border-radius:11px;border:0;background:linear-gradient(135deg,#ff8aa0 0%,#e23a52 55%,#b21d33 100%);color:#fff;font-family:var(--serif);font-size:13.5px;font-weight:800;letter-spacing:.04em;cursor:pointer;box-shadow:0 16px 36px -14px rgba(255,80,110,.65),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .12s ease,filter .15s ease}
-  .stop-all-btn:hover{transform:translateY(-1px);filter:brightness(1.07)} .stop-all-btn:active{transform:translateY(0) scale(.97)}
-  .stop-all-btn:disabled{opacity:.55;cursor:wait;transform:none}
-
   /* Trade-view balance bar — sticky, premium look with a live pulse. */
   .balbar{position:sticky;top:54px;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px;padding:13px 18px;border-radius:14px;border:1px solid var(--bd2);background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.18),transparent 55%),linear-gradient(135deg,rgba(12,18,28,.92),rgba(20,28,40,.92));box-shadow:0 14px 36px -18px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05)}
   .balbar-left{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -457,8 +448,16 @@
   .eo-stat .n{font-family:var(--mono);font-size:20px;font-weight:800;line-height:1}
   .eo-stat .l{font-size:9px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin-top:5px;font-weight:700}
 
-  /* Big start button + status footer */
-  .eo-go{width:100%;padding:14px;border:0;border-radius:13px;font-family:var(--serif);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;box-shadow:0 18px 46px -16px rgba(212,184,122,.65);transition:transform .12s,filter .12s}
+  /* Start button + slim "stop" ghost beside it (cancels every server-side
+     auto flag in one tap — calm UX, no scary banner). */
+  .eo-go-row{display:flex;gap:9px;align-items:stretch}
+  .eo-go{flex:1;min-width:0;padding:14px;border:0;border-radius:13px;font-family:var(--serif);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;box-shadow:0 18px 46px -16px rgba(212,184,122,.65);transition:transform .12s,filter .12s}
+  .eo-stop-ghost{flex:0 0 auto;padding:0 16px;border:1px solid var(--bd);border-radius:13px;background:rgba(0,0,0,.28);color:var(--dim);font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:lowercase;cursor:pointer;transition:all .15s ease}
+  .eo-stop-ghost:hover{border-color:rgba(255,120,140,.45);color:#ff9aac;background:rgba(226,58,82,.10)}
+  .eo-stop-ghost:active{transform:scale(.96)}
+  .eo-stop-ghost:disabled{opacity:.55;cursor:wait}
+  /* legacy single-button rule below is shadowed by .eo-go-row .eo-go above */
+  .eo-go-legacy-marker{display:none}
   .eo-go:hover{filter:brightness(1.06)} .eo-go:active{transform:scale(.985)}
   .eo-go.running{background:linear-gradient(135deg,#13502c 0%,#46cf9e 55%,#1f8a5a);color:#04200f;box-shadow:0 18px 46px -14px rgba(70,207,158,.55);animation:eo-go-pulse 1.6s ease-in-out infinite}
   @keyframes eo-go-pulse{0%,100%{box-shadow:0 18px 46px -14px rgba(70,207,158,.45)}50%{box-shadow:0 18px 54px -10px rgba(70,207,158,.75)}}
@@ -842,17 +841,6 @@
     <div class="home-hero-right" id="home-mode"></div>
   </div>
 
-  <!-- 🚨 Emergency kill switch — instantly stops every server-side auto-mode
-       (brain_auto, proven_auto, rf_config.enabled, mpro_enabled, enabled) on
-       every connected account. Visible at all times because autonomous flags
-       persist across browser sessions. -->
-  <div class="stop-all">
-    <div class="stop-all-info">
-      <div class="stop-all-lab">🚨 EMERGENCY · auto-trading kill switch</div>
-      <div class="stop-all-sub">One tap stops every auto mode on every connected account. Use this if the bot is trading without your permission.</div>
-    </div>
-    <button class="stop-all-btn" id="stop-all-btn" type="button">■ STOP ALL AUTO</button>
-  </div>
 
   <!-- Brain Auto control — toggle for the every-cycle Even/Odd auto-trade on the best-payout market. -->
   <div id="brain-card" class="brain-card" style="margin-top:18px">
@@ -1023,8 +1011,13 @@
       </div>
 
       <!-- ── HERO START + INLINE SESSION ── primary action up top.
-           When running, the gold button turns into a pulsing green Stop. -->
-      <button class="eo-go" id="eo-go" type="button">▶ Start auto-trading</button>
+           When running, the gold button turns into a pulsing green Stop.
+           The small ghost button beside it stops every auto mode + clears the
+           server-side flags (so the trading loop doesn't keep firing). -->
+      <div class="eo-go-row">
+        <button class="eo-go" id="eo-go" type="button">▶ Start auto-trading</button>
+        <button class="eo-stop-ghost" id="eo-stop-all" type="button" title="Stop auto-trading + clear all auto modes on your account">■ stop</button>
+      </div>
       <div class="eo-strip">
         <span class="eo-pnl-inline" id="eo-pnl">+$0.00</span>
         <span class="eo-strip-sep">·</span>
@@ -1548,38 +1541,29 @@ async function refreshBrainAutoUI(){
   finally{ b.disabled=false; }
 }); })();
 
-// 🚨 Emergency kill switch — stops every server-side auto mode + the client
-// auto-trader in one tap. Asks to confirm so a stray finger doesn't disarm
-// a deliberate session, but the confirm is one click. After it runs, the
-// account row is reloaded so the brain-auto toggle reflects the new state.
-(function(){
-  const btn = document.getElementById("stop-all-btn"); if(!btn) return;
-  btn.addEventListener("click", async () => {
-    if(!confirm("Stop ALL auto-trading on every connected account?\n\nThis disables Brain Auto, Proven Auto, Rise/Fall Auto and the M Pro scanner. You'll need to switch each one back on manually if you want them later.")) return;
-    btn.disabled = true; const orig = btn.textContent; btn.textContent = "■ stopping…";
-    try{
-      // Stop the client-side Even/Odd auto-trader first (instant local effect).
-      try{ window.EOAuto && window.EOAuto.stop && window.EOAuto.stop("emergency stop"); }catch(_){}
-      const r = await api("/accounts/stop_all_auto", {method:"POST", timeout:15000});
-      // Refresh the local CUR snapshot so the Brain Auto toggle reads correctly.
-      if(CUR){
-        try{ const a = (await api("/accounts")).find(x=>x.id===CUR.id); if(a){ CUR = a; refreshBrainAutoUI(); } }catch(_){}
-      }
-      btn.textContent = "✓ stopped " + (r.accounts_touched||0) + " account" + ((r.accounts_touched||0)===1?"":"s");
-      if(typeof showPop === "function"){
-        showPop({
-          kind:"stop", icon:"🛑",
-          title:"All auto-trading stopped",
-          msg:"Brain Auto, Proven Auto, Rise/Fall Auto, and M Pro have been disabled on every connected account ("+(r.accounts_touched||0)+"). The server-side trading loop will not place any new autonomous trades. To resume, switch the mode you want back on manually.",
-        });
-      }
-    } catch(e){
-      btn.textContent = "❌ failed — retry"; alert("Could not stop: " + (e.message||e));
-    } finally{
-      setTimeout(()=>{ btn.disabled = false; btn.textContent = orig; }, 2200);
+// Small "Stop" ghost button beside the EO start button. One tap pauses the
+// client auto-trader AND clears every server-side auto flag for this session's
+// accounts — quiet UX, no scary banner.
+async function eoStopEverything(triggerBtn){
+  const btn = triggerBtn || null;
+  const origText = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = "stopping…"; }
+  try{
+    try{ window.EOAuto && window.EOAuto.stop && window.EOAuto.stop("user stop"); }catch(_){}
+    const r = await api("/accounts/stop_all_auto", {method:"POST", timeout:15000});
+    if(CUR){
+      try{ const a = (await api("/accounts")).find(x=>x.id===CUR.id); if(a){ CUR = a; refreshBrainAutoUI(); } }catch(_){}
     }
-  });
-})();
+    if(typeof showPop === "function"){
+      showPop({
+        kind:"stop", icon:"🛑",
+        title:"Auto-trading stopped",
+        msg:"All auto modes are off on your account"+((r.accounts_touched||0)>1?"s":"")+". Switch any back on whenever you want to resume.",
+      });
+    }
+  } catch(e){ alert("Couldn't stop: " + (e.message||e)); }
+  finally{ if(btn){ setTimeout(()=>{ btn.disabled = false; btn.textContent = origText; }, 1200); } }
+}
 
 // J81 vs Deriv scoreboard, cycle history, and home cycle/strategy-engine
 // loaders were removed when those home sections were dropped per user request.
@@ -2466,6 +2450,10 @@ window.EOAuto = (function(){
   // -- Big start button + the AUTO mix button on the trio --
   const go  = document.getElementById("eo-go");      if(go)  go.addEventListener("click",  ()=>window.EOAuto.toggle());
   const mix = document.getElementById("eo-mix-btn"); if(mix) mix.addEventListener("click", ()=>window.EOAuto.toggle());
+  // -- Slim "stop" ghost beside the start button: clears every server-side
+  //    auto flag so the trading loop doesn't keep firing in the background. --
+  const stop = document.getElementById("eo-stop-all");
+  if(stop) stop.addEventListener("click", () => eoStopEverything(stop));
 
   // -- Quick presets: tap to fill TP / SL / threshold / stake / streak in one go --
   const PRESETS = {
