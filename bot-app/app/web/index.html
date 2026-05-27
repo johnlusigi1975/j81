@@ -470,6 +470,35 @@
   .eo-signal-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
   .eo-signal-meta b{color:var(--text);font-weight:800}
   .eo-signal-meta .thr-lab{font-size:10px}
+  /* Multi-window confidence row — 20t / 50t / 200t + agree chip */
+  .eo-windows{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px}
+  .eo-win{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 9px;border:1px solid var(--bd);border-radius:8px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em}
+  .eo-win .eo-win-lab{color:var(--faint);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em}
+  .eo-win .eo-win-val{color:var(--text);font-weight:800;font-size:11.5px}
+  .eo-win-agree{background:rgba(255,255,255,.04)}
+  .eo-win-agree.on{border-color:rgba(70,207,158,.5);background:linear-gradient(135deg,rgba(70,207,158,.15),rgba(70,207,158,.04));box-shadow:0 0 0 1px rgba(70,207,158,.25) inset}
+  .eo-win-agree.on .eo-win-val{color:#6ff0a8}
+  .eo-win-agree.mixed{border-color:rgba(212,184,122,.35);background:rgba(212,184,122,.06)}
+  .eo-win-agree.mixed .eo-win-val{color:var(--amber)}
+  /* Hot / cold / last digit pills under the radar */
+  .eo-digits-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .eo-digit-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--bd);border-radius:999px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.04em}
+  .eo-digit-pill .eo-digit-ic{font-size:11px;line-height:1}
+  .eo-digit-pill .eo-digit-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+  .eo-digit-pill .eo-digit-val{font-weight:800;color:var(--text);font-size:13px;line-height:1}
+  .eo-digit-pill.hot{border-color:rgba(255,140,90,.35);background:linear-gradient(135deg,rgba(255,140,90,.10),rgba(255,140,90,.02))}
+  .eo-digit-pill.hot .eo-digit-val{color:#ffb37a}
+  .eo-digit-pill.cold{border-color:rgba(120,180,255,.35);background:linear-gradient(135deg,rgba(120,180,255,.10),rgba(120,180,255,.02))}
+  .eo-digit-pill.cold .eo-digit-val{color:#9ec3ff}
+  .eo-digit-pill.last{border-color:rgba(212,184,122,.30);background:rgba(212,184,122,.06)}
+  .eo-digit-pill.last .eo-digit-val{color:var(--amber)}
+  @media(max-width:480px){.eo-windows{grid-template-columns:repeat(2,1fr)}}
+  /* Quick-stake one-tap chips under the stake input */
+  .eo-stake-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
+  .eo-stake-quick button{padding:7px 4px;border:1px solid var(--bd);border-radius:8px;background:rgba(0,0,0,.30);color:var(--dim);font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer;transition:all .15s ease;line-height:1}
+  .eo-stake-quick button:hover{border-color:var(--amber);color:var(--amber);background:rgba(212,184,122,.08)}
+  .eo-stake-quick button:active{transform:scale(.95)}
+  .eo-stake-quick button.on{background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;border-color:transparent;box-shadow:0 4px 12px -4px rgba(212,184,122,.5)}
 
   /* Inline session strip — replaces the 4-card stat grid for tighter layout. */
   .eo-strip{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;margin:12px 0 4px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;background:rgba(0,0,0,.22);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em}
@@ -1158,6 +1187,22 @@
           <span class="thr-lab">⌖ threshold <b id="eo-signal-thr-lab">58%</b></span>
           <span>ODD <b id="eo-signal-o">—</b></span>
         </div>
+        <!-- ── Multi-window confidence — EVEN% across 20/50/200 ticks.
+             When all three agree on the dominant side, the "agree" chip
+             glows green (signals the lean isn't just a short-term fluke). -->
+        <div class="eo-windows" id="eo-windows">
+          <div class="eo-win"><span class="eo-win-lab">20t</span><span class="eo-win-val" id="eo-win-20">—</span></div>
+          <div class="eo-win"><span class="eo-win-lab">50t</span><span class="eo-win-val" id="eo-win-50">—</span></div>
+          <div class="eo-win"><span class="eo-win-lab">200t</span><span class="eo-win-val" id="eo-win-200">—</span></div>
+          <div class="eo-win eo-win-agree" id="eo-win-agree"><span class="eo-win-lab">agree</span><span class="eo-win-val" id="eo-win-agree-val">—</span></div>
+        </div>
+        <!-- ── Hot / cold / last digit — info pills under the radar.
+             Purely informational; descriptive on RNG, not a firing signal. -->
+        <div class="eo-digits-row" id="eo-digits-row">
+          <span class="eo-digit-pill hot"><span class="eo-digit-ic">🔥</span><span class="eo-digit-lab">hot</span><span class="eo-digit-val" id="eo-hot-digit">—</span></span>
+          <span class="eo-digit-pill cold"><span class="eo-digit-ic">❄</span><span class="eo-digit-lab">cold</span><span class="eo-digit-val" id="eo-cold-digit">—</span></span>
+          <span class="eo-digit-pill last"><span class="eo-digit-lab">last</span><span class="eo-digit-val" id="eo-last-digit">—</span></span>
+        </div>
       </div>
 
       <!-- ── HERO START + INLINE SESSION ── primary action up top.
@@ -1216,11 +1261,22 @@
       <div class="eo-section-lab">Engine</div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35 · one-tap presets below</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-0.5" data-tgt="eo-stake">−</button>
             <span class="cur">$<input id="eo-stake" type="number" min="0.35" step="0.5" placeholder="50"/></span>
             <button type="button" data-step="+0.5" data-tgt="eo-stake">+</button>
+          </div>
+          <!-- Quick-stake presets — one tap sets the stake input. -->
+          <div class="eo-stake-quick" id="eo-stake-quick">
+            <button type="button" data-val="1">$1</button>
+            <button type="button" data-val="5">$5</button>
+            <button type="button" data-val="10">$10</button>
+            <button type="button" data-val="25">$25</button>
+            <button type="button" data-val="50">$50</button>
+            <button type="button" data-val="100">$100</button>
+            <button type="button" data-val="500">$500</button>
+            <button type="button" data-val="1000">$1K</button>
           </div>
         </div>
         <div class="eo-tile">
@@ -2911,7 +2967,71 @@ window.EOAuto = (function(){
       if(overThr) st.innerHTML = '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire';
       else        st.innerHTML = '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger';
     }
+    // -- Multi-window confidence: EVEN% across 20 / 50 / 200 ticks. When all
+    // three windows are on the same side, the "agree" chip lights green —
+    // that's the trader's hint that the lean isn't a short-term fluke.
+    const evpOf = arr => arr.length ? Math.round(arr.filter(x=>x%2===0).length/arr.length*100) : null;
+    const w20 = evpOf(d.slice(-20));
+    const w50 = d.length >= 50 ? evpOf(d.slice(-50)) : null;
+    const w200 = d.length >= 100 ? evpOf(d.slice(-200)) : null;  // fills as soon as buffer hits 100
+    const fmtPct = v => v==null ? "—" : (v + "% E");
+    const e20=$g("eo-win-20"); if(e20) e20.textContent = fmtPct(w20);
+    const e50=$g("eo-win-50"); if(e50) e50.textContent = fmtPct(w50);
+    const e200=$g("eo-win-200"); if(e200) e200.textContent = fmtPct(w200);
+    const agreeWrap=$g("eo-win-agree"); const agreeVal=$g("eo-win-agree-val");
+    if(agreeWrap && agreeVal){
+      const vals = [w20, w50, w200].filter(v=>v!=null);
+      if(vals.length < 2){
+        agreeWrap.classList.remove("on","mixed");
+        agreeVal.textContent = "—";
+      } else {
+        const allEven  = vals.every(v=>v>=50);
+        const allOdd   = vals.every(v=>v<50);
+        if(allEven || allOdd){
+          agreeWrap.classList.add("on"); agreeWrap.classList.remove("mixed");
+          agreeVal.textContent = allEven ? "EVEN" : "ODD";
+        } else {
+          agreeWrap.classList.remove("on"); agreeWrap.classList.add("mixed");
+          agreeVal.textContent = "mixed";
+        }
+      }
+    }
+    // -- Hot / cold / last digit (info pills) — uses last 50 ticks (or
+    // whatever's available) to find the most/least-frequent digit.
+    const sample = d.slice(-50);
+    if(sample.length){
+      const f = new Array(10).fill(0);
+      for(const x of sample) f[x] += 1;
+      let hot = 0, cold = 0;
+      for(let i=1;i<10;i++){ if(f[i] > f[hot]) hot = i; if(f[i] < f[cold]) cold = i; }
+      const hEl=$g("eo-hot-digit"); if(hEl) hEl.textContent = String(hot);
+      const cEl=$g("eo-cold-digit"); if(cEl) cEl.textContent = String(cold);
+      const lEl=$g("eo-last-digit"); if(lEl) lEl.textContent = String(d[d.length-1]);
+    }
   }
+  // -- Quick-stake chips: one tap sets #eo-stake, triggers an input event so
+  // the rest of the UI (next-stake hint etc.) refreshes. Highlights the chip
+  // that matches the current stake.
+  function _refreshEoQuickStakeUI(){
+    const cur = parseFloat(($g("eo-stake")||{}).value);
+    document.querySelectorAll('#eo-stake-quick button').forEach(b => {
+      b.classList.toggle("on", parseFloat(b.dataset.val) === cur);
+    });
+  }
+  (function(){
+    document.addEventListener("click", (ev) => {
+      const t = ev.target.closest && ev.target.closest('#eo-stake-quick button');
+      if(!t) return;
+      const input = $g("eo-stake"); if(!input) return;
+      input.value = t.dataset.val;
+      input.dispatchEvent(new Event("input", {bubbles:true}));
+      _refreshEoQuickStakeUI();
+    });
+    const inp = $g("eo-stake");
+    if(inp) inp.addEventListener("input", _refreshEoQuickStakeUI);
+    // Initial paint once the panel is rendered.
+    setTimeout(_refreshEoQuickStakeUI, 100);
+  })();
   function _setFills(){
     const tp = parseFloat(($g("eo-tp")||{}).value)||0;
     const sl = parseFloat(($g("eo-sl")||{}).value)||0;
