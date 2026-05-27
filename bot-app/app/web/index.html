@@ -462,10 +462,18 @@
   .eo-slider-marks{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.06em}
 
   /* Chip segment (ticks AUTO/1/2/3/5) */
-  .eo-chips{display:flex;gap:6px;flex-wrap:wrap}
-  .eo-chips button{flex:1;min-width:44px;padding:9px 6px;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.04em;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:9px;cursor:pointer;transition:all .15s ease}
+  .eo-chips{display:flex;gap:6px;flex-wrap:wrap;position:relative}
+  .eo-chips button{flex:1;min-width:44px;padding:9px 6px;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.04em;background:rgba(0,0,0,.32);color:var(--dim);border:1px solid var(--bd);border-radius:9px;cursor:pointer;transition:all .15s ease;position:relative}
   .eo-chips button:hover{border-color:var(--bd2);color:var(--text)}
   .eo-chips button.on{background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a);color:#241c0a;border-color:transparent;box-shadow:0 6px 16px -6px rgba(212,184,122,.6)}
+  /* Live AUTO mode: the AUTO chip pulses + a tiny green dot on top-right
+     shows it's actively picking ticks each cycle. */
+  .eo-chips[data-running="1"] button[data-mode="auto"].on{animation:eo-chip-pulse 1.6s ease-in-out infinite}
+  .eo-chips[data-running="1"] button[data-mode="auto"].on::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good);animation:eo-tick-pulse 1.2s ease-in-out infinite}
+  /* When AUTO fires a trade, the chip briefly flashes brighter. */
+  .eo-chips button[data-mode="auto"].on.flash{animation:eo-chip-flash .8s ease-out 1}
+  @keyframes eo-chip-pulse{0%,100%{box-shadow:0 6px 16px -6px rgba(212,184,122,.6)}50%{box-shadow:0 6px 22px -4px rgba(70,207,158,.7),0 0 0 1px rgba(70,207,158,.4)}}
+  @keyframes eo-chip-flash{0%{box-shadow:0 0 0 0 rgba(70,207,158,.9)}100%{box-shadow:0 0 0 12px rgba(70,207,158,0)}}
 
   /* Loss-streak guard dots */
   .eo-dots{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;margin-bottom:2px}
@@ -1106,7 +1114,7 @@
           <div class="eo-tile-head"><span class="eo-tile-lab">Take profit</span><span class="eo-tile-hint">stops at this win</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-1" data-tgt="eo-tp">−</button>
-            <span class="cur">$<input id="eo-tp" type="number" min="0" step="0.5" placeholder="10"/></span>
+            <span class="cur">$<input id="eo-tp" type="number" min="0" step="0.5" placeholder="100"/></span>
             <button type="button" data-step="+1" data-tgt="eo-tp">+</button>
           </div>
           <div class="eo-fill"><i id="eo-tp-fill"></i></div>
@@ -1115,7 +1123,7 @@
           <div class="eo-tile-head"><span class="eo-tile-lab">Stop loss</span><span class="eo-tile-hint">stops at this loss</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-1" data-tgt="eo-sl">−</button>
-            <span class="cur">$<input id="eo-sl" type="number" min="0" step="0.5" placeholder="5"/></span>
+            <span class="cur">$<input id="eo-sl" type="number" min="0" step="0.5" placeholder="50"/></span>
             <button type="button" data-step="+1" data-tgt="eo-sl">+</button>
           </div>
           <div class="eo-fill danger"><i id="eo-sl-fill"></i></div>
@@ -1129,7 +1137,7 @@
           <div class="eo-tile-head"><span class="eo-tile-lab">Stake per trade</span><span class="eo-tile-hint">min $0.35</span></div>
           <div class="eo-stepper">
             <button type="button" data-step="-0.5" data-tgt="eo-stake">−</button>
-            <span class="cur">$<input id="eo-stake" type="number" min="0.35" step="0.05" placeholder="0.35"/></span>
+            <span class="cur">$<input id="eo-stake" type="number" min="0.35" step="0.5" placeholder="50"/></span>
             <button type="button" data-step="+0.5" data-tgt="eo-stake">+</button>
           </div>
         </div>
@@ -1143,7 +1151,7 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint">contract length</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="eo-tick-hint">AUTO picks 1–3 based on signal strength</span></div>
           <div class="eo-chips" id="eo-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
@@ -2341,6 +2349,9 @@ window.EOAuto = (function(){
   function _resetBtn(){
     const b=$g("eo-mix-btn"); if(b){ b.classList.remove("on"); const lbl=b.querySelector(".big"); if(lbl) lbl.innerHTML = 'AUTO <span class="mix">mix</span>'; const sub=b.querySelector(".sub"); if(sub) sub.textContent="smart EVEN ↔ ODD"; }
     const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
+    // Clear the AUTO chip's "running" state + reset the live hint.
+    const chips=$g("eo-tick-seg"); if(chips) chips.removeAttribute("data-running");
+    const hint=$g("eo-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
   }
   // (Old single-market _decide() removed — _pickBestMarket scans ALL 10
   // volatilities via /scan now, so the auto-trader hops between markets
@@ -2404,7 +2415,20 @@ window.EOAuto = (function(){
     const dur = (cfg.ticksMode==="auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
-    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+dur+" tick · "+pick.pct+"% lean");
+    // If AUTO ticks: show what was picked + flash the AUTO chip on each fire.
+    if(cfg.ticksMode === "auto"){
+      const hint = $g("eo-tick-hint");
+      if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
+      const autoChip = document.querySelector('#eo-tick-seg button[data-mode="auto"].on');
+      if(autoChip){
+        autoChip.classList.remove("flash");
+        // force reflow so the animation restarts on every fire
+        void autoChip.offsetWidth;
+        autoChip.classList.add("flash");
+      }
+    }
+    const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
+    _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
     try{
       const r = await api("/trade/manual", {method:"POST", timeout:25000, body: JSON.stringify({
         account_id: CUR.id, trade_type:"even_odd", symbol: pick.symbol,
@@ -2456,6 +2480,17 @@ window.EOAuto = (function(){
     _setStatus("⌗ <b>running</b> — reading the tape…");
     const b=$g("eo-mix-btn"); if(b){ b.classList.add("on"); const sub=b.querySelector(".sub"); if(sub) sub.textContent="running · session 0/0"; }
     const go=$g("eo-go"); if(go){ go.textContent="■ Stop auto-trading"; go.classList.add("running"); }
+    // Mark the ticks chip row as running so the AUTO chip pulses + shows a
+    // live green dot while the auto-trader is actively picking ticks.
+    const chips = $g("eo-tick-seg");
+    const ticksMode = (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto";
+    if(chips){
+      chips.setAttribute("data-running", "1");
+      const hint = $g("eo-tick-hint");
+      if(hint) hint.textContent = ticksMode === "auto"
+        ? "AUTO is on — picking each trade based on lean strength"
+        : "manual " + (($g("eo-ticks")||{}).value || "1") + " tick — fixed per trade";
+    }
     _fireOnce();
     S.timer = setInterval(_fireOnce, 6000);
   };
@@ -2533,9 +2568,9 @@ window.EOAuto = (function(){
 
   // -- Quick presets: tap to fill TP / SL / threshold / stake / streak in one go --
   const PRESETS = {
-    cautious: { tp:5,  sl:3,  thr:65, stake:0.35, streak:5  },   // small wins, tight rails
-    steady:   { tp:10, sl:5,  thr:58, stake:0.50, streak:8  },   // balanced default
-    bold:     { tp:20, sl:10, thr:53, stake:1.00, streak:11 },   // bigger swings, looser
+    cautious: { tp:30,  sl:15,  thr:65, stake:5,   streak:5  },   // small wins, tight rails
+    steady:   { tp:100, sl:50,  thr:58, stake:50,  streak:8  },   // balanced default ($50 stake + $50 SL)
+    bold:     { tp:200, sl:100, thr:53, stake:100, streak:11 },   // bigger swings, looser
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
