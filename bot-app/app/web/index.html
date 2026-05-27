@@ -409,9 +409,21 @@
   .eo-barrier button.on{background:linear-gradient(135deg,#ffd28a,#f0a04a 55%,#c97524);color:#241c0a;border-color:transparent;box-shadow:0 6px 16px -6px rgba(255,180,90,.6)}
 
   /* Recent activity — clean ticker-style list, no debug-text feel. */
-  .recent-list{border:1px solid var(--bd);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.18));overflow:hidden}
+  .recent-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:22px 0 8px}
+  .recent-title{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700}
+  .recent-title .faint{text-transform:none;letter-spacing:0;font-weight:700;font-size:11.5px;margin-left:4px}
+  .recent-meta{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+  .recent-meta .recent-time{padding:3px 9px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.22)}
+  .recent-meta .recent-count{padding:3px 9px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.22);color:var(--text);font-weight:800}
+  .recent-meta .recent-reset{padding:4px 10px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.28);color:var(--dim);font-size:13px;cursor:pointer;transition:all .15s ease;line-height:1}
+  .recent-meta .recent-reset:hover{border-color:rgba(255,120,140,.45);color:#ff9aac;background:rgba(226,58,82,.10)}
+  /* Scrollable list — keeps the recent panel from pushing the rest of the
+     page down as more trades accumulate. */
+  .recent-list{border:1px solid var(--bd);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.18));overflow:hidden;max-height:330px;overflow-y:auto}
+  /* Session-number badge prefixing each row */
+  .recent-row .num{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--amber);min-width:32px;text-align:center;padding:3px 5px 2px;background:rgba(212,184,122,.10);border:1px solid rgba(212,184,122,.25);border-radius:6px;letter-spacing:.02em}
   .recent-empty{padding:18px 16px;text-align:center;color:var(--faint);font-size:12px;font-style:italic}
-  .recent-row{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.04);font-size:12.5px}
+  .recent-row{display:grid;grid-template-columns:auto auto 1fr auto auto;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.04);font-size:12.5px}
   .recent-row:first-child{border-top:0}
   .recent-row .side{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.16em;padding:3px 7px;border-radius:5px;text-transform:uppercase;line-height:1}
   .recent-row .side.even{background:linear-gradient(135deg,#fff0c2,#cf9e2a);color:#241d05}
@@ -432,7 +444,7 @@
   .recent-row .status.practice{background:rgba(255,255,255,.06);color:var(--faint)}
   @keyframes recent-pending{0%,100%{opacity:.55}50%{opacity:1}}
   .recent-row.skipped{opacity:.55}
-  @media(max-width:480px){.recent-row{grid-template-columns:auto 1fr auto;padding:10px 12px;font-size:12px}.recent-row .pl{display:none}}
+  @media(max-width:480px){.recent-row{grid-template-columns:auto auto 1fr auto;padding:10px 12px;font-size:12px}.recent-row .pl{display:none}.recent-row .num{min-width:24px;font-size:10px;padding:2px 4px 1px}.recent-meta{font-size:10.5px;gap:6px}}
 
   /* Dedicated Even/Odd auto-trade control surface — premium look. */
   .eo-auto{margin-top:14px;border:1px solid var(--bd);border-radius:16px;padding:16px 18px 18px;background:radial-gradient(120% 100% at 0% 0%,rgba(54,214,200,.10),transparent 55%),radial-gradient(120% 100% at 100% 0%,rgba(212,184,122,.08),transparent 55%),linear-gradient(180deg,rgba(20,28,40,.55),rgba(10,14,22,.55));position:relative;box-shadow:0 26px 60px -28px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05)}
@@ -1221,12 +1233,13 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="eo-tick-hint">AUTO picks 1–3 based on signal strength</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="eo-tick-hint">AUTO picks 1–5 based on signal strength</span></div>
           <div class="eo-chips" id="eo-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
             <button type="button" data-mode="manual" data-val="2">2</button>
             <button type="button" data-mode="manual" data-val="3">3</button>
+            <button type="button" data-mode="manual" data-val="4">4</button>
             <button type="button" data-mode="manual" data-val="5">5</button>
           </div>
           <input id="eo-ticks" type="hidden" value="1"/>
@@ -1362,12 +1375,13 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="rf-tick-hint">AUTO picks 1–3 based on signal strength</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="rf-tick-hint">AUTO picks 1–5 based on signal strength</span></div>
           <div class="eo-chips" id="rf-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
             <button type="button" data-mode="manual" data-val="2">2</button>
             <button type="button" data-mode="manual" data-val="3">3</button>
+            <button type="button" data-mode="manual" data-val="4">4</button>
             <button type="button" data-mode="manual" data-val="5">5</button>
           </div>
           <input id="rf-ticks" type="hidden" value="1"/>
@@ -1520,12 +1534,13 @@
       </div>
       <div class="eo-row">
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="ou-tick-hint">AUTO picks 1–3 based on signal strength</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab">Ticks per trade</span><span class="eo-tile-hint" id="ou-tick-hint">AUTO picks 1–5 based on signal strength</span></div>
           <div class="eo-chips" id="ou-tick-seg">
             <button type="button" class="on" data-mode="auto">AUTO</button>
             <button type="button" data-mode="manual" data-val="1">1</button>
             <button type="button" data-mode="manual" data-val="2">2</button>
             <button type="button" data-mode="manual" data-val="3">3</button>
+            <button type="button" data-mode="manual" data-val="4">4</button>
             <button type="button" data-mode="manual" data-val="5">5</button>
           </div>
           <input id="ou-ticks" type="hidden" value="1"/>
@@ -1611,7 +1626,14 @@
       <div class="faint" style="font-size:11.5px;margin-top:8px">Set <b>Rounds</b> (up to 1000) and a <b>stake</b> (min $0.35). Press Start and J81 scans the markets and auto-trades up to that many rounds, stopping early if it hits your win or loss target. Martingale raises stake after a loss (capped) — higher risk. Auto trades for real only when DRY_RUN is off; otherwise it practises.</div>
     </div>
 
-    <div class="sec-title" style="margin:18px 0 8px">Recent activity <span class="faint" id="trade-bal" style="text-transform:none;letter-spacing:0;float:right;font-weight:700"></span></div>
+    <div class="recent-head">
+      <div class="recent-title">Recent activity <span class="faint" id="trade-bal"></span></div>
+      <div class="recent-meta">
+        <span class="recent-time" id="recent-time">⏱ 00:00</span>
+        <span class="recent-count" id="recent-count">0 trades</span>
+        <button class="recent-reset" id="recent-reset" type="button" title="Clear this session and start a fresh chart">🗑</button>
+      </div>
+    </div>
     <div id="trade-recent" class="recent-list"><div class="recent-empty">No trades yet — your activity will appear here as soon as you place one.</div></div>
 
     <!-- ===================== J81 ENGINES — live demonstration ===================== -->
@@ -2645,8 +2667,38 @@ async function openTrade(game){
 $("t-symbol").addEventListener("change",e=>{ $("term-market").textContent=e.target.selectedOptions[0]?.textContent||e.target.value; if(GAME!=="m_pro") LiveWS.start(e.target.value); });
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".tbtn"); if(b) placeTrade(b); });
 
-// Recent activity ticker — clean rows, no debug-text leak. Errors / skipped
-// trades are filtered out so the user sees a tidy log, not a noisy log.
+// Recent activity ticker — session-aware. Each row is numbered as "Session
+// trade N" so the user sees a fresh count starting from the last reset.
+// The 🗑 button starts a new session (clears the chart). A scrollable list
+// keeps the panel compact regardless of trade volume.
+function _recentSessionKey(){
+  return "j81_recent_start_" + ((CUR && CUR.id) || "_none");
+}
+function _recentSessionStart(){
+  try{
+    const v = localStorage.getItem(_recentSessionKey());
+    if(v){
+      const n = parseInt(v, 10);
+      if(Number.isFinite(n) && n > 0) return n;   // guard against garbage values
+    }
+  }catch(_){}
+  // First-time visitor: anchor to "now" so existing trades don't flood the list.
+  const t = Date.now();
+  try{ localStorage.setItem(_recentSessionKey(), String(t)); }catch(_){}
+  return t;
+}
+function _recentNewSession(){
+  try{ localStorage.setItem(_recentSessionKey(), String(Date.now())); }catch(_){}
+  // Re-render whatever is currently in memory.
+  try{ renderRecent(window._RECENT_RAW || []); }catch(_){}
+}
+function _recentFormatTimer(ms){
+  if(ms < 0) ms = 0;
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  const pad = n => String(n).padStart(2,"0");
+  return h > 0 ? h+":"+pad(m)+":"+pad(sec) : pad(m)+":"+pad(sec);
+}
 function _recentTimeAgo(iso){
   if(!iso) return "";
   const t = new Date(iso).getTime(); if(!isFinite(t)) return "";
@@ -2657,7 +2709,6 @@ function _recentTimeAgo(iso){
   return Math.round(s/86400)+"d ago";
 }
 function _recentSideHtml(x){
-  // The "side" pill on the left. Picks the right gradient for each trade type.
   const tt = (x.trade_type||"").toLowerCase();
   const dir = (x.direction||"").toLowerCase();
   const pred = String(x.prediction||"").toLowerCase();
@@ -2668,18 +2719,27 @@ function _recentSideHtml(x){
   return '<span class="side '+cls+'">'+esc(txt)+'</span>';
 }
 function renderRecent(rows){
+  window._RECENT_RAW = rows || [];
   const el = $("trade-recent"); if(!el) return;
-  // Hide anything that isn't a real trade outcome — error / skipped / unknown
-  // states were the source of the "error written all over it" feel.
+  const sessionStart = _recentSessionStart();
+  // Filter to this session AND a real trade outcome only.
   const visible = (rows||[]).filter(x => {
     const o = (x.outcome||"").toLowerCase();
-    return o === "won" || o === "lost" || o === "pending" || o === "settled" || o === "dry_run";
+    if(!(o === "won" || o === "lost" || o === "pending" || o === "settled" || o === "dry_run")) return false;
+    const at = new Date(x.created_at || x.placed_at || 0).getTime();
+    return !isFinite(at) || at >= sessionStart;
   });
+  // Update header counters (count + session timer)
+  const c = $("recent-count"); if(c) c.textContent = visible.length + " trade" + (visible.length===1?"":"s");
+  const t = $("recent-time"); if(t) t.textContent = "⏱ " + _recentFormatTimer(Date.now() - sessionStart);
   if(!visible.length){
     el.innerHTML = '<div class="recent-empty">No trades yet — your activity will appear here as soon as you place one.</div>';
     return;
   }
-  el.innerHTML = visible.slice(0, 8).map(x => {
+  // Number them: newest = #N (highest). Total in session = visible.length.
+  const total = visible.length;
+  el.innerHTML = visible.map((x, idx) => {
+    const num = total - idx;   // newest first → highest number
     const o = (x.outcome||"").toLowerCase();
     const isPractice = !!x.is_dry_run || o === "dry_run";
     const statusCls = o === "won" ? "won"
@@ -2690,7 +2750,6 @@ function renderRecent(rows){
                     : o === "lost" ? "Lost"
                     : (o === "pending" || o === "settled") ? "Settling"
                     : "Practice";
-    // P/L: shown when we actually have one; muted dash for pending/practice.
     let plHtml = '<div class="pl muted">—</div>';
     if(typeof x.profit === "number" && (o==="won" || o==="lost")){
       const v = Number(x.profit);
@@ -2701,13 +2760,29 @@ function renderRecent(rows){
     const stakeBit = (x.stake!=null) ? " · $"+Number(x.stake).toFixed(2) : "";
     return ''
       +'<div class="recent-row">'
+      +  '<div class="num">#'+num+'</div>'
       +  _recentSideHtml(x)
-      +'  <div class="desc"><div class="m">'+market+'</div><div class="t">'+when+(isPractice?" · practice":"")+stakeBit+'</div></div>'
-      +'  <div class="status '+statusCls+'">'+statusTxt+'</div>'
+      +  '<div class="desc"><div class="m">'+market+'</div><div class="t">session trade '+num+' · '+when+(isPractice?" · practice":"")+stakeBit+'</div></div>'
+      +  '<div class="status '+statusCls+'">'+statusTxt+'</div>'
       +  plHtml
       +'</div>';
   }).join("");
 }
+// Wire delete button + start a 1s session-timer tick.
+(function(){
+  const btn = document.getElementById("recent-reset");
+  if(btn) btn.addEventListener("click", () => {
+    if(!confirm("Clear the activity chart and start a fresh session count?\n\nYour past trades remain in your account history — this just resets the numbering shown here.")) return;
+    _recentNewSession();
+  });
+  // Tick the session timer every second when the trade view is open.
+  setInterval(() => {
+    const view = document.getElementById("view-trade");
+    if(!view || view.hidden) return;
+    const t = document.getElementById("recent-time"); if(!t || !CUR) return;
+    t.textContent = "⏱ " + _recentFormatTimer(Date.now() - _recentSessionStart());
+  }, 1000);
+})();
 function showBalance(b){
   if(b&&b.balance==null&&b.needs_reconnect){
     const top=$("trade-bal-top"); if(top){ top.innerHTML='<a href="#" onclick="showView(\'connect\');return false" style="color:var(--amber)">Reconnect Deriv ↻</a>'; }
@@ -2725,12 +2800,14 @@ async function refreshLive(){
   if(!CUR) return;
   loadBalance(CUR.id).then(showBalance);
   try{
-    let t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=8");
+    // limit=80 keeps the session counter accurate for long auto-trading runs
+    // (scrollable .recent-list contains them; ~80 visible rows is comfortable).
+    let t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=80");
     // Only ask the server to settle (heavy) when a REAL contract is still open,
     // then re-read once — so a win/loss shows in seconds without polling Deriv every tick.
     if(t.some(x=>x.outcome==="pending" && !x.is_dry_run)){
       try{ await api("/accounts/"+encodeURIComponent(CUR.id)+"/settle",{method:"POST"});
-           t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=8"); }catch(_){}
+           t=await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=80"); }catch(_){}
       loadBalance(CUR.id).then(showBalance);   // balance moves once it settles
     }
     renderRecent(t);
@@ -2860,7 +2937,7 @@ window.EOAuto = (function(){
     const go=$g("eo-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     // Clear the AUTO chip's "running" state + reset the live hint.
     const chips=$g("eo-tick-seg"); if(chips) chips.removeAttribute("data-running");
-    const hint=$g("eo-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+    const hint=$g("eo-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–5 based on signal strength";
     const armed=$g("eo-mart-armed"); if(armed) armed.classList.remove("on");
   }
   // (Old single-market _decide() removed — _pickBestMarket scans ALL 10
@@ -2868,9 +2945,12 @@ window.EOAuto = (function(){
   // instead of staying glued to whatever the user opened with.)
   function _autoTicks(lead){
     // Auto-ticks: stronger lean → fewer ticks (less time for randomness to revert).
-    if(lead >= 75) return 1;
-    if(lead >= 65) return 2;
-    return 3;
+    // 5-tier ladder: 1 / 2 / 3 / 4 / 5 ticks.
+    if(lead >= 78) return 1;
+    if(lead >= 70) return 2;
+    if(lead >= 62) return 3;
+    if(lead >= 55) return 4;
+    return 5;
   }
   // Scan ALL 10 markets and pick the one with the strongest current lean.
   // No filters — auto-trader fires every cycle on whichever market is leaning
@@ -2944,8 +3024,8 @@ window.EOAuto = (function(){
         void autoChip.offsetWidth;
         autoChip.classList.add("flash");
       }
-      const opts = [1, 2, 3, 5];
-      const stepDelays = [0, 120, 240, 360];   // ~360ms total scan
+      const opts = [1, 2, 3, 4, 5];
+      const stepDelays = [0, 110, 220, 330, 440];   // ~440ms total scan
       opts.forEach((v, i) => {
         setTimeout(() => {
           document.querySelectorAll('#eo-tick-seg button[data-mode="manual"]')
@@ -2965,7 +3045,7 @@ window.EOAuto = (function(){
         setTimeout(() => {
           document.querySelectorAll('#eo-tick-seg button.auto-picked').forEach(b => b.classList.remove("auto-picked"));
         }, 2200);
-      }, 500);
+      }, 600);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
@@ -2976,19 +3056,19 @@ window.EOAuto = (function(){
       })});
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
-      // Settled-trade detection — use the profit sign so practice (dry_run)
-      // and "settled" outcomes also drive the martingale ladder. Only
-      // "pending" trades skip the bookkeeping.
-      const isWin  = outcome === "won"  || (outcome !== "pending" && profit > 0);
-      const isLoss = outcome === "lost" || (outcome !== "pending" && profit < 0);
       S.sess.trades += 1;
-      if(isWin){
-        S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
-        S.sess.martStep = 0;                                 // recovery: reset on a win
-      }
-      else if(isLoss){
-        S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
-        S.sess.martStep = (S.sess.martStep || 0) + 1;        // bump the martingale ladder
+      // Settled-trade detection: any non-pending outcome with non-negative
+      // profit resets the ladder. This catches real won/lost, dry_run, and
+      // settled outcomes that don't carry an explicit won/lost label. Only
+      // a CLEAR negative profit bumps the martingale step.
+      if(outcome !== "pending"){
+        if(profit < 0 || outcome === "lost"){
+          S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
+          S.sess.martStep = (S.sess.martStep || 0) + 1;
+        } else {
+          S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+          S.sess.martStep = 0;
+        }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       // Auto-threshold: nudge the threshold based on session performance.
@@ -3207,10 +3287,17 @@ window.RFAuto = (function(){
   function _resetBtn(){
     const go=$g("rf-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("rf-tick-seg"); if(chips) chips.removeAttribute("data-running");
-    const hint=$g("rf-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+    const hint=$g("rf-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–5 based on signal strength";
     const armed=$g("rf-mart-armed"); if(armed) armed.classList.remove("on");
   }
-  function _autoTicks(lead){ return lead >= 75 ? 1 : lead >= 65 ? 2 : 3; }
+  function _autoTicks(lead){
+    // 5-tier ladder: stronger lean → fewer ticks (mirror of EO).
+    if(lead >= 78) return 1;
+    if(lead >= 70) return 2;
+    if(lead >= 62) return 3;
+    if(lead >= 55) return 4;
+    return 5;
+  }
   function _livePrices(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.prices) ? LiveWS.prices() : []; }catch(_){ return []; } }
   function _updateSignal(){
     const sig=$g("rf-signal"); if(!sig) return;
@@ -3296,13 +3383,13 @@ window.RFAuto = (function(){
     // Scan-and-pick animation on the AUTO chip + manual chips.
     if(cfg.ticksMode === "auto"){
       const hint=$g("rf-tick-hint"); if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
-      const opts=[1,2,3,5], stepDelays=[0,120,240,360];
+      const opts=[1,2,3,4,5], stepDelays=[0,110,220,330,440];
       opts.forEach((v,i)=>setTimeout(()=>{ document.querySelectorAll('#rf-tick-seg button[data-mode="manual"]').forEach(b=>b.classList.toggle("scanning", b.dataset.val===String(v))); }, stepDelays[i]));
       setTimeout(()=>{
         document.querySelectorAll('#rf-tick-seg button[data-mode="manual"]').forEach(b=>{ b.classList.remove("scanning"); b.classList.toggle("auto-picked", b.dataset.val===String(dur)); });
         if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
         setTimeout(()=>document.querySelectorAll('#rf-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
-      }, 500);
+      }, 600);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
@@ -3314,12 +3401,16 @@ window.RFAuto = (function(){
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
-      // Settled-trade detection: profit-sign also counts (so dry_run/settled outcomes drive the ladder).
-      {
-        const isWin  = outcome === "won"  || (outcome !== "pending" && profit > 0);
-        const isLoss = outcome === "lost" || (outcome !== "pending" && profit < 0);
-        if(isWin){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
-        else if(isLoss){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      // Settled-trade detection: any non-pending outcome with non-negative
+      // profit resets the ladder; only a clear loss bumps it.
+      if(outcome !== "pending"){
+        if(profit < 0 || outcome === "lost"){
+          S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
+          S.sess.martStep = (S.sess.martStep||0)+1;
+        } else {
+          S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+          S.sess.martStep = 0;
+        }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       if(S.sess.thrAuto){
@@ -3579,10 +3670,17 @@ window.OUAuto = (function(){
   function _resetBtn(){
     const go=$g("ou-go"); if(go){ go.textContent="▶ Start auto-trading"; go.classList.remove("running"); }
     const chips=$g("ou-tick-seg"); if(chips) chips.removeAttribute("data-running");
-    const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–3 based on signal strength";
+    const hint=$g("ou-tick-hint"); if(hint) hint.textContent = "AUTO picks 1–5 based on signal strength";
     const armed=$g("ou-mart-armed"); if(armed) armed.classList.remove("on");
   }
-  function _autoTicks(lead){ return lead >= 75 ? 1 : lead >= 65 ? 2 : 3; }
+  function _autoTicks(lead){
+    // 5-tier ladder: stronger lean → fewer ticks (mirror of EO).
+    if(lead >= 78) return 1;
+    if(lead >= 70) return 2;
+    if(lead >= 62) return 3;
+    if(lead >= 55) return 4;
+    return 5;
+  }
   function _liveDigits(){ try{ return (typeof LiveWS !== "undefined" && LiveWS.digits) ? LiveWS.digits() : []; }catch(_){ return []; } }
   function _updateSignal(){
     const sig=$g("ou-signal"); if(!sig) return;
@@ -3679,13 +3777,13 @@ window.OUAuto = (function(){
     S.busy = true;
     if(cfg.ticksMode === "auto"){
       const hint=$g("ou-tick-hint"); if(hint) hint.innerHTML = '<span style="color:var(--amber)">AUTO scanning…</span>';
-      const opts=[1,2,3,5], stepDelays=[0,120,240,360];
+      const opts=[1,2,3,4,5], stepDelays=[0,110,220,330,440];
       opts.forEach((v,i)=>setTimeout(()=>{ document.querySelectorAll('#ou-tick-seg button[data-mode="manual"]').forEach(b=>b.classList.toggle("scanning", b.dataset.val===String(v))); }, stepDelays[i]));
       setTimeout(()=>{
         document.querySelectorAll('#ou-tick-seg button[data-mode="manual"]').forEach(b=>{ b.classList.remove("scanning"); b.classList.toggle("auto-picked", b.dataset.val===String(dur)); });
         if(hint) hint.innerHTML = '<b style="color:var(--good)">AUTO picked '+dur+' tick'+(dur>1?"s":"")+'</b> · '+pick.pct+'% lean';
         setTimeout(()=>document.querySelectorAll('#ou-tick-seg button.auto-picked').forEach(b=>b.classList.remove("auto-picked")), 2200);
-      }, 500);
+      }, 600);
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+" "+barrier+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
@@ -3698,12 +3796,16 @@ window.OUAuto = (function(){
       const profit = (typeof r.profit === "number") ? r.profit : 0;
       const outcome = r.outcome || "pending";
       S.sess.trades += 1;
-      // Settled-trade detection: profit-sign also counts (so dry_run/settled outcomes drive the ladder).
-      {
-        const isWin  = outcome === "won"  || (outcome !== "pending" && profit > 0);
-        const isLoss = outcome === "lost" || (outcome !== "pending" && profit < 0);
-        if(isWin){ S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit; S.sess.martStep = 0; }
-        else if(isLoss){ S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit; S.sess.martStep = (S.sess.martStep||0)+1; }
+      // Settled-trade detection: any non-pending outcome with non-negative
+      // profit resets the ladder; only a clear loss bumps it.
+      if(outcome !== "pending"){
+        if(profit < 0 || outcome === "lost"){
+          S.sess.losses += 1; S.sess.streak += 1; S.sess.pnl += profit;
+          S.sess.martStep = (S.sess.martStep||0)+1;
+        } else {
+          S.sess.wins += 1; S.sess.streak = 0; S.sess.pnl += profit;
+          S.sess.martStep = 0;
+        }
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       if(S.sess.thrAuto){
