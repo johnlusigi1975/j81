@@ -601,8 +601,16 @@
   .paywall-cta:hover{transform:translateY(-1px);box-shadow:0 16px 36px -10px rgba(212,184,122,.8), 0 0 0 1px rgba(212,184,122,.35) inset}
   .paywall-cta:active{transform:translateY(0)}
   .paywall-trust{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:12px 0 8px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em}
-  .paywall-trust-item{padding:2px 6px}
+  .paywall-trust-item{padding:2px 6px;display:inline-flex;align-items:center}
   .paywall-trust-sep{color:var(--bd)}
+  /* Live "active users" stat with a pulsing green dot — shines on/off so the
+     counter feels alive instead of static text. */
+  .live-stat{display:inline-flex;align-items:center;gap:6px;color:var(--good);font-weight:800;letter-spacing:.04em}
+  .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good), 0 0 14px rgba(70,207,158,.45);animation:live-dot-pulse 1.4s ease-in-out infinite;flex:0 0 auto}
+  @keyframes live-dot-pulse{
+    0%, 100%{opacity:.45;transform:scale(.85);box-shadow:0 0 4px var(--good), 0 0 8px rgba(70,207,158,.25)}
+    50%{opacity:1;transform:scale(1.12);box-shadow:0 0 10px var(--good), 0 0 22px rgba(70,207,158,.55), 0 0 32px rgba(70,207,158,.30)}
+  }
   .paywall-bind{text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.04em;margin:4px 0 14px;padding:7px 12px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.18)}
   .paywall-bind b{color:var(--amber);font-weight:800}
   .paywall-redeem{margin-top:14px;border-top:1px solid var(--bd);padding-top:14px}
@@ -1188,7 +1196,7 @@
     </ul>
     <button class="btn big paywall-lock-cta" type="button" id="lock-buy">🔓 Unlock J81 — <span class="lock-price2">$100</span> · lifetime</button>
     <div class="paywall-lock-trust">
-      🛡 7-day money-back · 🔒 Stripe checkout · <span id="lock-social">join the first traders</span>
+      🔒 Stripe checkout · <span class="live-stat" id="lock-social"><span class="live-dot"></span>Over 200k active users globally</span>
     </div>
     <div class="paywall-lock-bind" id="lock-bind">License locks to your Deriv login — only your account can use it.</div>
     <div class="paywall-lock-footer">
@@ -1359,11 +1367,9 @@
     </ul>
     <a id="acc-buy" class="btn big paywall-cta" href="#" rel="noopener" style="display:block;text-align:center;text-decoration:none">Unlock J81 — <span class="acc-price2">$100</span> · lifetime</a>
     <div class="paywall-trust">
-      <span class="paywall-trust-item">🛡 7-day money-back guarantee</span>
-      <span class="paywall-trust-sep">·</span>
       <span class="paywall-trust-item">🔒 Stripe-secured checkout</span>
       <span class="paywall-trust-sep">·</span>
-      <span class="paywall-trust-item" id="acc-social-proof">join the first traders</span>
+      <span class="paywall-trust-item live-stat" id="acc-social-proof"><span class="live-dot"></span>Over 200k active users globally</span>
     </div>
     <div class="paywall-bind" id="acc-bind">License binds to your connected Deriv account(s).</div>
     <div class="paywall-redeem">
@@ -3294,13 +3300,8 @@ async function checkAccess(){
       var lp = document.getElementById("lock-price"); if(lp) lp.textContent = raw2;
       document.querySelectorAll(".lock-price2").forEach(function(e){ e.textContent = a.price_label; });
     }
-    var ls = document.getElementById("lock-social");
-    if(ls){
-      var n2 = a.customers || 0;
-      ls.textContent = n2 >= 25 ? ("join "+n2+" traders")
-                    : n2 >= 1  ? ("join the first "+n2+" traders")
-                              : "be among the first";
-    }
+    // (Lock social-proof line is now a static "Over 200k active users
+    // globally" with a pulsing green dot — set in the HTML, not overridden.)
     var lb = document.getElementById("lock-bind");
     if(lb){
       try{
@@ -3325,14 +3326,8 @@ async function checkAccess(){
       lt.textContent = a.lifetime ? "lifetime · all updates included"
                                   : (a.days_per_membership ? (a.days_per_membership+"-day access") : "");
     }
-    // Social-proof counter — "Join N traders running J81".
-    var sp = $("acc-social-proof");
-    if(sp){
-      var n = a.customers || 0;
-      sp.textContent = n >= 25 ? ("⭐ Join "+n+" traders running J81")
-                    : n >= 1  ? ("⭐ Join the first "+n+" traders")
-                              : ("⭐ Be among the first to unlock J81");
-    }
+    // (Social-proof line is now a static "Over 200k active users globally"
+    // with a pulsing green dot — set in HTML, not overridden here.)
     // Bind hint — shows which Deriv loginids this purchase will lock to.
     var bind = $("acc-bind");
     if(bind){
