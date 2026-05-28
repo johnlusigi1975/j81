@@ -534,8 +534,15 @@
   body.paywall-locked #view-home::after,
   body.paywall-locked #view-trade::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.60));pointer-events:none;z-index:2}
   body.paywall-locked .nav{filter:saturate(.6) brightness(.85);pointer-events:none}
+  /* Escape hatches: brand (→ home + reload), back, logout, help, and the API
+     pulse stay clickable so the user can always leave the locked screen. */
   body.paywall-locked .nav .api-pulse,
-  body.paywall-locked .nav .navbtn[id="nav-help"]{pointer-events:auto}
+  body.paywall-locked .nav .brand,
+  body.paywall-locked .nav #nav-back,
+  body.paywall-locked .nav #nav-exit,
+  body.paywall-locked .nav #nav-help{pointer-events:auto}
+  body.paywall-locked .nav .brand{cursor:pointer}
+  body.paywall-locked .nav .brand:hover{filter:brightness(1.2)}
   .paywall-lock{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none;animation:paywall-fade .35s ease 1}
   body.paywall-locked .paywall-lock{pointer-events:auto}
   @keyframes paywall-fade{0%{opacity:0;backdrop-filter:blur(0)}100%{opacity:1;backdrop-filter:blur(6px)}}
@@ -1202,7 +1209,7 @@
 
 <nav class="nav"><div class="nav-in">
   <button class="navbtn" id="nav-back" hidden onclick="navBack()" title="Back" style="margin-right:6px;padding:6px 11px">← Back</button>
-  <div class="brand"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
+  <div class="brand" id="nav-brand" title="Back to home — refreshes the app" onclick="goHomeRefresh()" style="cursor:pointer"><span class="m">J81</span> <span>J81 Trade Desk</span></div>
   <div class="nav-sp"></div>
   <!-- API health pulse — green/amber/red dot showing live API connectivity.
        Pings /version every 12s; latency is shown on hover. -->
@@ -3194,6 +3201,18 @@ function applyPaywallLock(view){
                  && !!CUR;   // any logged-in account triggers the paywall
   document.body.classList.toggle("paywall-locked", !!needsLock);
   if(lockEl) lockEl.hidden = !needsLock;
+  // While the user is locked, make sure they always have a Back button —
+  // even on home view (which normally has none). Back goes to the accounts
+  // picker so they can switch accounts, or to landing if they have none.
+  if(needsLock){
+    const nb = document.getElementById("nav-back");
+    if(nb){
+      window._BACK_TO = HAS_ACCOUNTS ? "accounts" : "landing";
+      nb.hidden = false;
+    }
+    // Logout chip in the nav stays visible too (controlled elsewhere — show it).
+    const ex = document.getElementById("nav-exit"); if(ex) ex.hidden = false;
+  }
 }
 // Wire the Unlock button in the lock overlay — uses the same checkout link
 // helper as the full paywall card.
@@ -3418,6 +3437,14 @@ async function logout(){   // disconnect THIS browser → back to the front page
   try{ localStorage.removeItem(_SETTINGS_KEY); }catch(_){}
   try{ LiveWS.stop(); }catch(_){}
   showView("landing");
+}
+// Click on the J81 logo: drop the user back to the app root and force a hard
+// refresh. Wipes the "remember last view" marker so they really land on the
+// entry flow, not whatever locked screen they were on.
+function goHomeRefresh(){
+  try{ clearNav(); }catch(_){}
+  // Hard reload to the app root — clears any in-memory locked state too.
+  location.replace("/");
 }
 function openAccounts(){ showView("accounts"); }
 function updateNav(){
