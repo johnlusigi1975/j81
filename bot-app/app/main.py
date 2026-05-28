@@ -293,6 +293,45 @@ def access_code(session_id: str) -> dict:
     return {"ready": True, "code": lic["code"]}
 
 
+class OwnerUnlockReq(BaseModel):
+    key: str | None = None
+
+
+@app.post("/access/owner_unlock")
+def access_owner_unlock(body: OwnerUnlockReq, request: Request, response: Response) -> dict:
+    """Owner escape hatch — grants a LIFETIME license to the caller's Deriv
+    loginids without going through Stripe. Requires ADMIN_KEY (header
+    X-Admin-Key, query ?key=, or body field `key`). Use this to test the
+    unlocked version of the app, or to grant yourself + close contacts
+    comp access. Disabled until ADMIN_KEY is set in the env."""
+    expected = (get_settings().admin_key or "").strip()
+    if not expected:
+        raise HTTPException(503, "owner unlock disabled — set ADMIN_KEY in the dashboard first")
+    got = (request.headers.get("X-Admin-Key")
+           or request.query_params.get("key")
+           or (body.key if body else None) or "").strip()
+    if got != expected:
+        raise HTTPException(403, "bad admin key")
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not sid:
+        sid = _new_sid(); _set_session_cookie(response, sid)
+    store = get_store()
+    loginids: list[str] = []
+    try:
+        for a in store.list_accounts_public(sid):
+            lid = a.get("deriv_account_id")
+            if lid: loginids.append(lid)
+    except Exception:
+        pass
+    if not loginids:
+        raise HTTPException(400, "connect a Deriv account first — the license binds to your loginids")
+    # Lifetime mint + bind. Reusing the same ref idempotently means re-calling
+    # this never duplicates the license; it just re-binds new loginids.
+    ref = f"owner:{sid[:16]}"
+    code = store.mint_for_ref(ref, 0, loginids=loginids)
+    return {"ok": True, "code": code, "bound": loginids, "lifetime": True}
+
+
 @app.get("/access/checkout_link")
 def access_checkout_link(request: Request) -> dict:
     """Returns the Stripe payment URL with this user's Deriv loginids attached

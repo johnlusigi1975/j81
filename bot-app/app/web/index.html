@@ -572,6 +572,16 @@
   .paywall-lock-text-btn{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.04em;cursor:pointer;padding:4px 6px;text-transform:none}
   .paywall-lock-text-btn:hover{color:var(--text)}
   .paywall-lock-sep{color:var(--bd);font-family:var(--mono);font-size:10px}
+  /* Owner / dev unlock — discreet collapsible panel inside the lock */
+  .paywall-lock-owner{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd);position:relative;z-index:2}
+  .paywall-lock-owner summary{cursor:pointer;text-align:center;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.10em;text-transform:uppercase;padding:4px 0;list-style:none;outline:none}
+  .paywall-lock-owner summary::-webkit-details-marker{display:none}
+  .paywall-lock-owner summary:hover{color:var(--text)}
+  .paywall-lock-owner-body{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .paywall-lock-owner-body input{flex:1;min-width:170px;font-family:var(--mono);font-size:11px;padding:8px 10px;background:rgba(0,0,0,.30);border:1px solid var(--bd);border-radius:7px;color:var(--text);letter-spacing:.04em}
+  .paywall-lock-owner-body input:focus{outline:0;border-color:var(--amber)}
+  .paywall-lock-owner-body .btn{padding:8px 14px;font-size:12px}
+  .paywall-lock-owner-msg{flex-basis:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;margin-top:4px}
   @media(max-width:520px){.paywall-lock-price{font-size:46px}.paywall-lock-card{padding:22px 18px 18px}.paywall-lock-cta{font-size:15px;padding:13px 16px !important}}
   /* === Lifetime paywall card === */
   .paywall-eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:var(--amber);font-weight:800;margin-bottom:8px}
@@ -1188,6 +1198,17 @@
       <span class="paywall-lock-sep">·</span>
       <button class="paywall-lock-text-btn" type="button" onclick="logout()">Sign out</button>
     </div>
+    <!-- Owner-only escape hatch — paste your ADMIN_KEY env var here to grant
+         yourself a lifetime license for testing without paying Stripe.
+         Only works when ADMIN_KEY is set on the server. -->
+    <details class="paywall-lock-owner">
+      <summary>Owner / dev unlock (testing)</summary>
+      <div class="paywall-lock-owner-body">
+        <input id="owner-key" placeholder="ADMIN_KEY (env var)" autocomplete="off" spellcheck="false">
+        <button class="btn" type="button" id="owner-unlock-btn">Unlock</button>
+        <div id="owner-msg" class="paywall-lock-owner-msg"></div>
+      </div>
+    </details>
   </div>
 </div>
 
@@ -3214,6 +3235,35 @@ function applyPaywallLock(view){
     const ex = document.getElementById("nav-exit"); if(ex) ex.hidden = false;
   }
 }
+// Owner / dev unlock — paste ADMIN_KEY → instant lifetime license (no Stripe).
+// Lets you test the unlocked UI without paying. Disabled server-side until
+// ADMIN_KEY is configured. After success, the license auto-unlocks the lock.
+document.addEventListener("click", function(ev){
+  const t = ev.target.closest && ev.target.closest("#owner-unlock-btn");
+  if(!t) return;
+  const keyEl = document.getElementById("owner-key");
+  const msgEl = document.getElementById("owner-msg");
+  const key = (keyEl && keyEl.value || "").trim();
+  if(!key){ if(msgEl) msgEl.innerHTML = '<span style="color:var(--bad)">Paste your ADMIN_KEY first.</span>'; return; }
+  if(msgEl) msgEl.innerHTML = '<span style="color:var(--faint)">unlocking…</span>';
+  (async function(){
+    try{
+      const r = await api("/access/owner_unlock", {method:"POST", body: JSON.stringify({key:key})});
+      if(r && r.ok){
+        window.LICENSED = true;
+        if(msgEl) msgEl.innerHTML = '<span style="color:var(--good)">✓ Lifetime unlocked on '+(r.bound||[]).join(", ")+'.</span>';
+        try{ toast({kind:"win", title:"Owner unlock", msg:"Lifetime license granted to your loginids.", ttl:5000}); }catch(_){}
+        await checkAccess();
+        try{ applyPaywallLock(); }catch(_){}
+        return;
+      }
+      if(msgEl) msgEl.innerHTML = '<span style="color:var(--bad)">Could not unlock — check ADMIN_KEY.</span>';
+    }catch(e){
+      const m = (e && e.message) || "unlock failed";
+      if(msgEl) msgEl.innerHTML = '<span style="color:var(--bad)">'+esc(m)+'</span>';
+    }
+  })();
+});
 // Wire the Unlock button in the lock overlay — uses the same checkout link
 // helper as the full paywall card.
 document.addEventListener("click", function(ev){
