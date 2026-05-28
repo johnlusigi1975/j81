@@ -65,13 +65,15 @@ class Settings(BaseSettings):
     # Secret that protects the owner-only license endpoints (generate/list codes).
     # Set ADMIN_KEY in the dashboard; while blank, those endpoints are disabled.
     admin_key: str = ""
-    access_days: int = 90               # how long one membership lasts
+    # 0 ⇒ LIFETIME (default). >0 ⇒ time-bound legacy membership of N days.
+    access_days: int = 0
     access_price_label: str = "$100"    # shown on the paywall
-    # Your payment link (Stripe/Gumroad/etc.) — PUBLIC URL, safe to set here.
-    # After a customer pays, you give them a code (see /admin/licenses).
+    # Your Stripe Payment Link — PUBLIC URL, safe to set here. The webhook
+    # auto-mints + binds a lifetime license to the buyer's Deriv loginids,
+    # so the moment they're back in the app they're unlocked.
     access_buy_url: str = ""
     # Master switch: when False, the whole app is open (no paywall). Flip to
-    # True (REQUIRE_ACCESS=true) to charge.
+    # True (REQUIRE_ACCESS=true) to charge for REAL accounts (demo stays free).
     require_access: bool = False
     # Stripe webhook signing secret (whsec_…) — set in the dashboard to auto-issue
     # a code when a payment completes. Blank disables the webhook.

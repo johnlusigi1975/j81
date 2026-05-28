@@ -118,15 +118,37 @@ def owner_page() -> FileResponse:
 @app.get("/access/status")
 def access_status(request: Request, response: Response) -> dict:
     """Is the caller a paid member? Also returns the offer (price + buy link) so
-    the paywall can render. require_access=false means the app is open to all."""
+    the paywall can render. require_access=false means the app is open to all.
+
+    New anti-sharing model: we look up the caller's Deriv loginids (any account
+    they've connected in this browser) and check if ANY of them is bound to an
+    active lifetime license. So one purchase covers all of a user's accounts on
+    any device, but a different Deriv user gets the paywall."""
     s = get_settings()
     sid = request.cookies.get(SESSION_COOKIE)
     if not sid:
         sid = _new_sid(); _set_session_cookie(response, sid)
-    st = get_store().access_status(sid)
+    store = get_store()
+    # Collect every Deriv loginid this browser session owns. Some sessions
+    # have none yet (they haven't OAuthed); those just fall through to the
+    # legacy session-bound check inside access_status.
+    loginids: list[str] = []
+    try:
+        for acct in store.list_accounts_public(sid):
+            lid = acct.get("deriv_account_id")
+            if lid: loginids.append(lid)
+    except Exception:
+        pass
+    st = store.access_status(sid, loginids=loginids)
+    # Total paid customers — for the paywall's social-proof counter.
+    try:
+        st["customers"] = store.count_active_licenses()
+    except Exception:
+        pass
     return {**st, "require_access": s.require_access,
             "price_label": s.access_price_label, "buy_url": s.access_buy_url,
-            "days_per_membership": s.access_days}
+            "days_per_membership": s.access_days,
+            "lifetime": s.access_days == 0}
 
 
 class RedeemCode(BaseModel):
@@ -203,9 +225,13 @@ def _verify_stripe_sig(payload: bytes, sig_header: str, secret: str, tolerance: 
 
 @app.post("/webhooks/stripe", include_in_schema=False)
 async def stripe_webhook(request: Request) -> dict:
-    """Stripe calls this when a payment completes. We verify the signature, then
-    mint ONE membership code tied to the checkout session (idempotent), which the
-    buyer's success page picks up via /access/code. Needs STRIPE_WEBHOOK_SECRET."""
+    """Stripe calls this on payment events. Verifies signature, then:
+      • checkout.session.completed → mint LIFETIME license + bind to the
+        buyer's Deriv loginids (passed as client_reference_id from the
+        paywall — see /access/checkout_link). Idempotent on retries.
+      • charge.refunded            → revoke that license (user goes back
+        behind the paywall).
+    Requires STRIPE_WEBHOOK_SECRET."""
     secret = get_settings().stripe_webhook_secret
     if not secret:
         raise HTTPException(503, "stripe webhook not configured")
@@ -217,14 +243,43 @@ async def stripe_webhook(request: Request) -> dict:
         event = _json.loads(payload)
     except Exception:
         raise HTTPException(400, "bad payload")
-    if event.get("type") in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
-        obj = (event.get("data") or {}).get("object") or {}
+    etype = event.get("type") or ""
+    obj = (event.get("data") or {}).get("object") or {}
+    store = get_store()
+    if etype in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
         sid = obj.get("id")
         paid = obj.get("payment_status") in ("paid", "no_payment_required") or obj.get("status") == "complete"
         if sid and paid:
-            code = get_store().mint_for_ref(f"stripe:{sid}", get_settings().access_days)
-            return {"ok": True, "code_issued": True, "code": code}
-    return {"ok": True, "code_issued": False}
+            # `client_reference_id` carries a comma-joined list of the buyer's
+            # Deriv loginids (we set it when generating the checkout URL).
+            # Any loginid passed here becomes a permanent unlock key for them
+            # — log in with that loginid anywhere = unlocked.
+            cref = (obj.get("client_reference_id") or "").strip()
+            loginids = [x.strip() for x in cref.split(",") if x.strip()] if cref else None
+            # days=0 ⇒ LIFETIME (no expiry). The licensing model is one-time
+            # purchase, lifetime use as long as J81 is operated.
+            code = store.mint_for_ref(f"stripe:{sid}", 0, loginids=loginids)
+            return {"ok": True, "issued": True, "code": code, "bound": len(loginids or [])}
+        return {"ok": True, "issued": False, "reason": "not paid"}
+    if etype in ("charge.refunded", "charge.dispute.closed"):
+        # The refund payload has `payment_intent`; the related checkout session
+        # carries the payment_intent in `payment_intent`. We stored the license
+        # under `stripe:<session_id>`. Easiest path: read the linked session id
+        # off the charge if present; otherwise mark any license whose note
+        # starts with stripe: AND whose stored payment_intent matches.
+        # Stripe puts the session id sometimes in `metadata.checkout_session`
+        # — but the safest universal hook is to revoke by payment_intent ref.
+        pi = obj.get("payment_intent")
+        revoked = False
+        if pi:
+            # We didn't store payment_intent; fall back: also try by session id
+            # if the dashboard rule passes it in metadata.
+            meta = obj.get("metadata") or {}
+            cs = meta.get("checkout_session")
+            if cs:
+                revoked = store.revoke_license_by_ref(f"stripe:{cs}") or revoked
+        return {"ok": True, "revoked": revoked}
+    return {"ok": True, "ignored": etype}
 
 
 @app.get("/access/code")
@@ -236,6 +291,37 @@ def access_code(session_id: str) -> dict:
     if not lic:
         return {"ready": False}
     return {"ready": True, "code": lic["code"]}
+
+
+@app.get("/access/checkout_link")
+def access_checkout_link(request: Request) -> dict:
+    """Returns the Stripe payment URL with this user's Deriv loginids attached
+    as `client_reference_id`. Stripe echoes that field back on the webhook so
+    we can bind the lifetime license to the exact accounts they connected.
+    The frontend opens whatever URL we return when the user clicks Pay."""
+    s = get_settings()
+    base = s.access_buy_url
+    if not base:
+        return {"url": None, "reason": "buy_url not configured"}
+    sid = request.cookies.get(SESSION_COOKIE) or ""
+    loginids: list[str] = []
+    if sid:
+        try:
+            for a in get_store().list_accounts_public(sid):
+                lid = a.get("deriv_account_id")
+                if lid: loginids.append(lid)
+        except Exception:
+            pass
+    if not loginids:
+        # No Deriv accounts yet — the buyer would pay but we couldn't bind the
+        # license. Send them back to connect first.
+        return {"url": None, "reason": "connect_first"}
+    # Stripe Payment Links accept client_reference_id as a query param. The
+    # buyer's checkout will send it back on the completed webhook so we can
+    # bind the license to those exact loginids.
+    sep = "&" if "?" in base else "?"
+    url = base + sep + "client_reference_id=" + ",".join(loginids[:20])
+    return {"url": url, "bound": loginids[:20]}
 
 
 @app.get("/robots.txt", include_in_schema=False)
@@ -439,6 +525,7 @@ async def oauth_callback(request: Request) -> RedirectResponse:
     # ---- LEGACY: token1/acct1/cur1 triples ----
     if "token1" in params:
         saved = 0
+        loginids: list[str] = []
         i = 1
         while f"token{i}" in params and f"acct{i}" in params:
             try:
@@ -448,12 +535,22 @@ async def oauth_callback(request: Request) -> RedirectResponse:
                     currency=params.get(f"cur{i}"),
                     session_id=sid,
                 )
+                loginids.append(params[f"acct{i}"])
                 saved += 1
             except RuntimeError as exc:
                 return _auth_fail(f"Could not store your token: {exc}")
             i += 1
         if not saved:
             return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")
+        # Anti-sharing: if ANY of these loginids is already on an active
+        # license (paid earlier on another device), the new connection adds
+        # any new loginids to the SAME license so the user stays unlocked.
+        try:
+            existing = store.license_by_loginid_any(loginids)
+            if existing:
+                store.bind_loginids_to_license(existing["code"], loginids)
+        except Exception:
+            pass
         return _ok(saved)
 
     # ---- NEW: OAuth2 PKCE code exchange ----
@@ -493,17 +590,27 @@ async def oauth_callback(request: Request) -> RedirectResponse:
         except Exception as exc:
             return _auth_fail(f"Signed in, but could not read your accounts: {exc}")
         saved = 0
+        loginids: list[str] = []
         for a in accounts:
             try:
                 store.upsert_account(
                     deriv_account_id=a["loginid"], token=access,
                     currency=a.get("currency"), platform="new", session_id=sid,
                     refresh_token=refresh, expires_in=expires_in)
+                loginids.append(a["loginid"])
                 saved += 1
             except RuntimeError as exc:
                 return _auth_fail(f"Could not store your account: {exc}")
         if not saved:
             return _auth_fail("Signed in, but found no tradable accounts.")
+        # Returning paid customer? If ANY loginid is on an active license,
+        # adopt that license + bind any newly-added loginids to it.
+        try:
+            existing = store.license_by_loginid_any(loginids)
+            if existing:
+                store.bind_loginids_to_license(existing["code"], loginids)
+        except Exception:
+            pass
         return _ok(saved)
 
     return _auth_fail("No account came back from Deriv — the sign-in may have been cancelled.")

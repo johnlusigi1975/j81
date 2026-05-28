@@ -134,20 +134,33 @@ class BotStore:
                 );
                 CREATE INDEX IF NOT EXISTS ix_proven_tt ON proven_strategies(trade_type);
 
-                -- Paid access: one code = one membership. Owner generates codes
-                -- (after a customer pays via your payment link); the customer
-                -- redeems a code to unlock the desk for `days` days.
+                -- Paid access: one code = one membership.
+                --   `days = 0`  ⇒ LIFETIME (expires_at stays NULL).
+                --   `days > 0`  ⇒ legacy time-bound membership.
+                -- Lifetime is the supported model going forward; the days field
+                -- is kept so older redeemable codes still work.
                 CREATE TABLE IF NOT EXISTS licenses (
                     code        TEXT PRIMARY KEY,
                     days        INTEGER NOT NULL,
                     status      TEXT NOT NULL DEFAULT 'unused',  -- unused | active | revoked
-                    session_id  TEXT,                            -- bound on redeem
+                    session_id  TEXT,                            -- bound on redeem (legacy)
                     note        TEXT,
                     activated_at TEXT,
-                    expires_at  TEXT,
+                    expires_at  TEXT,                            -- NULL ⇒ lifetime
                     created_at  TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS ix_lic_session ON licenses(session_id);
+                -- Anti-account-sharing: every Deriv loginid (CR12345 / VRTC678…)
+                -- that ever belongs to a paid user is recorded here. Logging in
+                -- with ANY of these loginids on ANY browser unlocks the app
+                -- automatically — no codes to copy, no friend can use yours.
+                CREATE TABLE IF NOT EXISTS license_logins (
+                    loginid       TEXT PRIMARY KEY,           -- e.g. CR123456 or VRTC987
+                    license_code  TEXT NOT NULL,
+                    bound_at      TEXT NOT NULL,
+                    FOREIGN KEY (license_code) REFERENCES licenses(code)
+                );
+                CREATE INDEX IF NOT EXISTS ix_lic_logins_code ON license_logins(license_code);
                 """
             )
             self._migrate()
@@ -675,18 +688,47 @@ class BotStore:
         except ValueError:
             return None
 
-    def access_status(self, session_id: str) -> dict[str, Any]:
-        """Is this session a paid member? Returns {licensed, days_left, expires_at}."""
+    def access_status(self, session_id: str, *, loginids: list[str] | None = None) -> dict[str, Any]:
+        """Is this caller a paid member?
+        Two paths can return licensed=True:
+          1. Their browser session is bound to an active license (legacy redeem).
+          2. ANY of their Deriv loginids is bound to an active license — this is
+             the new model: pay once, use on any device, anti-sharing because
+             only that Deriv user's logins unlock the app.
+        Returns {licensed, lifetime, days_left, expires_at, source}."""
         from datetime import datetime, timezone
+        # ── 2) Deriv-loginid path (new model, lifetime by default) ──────
+        if loginids:
+            lic = self.license_by_loginid_any(loginids)
+            if lic and lic["status"] == "active":
+                # Lifetime license = expires_at NULL.
+                if not lic["expires_at"]:
+                    return {"licensed": True, "lifetime": True, "days_left": None,
+                            "expires_at": None, "source": "deriv"}
+                # Time-bound: same expiry math as legacy.
+                try:
+                    exp = datetime.fromisoformat(lic["expires_at"])
+                    if not exp.tzinfo: exp = exp.replace(tzinfo=timezone.utc)
+                except Exception:
+                    exp = None
+                now = datetime.now(timezone.utc)
+                if exp and exp > now:
+                    secs = (exp - now).total_seconds()
+                    return {"licensed": True, "lifetime": False,
+                            "days_left": max(1, round(secs / 86400)),
+                            "expires_at": exp.isoformat(), "source": "deriv"}
+        # ── 1) Legacy session-cookie path (kept for backwards compat) ───
         exp = self._session_expiry(session_id)
-        if not exp:
-            return {"licensed": False, "days_left": 0, "expires_at": None}
-        now = datetime.now(timezone.utc)
-        if exp <= now:
-            return {"licensed": False, "days_left": 0, "expires_at": exp.isoformat(), "expired": True}
-        secs = (exp - now).total_seconds()
-        return {"licensed": True, "days_left": max(1, round(secs / 86400)),
-                "expires_at": exp.isoformat()}
+        if exp:
+            now = datetime.now(timezone.utc)
+            if exp > now:
+                secs = (exp - now).total_seconds()
+                return {"licensed": True, "lifetime": False,
+                        "days_left": max(1, round(secs / 86400)),
+                        "expires_at": exp.isoformat(), "source": "session"}
+            return {"licensed": False, "days_left": 0,
+                    "expires_at": exp.isoformat(), "expired": True}
+        return {"licensed": False, "days_left": 0, "expires_at": None}
 
     def license_by_note(self, note: str) -> dict[str, Any] | None:
         row = self._conn.execute(
@@ -694,14 +736,97 @@ class BotStore:
             (note,)).fetchone()
         return dict(row) if row else None
 
-    def mint_for_ref(self, ref: str, days: int, note: str | None = None) -> str:
+    def license_by_loginid(self, loginid: str) -> dict[str, Any] | None:
+        """Find the active license bound to this single Deriv loginid (if any)."""
+        if not loginid: return None
+        row = self._conn.execute(
+            "SELECT l.* FROM licenses l "
+            "JOIN license_logins ll ON ll.license_code = l.code "
+            "WHERE ll.loginid = ? AND l.status = 'active' LIMIT 1",
+            (loginid,)).fetchone()
+        return dict(row) if row else None
+
+    def license_by_loginid_any(self, loginids: list[str]) -> dict[str, Any] | None:
+        """Return the first active license tied to ANY of these loginids.
+        Used in access_status: a user with multiple Deriv accounts unlocks
+        the app via whichever loginid they happen to be using right now."""
+        ids = [x for x in (loginids or []) if x]
+        if not ids: return None
+        placeholders = ",".join("?" for _ in ids)
+        row = self._conn.execute(
+            f"SELECT l.* FROM licenses l "
+            f"JOIN license_logins ll ON ll.license_code = l.code "
+            f"WHERE ll.loginid IN ({placeholders}) AND l.status = 'active' LIMIT 1",
+            tuple(ids)).fetchone()
+        return dict(row) if row else None
+
+    def bind_loginids_to_license(self, code: str, loginids: list[str]) -> int:
+        """Attach every loginid the user owns to this license code (idempotent).
+        Returns the number of NEW bindings created. Called when a payment lands
+        AND when an already-paid user adds a new Deriv account later."""
+        from datetime import datetime, timezone
+        ids = [x for x in (loginids or []) if x]
+        if not ids or not code: return 0
+        now = datetime.now(timezone.utc).isoformat()
+        added = 0
+        with self._lock:
+            for lid in ids:
+                try:
+                    self._conn.execute(
+                        "INSERT INTO license_logins(loginid, license_code, bound_at) "
+                        "VALUES (?,?,?)", (lid, code, now))
+                    added += 1
+                except sqlite3.IntegrityError:
+                    # loginid already bound (to this or another license — first
+                    # binding wins; we never silently transfer between licenses).
+                    pass
+            self._conn.commit()
+        return added
+
+    def revoke_license_by_ref(self, ref: str) -> bool:
+        """Mark the license for an external ref (e.g. a Stripe session) as
+        revoked. Called from the Stripe refund webhook. Returns True if a row
+        was updated."""
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE licenses SET status='revoked' WHERE note=? AND status='active'",
+                (ref,))
+            self._conn.commit()
+            return cur.rowcount > 0
+
+    def count_active_licenses(self) -> int:
+        """How many paid users do we have? Used for the social-proof counter
+        on the paywall ("Join N traders running J81")."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS n FROM licenses WHERE status='active'"
+        ).fetchone()
+        return int(row["n"] if row and "n" in row.keys() else 0)
+
+    def mint_for_ref(self, ref: str, days: int, note: str | None = None,
+                     loginids: list[str] | None = None) -> str:
         """Idempotently mint ONE code tied to an external ref (e.g. a Stripe
         checkout session id). Re-calling for the same ref returns the same code
-        — so a retried webhook never issues duplicates."""
+        — so a retried webhook never issues duplicates. `days=0` ⇒ LIFETIME
+        (no expiry). If `loginids` is given, the code is auto-activated AND
+        bound to those Deriv accounts so the user is unlocked on next visit."""
         existing = self.license_by_note(ref)
         if existing:
-            return existing["code"]
-        return self.create_licenses(1, days, note=note or ref)[0]
+            code = existing["code"]
+        else:
+            code = self.create_licenses(1, days, note=note or ref)[0]
+        # Auto-activate as LIFETIME the moment Stripe says paid — no separate
+        # redeem step. The Deriv loginid binding IS the anti-sharing key.
+        if loginids:
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+            with self._lock:
+                # days=0 means lifetime: status active, expires_at NULL.
+                self._conn.execute(
+                    "UPDATE licenses SET status='active', activated_at=COALESCE(activated_at, ?) "
+                    "WHERE code=?", (now, code))
+                self._conn.commit()
+            self.bind_loginids_to_license(code, loginids)
+        return code
 
     def list_licenses(self, *, limit: int = 500) -> list[dict[str, Any]]:
         rows = self._conn.execute(

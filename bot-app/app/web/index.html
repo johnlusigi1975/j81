@@ -526,6 +526,36 @@
   .eo-signal-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
   .eo-signal-meta b{color:var(--text);font-weight:800}
   .eo-signal-meta .thr-lab{font-size:10px}
+  /* === Lifetime paywall card === */
+  .paywall-eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:var(--amber);font-weight:800;margin-bottom:8px}
+  .paywall-card{max-width:600px;margin:0 auto;padding:26px 26px 22px}
+  .paywall-price-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+  .paywall-price{font-family:var(--serif);font-size:64px;font-weight:800;line-height:1;letter-spacing:-.02em;background:linear-gradient(135deg,#fff6da,#f1d27e 55%,#d6af48);-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:flex-start}
+  .paywall-price .paywall-currency{font-size:30px;margin-top:8px;margin-right:2px}
+  .paywall-price-side{display:flex;flex-direction:column;gap:2px;text-align:left}
+  .paywall-once{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);font-weight:800}
+  .paywall-life{font-family:var(--mono);font-size:12.5px;color:#6ff0a8;font-weight:800;letter-spacing:.04em}
+  .paywall-anchor{text-align:center;font-size:12.5px;color:var(--dim);font-style:italic;margin-bottom:18px;padding:8px 12px;border:1px dashed var(--bd);border-radius:8px;background:rgba(0,0,0,.18)}
+  .paywall-features{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:8px;font-size:13.5px;color:var(--text)}
+  .paywall-features li{padding-left:22px;position:relative;line-height:1.45}
+  .paywall-features li::before{content:"✓";position:absolute;left:0;top:0;color:#6ff0a8;font-weight:800;font-size:14px}
+  .paywall-features b{color:var(--amber);font-weight:800}
+  .paywall-cta{position:relative;font-family:var(--serif);font-size:17px;font-weight:800;padding:15px 18px !important;letter-spacing:.01em;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a) !important;color:#241c0a !important;border-color:transparent !important;box-shadow:0 12px 32px -10px rgba(212,184,122,.6), 0 0 0 1px rgba(212,184,122,.25) inset;transition:transform .15s ease, box-shadow .15s ease}
+  .paywall-cta:hover{transform:translateY(-1px);box-shadow:0 16px 36px -10px rgba(212,184,122,.8), 0 0 0 1px rgba(212,184,122,.35) inset}
+  .paywall-cta:active{transform:translateY(0)}
+  .paywall-trust{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:12px 0 8px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em}
+  .paywall-trust-item{padding:2px 6px}
+  .paywall-trust-sep{color:var(--bd)}
+  .paywall-bind{text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.04em;margin:4px 0 14px;padding:7px 12px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.18)}
+  .paywall-bind b{color:var(--amber);font-weight:800}
+  .paywall-redeem{margin-top:14px;border-top:1px solid var(--bd);padding-top:14px}
+  .paywall-redeem-lab{text-align:center;color:var(--faint);font-size:12px;line-height:1.5}
+  .paywall-redeem-fallback{margin-top:8px}
+  .paywall-redeem-fallback summary{cursor:pointer;text-align:center;color:var(--dim);font-size:11px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:6px 0;list-style:none;outline:none}
+  .paywall-redeem-fallback summary::-webkit-details-marker{display:none}
+  .paywall-redeem-fallback summary:hover{color:var(--text)}
+  .paywall-honesty{font-size:11px;color:var(--faint);line-height:1.55;margin-top:16px;padding-top:12px;border-top:1px solid var(--bd)}
+  .paywall-honesty b{color:var(--text);font-weight:800}
   /* === Premium toast notification system (top-right slide-in) === */
   .toast-host{position:fixed;top:14px;right:14px;z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:min(380px,calc(100vw - 28px))}
   .toast{pointer-events:auto;display:flex;align-items:flex-start;gap:11px;padding:11px 13px 11px 11px;border:1px solid var(--bd);border-radius:13px;background:linear-gradient(135deg,rgba(20,28,40,.95),rgba(0,0,0,.92));box-shadow:0 18px 40px -14px rgba(0,0,0,.65), 0 0 0 1px rgba(212,184,122,.18) inset;font-family:var(--mono);font-size:12px;letter-spacing:.02em;color:var(--text);min-width:240px;animation:toast-in .35s cubic-bezier(.18,.96,.30,1) 1;position:relative;overflow:hidden}
@@ -1194,36 +1224,57 @@
   <div class="riskline">Trading involves substantial risk and is not suitable for everyone — you can lose some or all of your invested capital. Synthetic indices and options are complex, high-risk products. J81 is an independent tool that trades on your own Deriv account via Deriv's API; it is not affiliated with or endorsed by Deriv. This is not investment advice.</div>
 </div>
 
-<!-- ============ VIEW: ACCESS (membership paywall) ============ -->
+<!-- ============ VIEW: ACCESS (lifetime paywall — Real accounts) ============ -->
 <div class="view wrap" id="view-access" hidden>
   <button class="backbtn" onclick="showView(HAS_ACCOUNTS?'accounts':'landing')">← back</button>
   <div class="hero">
-    <h1>Unlock the <span class="g">J81 Trade Desk</span></h1>
-    <p>A premium trading desk for Deriv — live market reads, the EV &amp; break-even calculator, the 10-market scanner, risk discipline (auto stop-loss / take-profit), the strategy lab and a clean luxury interface.</p>
+    <div class="paywall-eyebrow">REAL-ACCOUNT ACCESS · DEMO ALWAYS FREE</div>
+    <h1>One payment. <span class="g">Lifetime</span> access.</h1>
+    <p>Unlock real-account trading on J81 once and use it forever. No subscription, no rebills, no surprises. Demo trading stays free so you can prove the desk on simulated money before you ever pay.</p>
   </div>
-  <div class="glass" style="max-width:560px;margin:0 auto">
-    <div style="display:flex;align-items:baseline;gap:8px;justify-content:center;margin-bottom:6px">
-      <div style="font-family:var(--serif);font-size:40px;font-weight:800" id="acc-price">$100</div>
-      <div class="faint">/ <span id="acc-days">90</span> days full access</div>
+  <div class="glass paywall-card">
+    <div class="paywall-price-row">
+      <div class="paywall-price"><span class="paywall-currency">$</span><span id="acc-price">100</span></div>
+      <div class="paywall-price-side">
+        <div class="paywall-once">one-time</div>
+        <div class="paywall-life" id="acc-life-tag">lifetime · all updates included</div>
+      </div>
     </div>
-    <ul style="list-style:none;padding:0;margin:14px 0;display:grid;gap:9px;font-size:14px">
-      <li>✦ Live Even/Odd &amp; Rise/Fall reads + digit analytics</li>
-      <li>✦ EV / break-even calculator on every trade</li>
-      <li>✦ 10-market scanner + best-payout finder</li>
-      <li>✦ Auto risk controls — stop at win / loss, rounds</li>
-      <li>✦ Strategy lab + 30-min testing engine</li>
-      <li>✦ Connect your own Deriv account &amp; trade</li>
+    <div class="paywall-anchor">
+      Cheaper than 2 months of TradingView Premium · works as long as J81 is operated.
+    </div>
+    <ul class="paywall-features">
+      <li><b>Trading Brain</b> — live thinking console + decision log</li>
+      <li><b>Recovery Engine</b> — flat × / Fibonacci / linear martingale with cap + visual ladder</li>
+      <li><b>AUTO ticks 1–10</b> + <b>AUTO barrier</b> (system picks the digit each cycle)</li>
+      <li><b>Risk gauge</b>, stop-loss cooldown, balance-aware stake safety</li>
+      <li><b>10-market scanner</b>, multi-window confidence, composite confidence score</li>
+      <li><b>All accounts under your Deriv login unlock</b> — demo + real, on any device</li>
+      <li><b>All future updates included</b> — no upsells</li>
     </ul>
-    <a id="acc-buy" class="btn big" href="#" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Get access — <span class="acc-price2">$100</span></a>
-    <div style="margin:16px 0 6px;text-align:center;color:var(--faint);font-size:12px">Already paid? Enter your access code</div>
-    <div class="row" style="gap:8px">
-      <input id="acc-code" placeholder="J81-XXXX-XXXX-XXXX" style="flex:1;text-transform:uppercase;font-family:var(--mono)">
-      <button class="btn" id="acc-redeem" type="button">Unlock</button>
+    <a id="acc-buy" class="btn big paywall-cta" href="#" rel="noopener" style="display:block;text-align:center;text-decoration:none">Unlock J81 — <span class="acc-price2">$100</span> · lifetime</a>
+    <div class="paywall-trust">
+      <span class="paywall-trust-item">🛡 7-day money-back guarantee</span>
+      <span class="paywall-trust-sep">·</span>
+      <span class="paywall-trust-item">🔒 Stripe-secured checkout</span>
+      <span class="paywall-trust-sep">·</span>
+      <span class="paywall-trust-item" id="acc-social-proof">join the first traders</span>
     </div>
-    <div id="acc-msg" style="margin-top:10px;font-size:13px"></div>
-    <div class="faint" style="font-size:11px;margin-top:16px;line-height:1.5;border-top:1px solid var(--bd);padding-top:12px">
-      <b>Important:</b> J81 is a set of analysis &amp; risk tools — <b>not</b> financial advice and <b>not</b> a promise of profit.
-      Deriv synthetic indices are an audited random-number generator with a built-in house edge, so <b>no tool can predict the next tick</b> and you can lose money. Trade only what you can afford to lose. Access is for the software/tools for the period shown.
+    <div class="paywall-bind" id="acc-bind">License binds to your connected Deriv account(s).</div>
+    <div class="paywall-redeem">
+      <div class="paywall-redeem-lab">Already paid on another device? Reconnect with the same Deriv login — you're unlocked automatically.</div>
+      <details class="paywall-redeem-fallback">
+        <summary>Have a manual code instead?</summary>
+        <div class="row" style="gap:8px;margin-top:8px">
+          <input id="acc-code" placeholder="J81-XXXX-XXXX-XXXX" style="flex:1;text-transform:uppercase;font-family:var(--mono)">
+          <button class="btn" id="acc-redeem" type="button">Unlock</button>
+        </div>
+        <div id="acc-msg" style="margin-top:8px;font-size:13px"></div>
+      </details>
+    </div>
+    <div class="paywall-honesty">
+      <b>Honest disclosure:</b> J81 is a set of analysis, sizing, and discipline tools — <b>not</b> financial advice and <b>not</b> a guarantee of profit.
+      Deriv synthetic indices are an audited random-number generator with a built-in house edge, so <b>no tool can predict the next tick</b> and you can lose money. Demo first; trade only what you can afford to lose. "Lifetime" means as long as J81 is operated by us.
     </div>
   </div>
 </div>
@@ -2978,9 +3029,14 @@ const _BACK_TARGETS = {
 function navBack(){ var t=window._BACK_TO; if(t) showView(t); }
 
 function showView(v){
-  // Paywall comes AFTER connecting Deriv + choosing Demo/Real: connect + the
-  // account picker stay free; the desk itself (dashboard/trade) needs membership.
-  if(window.REQUIRE_ACCESS && !window.LICENSED && (v==="home"||v==="trade")) v="access";
+  // Paywall: DEMO is always free; REAL needs a lifetime license. Only block
+  // the desk if the current account is real AND the user isn't licensed.
+  // (CUR.is_demo true = demo, false = real, null/missing = haven't picked yet.)
+  if(window.REQUIRE_ACCESS && !window.LICENSED
+     && (v==="home"||v==="trade")
+     && CUR && CUR.is_demo === false){
+    v = "access";
+  }
   VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
   // Wire the sticky back button (in the nav) — visible on every view except the
   // entry points (landing/loading). Access uses a dynamic target.
@@ -3052,13 +3108,66 @@ async function checkAccess(){
     const a=await api("/access/status");
     window.REQUIRE_ACCESS = !!a.require_access;
     window.LICENSED = !a.require_access || !!a.licensed;   // open app when paywall off
-    // paint the offer
-    if(a.price_label){ var p=$("acc-price"); if(p)p.textContent=a.price_label; document.querySelectorAll(".acc-price2").forEach(function(e){e.textContent=a.price_label;}); }
-    if(a.days_per_membership){ var d=$("acc-days"); if(d)d.textContent=a.days_per_membership; }
-    var buy=$("acc-buy"); if(buy){ if(a.buy_url){ buy.href=a.buy_url; buy.style.display=""; } else { buy.style.display="none"; } }
-    // membership chip in the nav
+    // Price label — strip the $ if it's already in the markup (we render $ separately).
+    if(a.price_label){
+      var raw = String(a.price_label).replace(/^\$/, "");
+      var p=$("acc-price"); if(p) p.textContent = raw;
+      document.querySelectorAll(".acc-price2").forEach(function(e){ e.textContent = a.price_label; });
+    }
+    // Lifetime tag — pulled from server (access_days=0 ⇒ lifetime).
+    var lt = $("acc-life-tag");
+    if(lt){
+      lt.textContent = a.lifetime ? "lifetime · all updates included"
+                                  : (a.days_per_membership ? (a.days_per_membership+"-day access") : "");
+    }
+    // Social-proof counter — "Join N traders running J81".
+    var sp = $("acc-social-proof");
+    if(sp){
+      var n = a.customers || 0;
+      sp.textContent = n >= 25 ? ("⭐ Join "+n+" traders running J81")
+                    : n >= 1  ? ("⭐ Join the first "+n+" traders")
+                              : ("⭐ Be among the first to unlock J81");
+    }
+    // Bind hint — shows which Deriv loginids this purchase will lock to.
+    var bind = $("acc-bind");
+    if(bind){
+      try{
+        var accts = await api("/accounts");
+        if(accts && accts.length){
+          var ids = accts.map(function(x){ return x.deriv_account_id; }).filter(Boolean);
+          bind.innerHTML = "License will lock to <b>"+ids.join(", ")+"</b> (anti-sharing — only your Deriv login unlocks it).";
+        }
+      }catch(_){}
+    }
+    // Buy CTA — hit our checkout_link endpoint so Stripe gets client_reference_id
+    // (the Deriv loginids). On click we fetch a fresh URL because the user might
+    // have connected more accounts since page load.
+    var buy=$("acc-buy");
+    if(buy){
+      buy.onclick = async function(e){
+        e.preventDefault();
+        buy.classList.add("firing");
+        try{
+          var r = await api("/access/checkout_link");
+          if(r && r.url){ location.href = r.url; return; }
+          if(r && r.reason === "connect_first"){
+            toast({kind:"warn", title:"Connect Deriv first", msg:"We bind your purchase to your Deriv account so no one else can use it."});
+            showView("connect"); return;
+          }
+          toast({kind:"warn", title:"Checkout unavailable", msg:"Payment link not configured yet — contact support."});
+        }catch(_){ }
+        finally{ buy.classList.remove("firing"); }
+      };
+      if(a.buy_url) buy.href = a.buy_url; else buy.style.display = "none";
+    }
+    // Membership chip in the nav
     var chip=$("nav-member");
-    if(chip){ if(a.licensed){ chip.hidden=false; chip.textContent="Member · "+a.days_left+"d left"; } else chip.hidden=true; }
+    if(chip){
+      if(a.licensed){
+        chip.hidden = false;
+        chip.textContent = a.lifetime ? "Lifetime member ✓" : ("Member · "+a.days_left+"d left");
+      } else chip.hidden = true;
+    }
   }catch(_){ window.REQUIRE_ACCESS=false; window.LICENSED=true; }
 }
 (function(){ var b=$("acc-redeem"); if(b) b.addEventListener("click", redeemCode);
@@ -3078,20 +3187,25 @@ async function redeemCode(){
 // After a Stripe payment, the buyer returns to /?paid=<session_id>. Poll for the
 // auto-issued code (the webhook mints it), redeem it, then reload into the desk.
 async function claimPaid(sid){
+  // After Stripe checkout the webhook auto-binds the license to the buyer's
+  // Deriv loginids — no code redeem needed. We just poll /access/status
+  // until it reports licensed=true, then drop the user back into the app.
   showView("access");
-  var msg=$("acc-msg"); if(msg) msg.innerHTML='<span class="faint">✓ Payment received — activating your access…</span>';
-  for(var i=0;i<8;i++){
+  var msg=$("acc-msg"); if(msg) msg.innerHTML='<span class="faint">✓ Payment received — confirming your license…</span>';
+  for(var i=0;i<10;i++){
     try{
-      var r=await api("/access/code?session_id="+encodeURIComponent(sid));
-      if(r.ready && r.code){
-        var rr=await api("/access/redeem",{method:"POST",body:JSON.stringify({code:r.code})});
-        if(msg) msg.innerHTML='<span style="color:var(--good)">✓ Access unlocked — '+(rr.days_left||"")+' days. Loading your desk…</span>';
-        setTimeout(function(){ location.replace("/"); }, 900); return;
+      var st = await api("/access/status");
+      if(st && st.licensed){
+        window.LICENSED = true;
+        if(msg) msg.innerHTML='<span style="color:var(--good)">✓ Lifetime access unlocked. Welcome to J81.</span>';
+        try{ toast({kind:"win", title:"Lifetime access unlocked", msg:"Thank you — your account is now permanent.", ttl:6000}); }catch(_){}
+        setTimeout(function(){ location.replace("/"); }, 900);
+        return;
       }
     }catch(_){}
-    await new Promise(function(res){ setTimeout(res, 1600); });
+    await new Promise(function(res){ setTimeout(res, 1500); });
   }
-  if(msg) msg.innerHTML='<span style="color:var(--bad)">Payment received, but the code isn\'t ready yet. Refresh in a moment, or enter the code from your email below.</span>';
+  if(msg) msg.innerHTML='<span style="color:var(--bad)">Payment received, but the license isn\'t showing yet. Refresh in a moment — if it still doesn\'t appear, reach out via the support email on your Stripe receipt.</span>';
 }
 
 // ---------- boot ----------
@@ -3198,8 +3312,24 @@ async function loadAccounts(){
   accts.forEach(a=>loadBalance(a.id).then(b=>{ const el=$("bal-"+a.id); if(el) el.textContent = (b&&b.balance!=null)?fmtMoney(b.balance,b.currency):"—"; }));
 }
 async function pickAccount(id){
-  try{ const a=(await api("/accounts")).find(x=>x.id===id); if(a){ CUR=a; enterApp(); } }
-  catch(_){ }
+  try{
+    const a=(await api("/accounts")).find(x=>x.id===id);
+    if(!a) return;
+    CUR = a;
+    // DEMO is always free. REAL requires a lifetime license.
+    // Refresh status now in case a webhook just landed.
+    if(!a.is_demo && window.REQUIRE_ACCESS){
+      try{
+        const st = await api("/access/status");
+        window.LICENSED = !!st.licensed;
+      }catch(_){}
+      if(!window.LICENSED){
+        showView("access");
+        return;
+      }
+    }
+    enterApp();
+  }catch(_){ }
 }
 
 // ---------- encryption one-click ----------
