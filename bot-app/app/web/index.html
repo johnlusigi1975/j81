@@ -1179,7 +1179,7 @@
       <span class="paywall-lock-sep">·</span>
       <button class="paywall-lock-text-btn" type="button" onclick="(function(){var el=document.querySelector('.paywall-redeem-fallback'); if(el){ showView('access'); setTimeout(function(){el.open=true;},120);} })()">Have a code?</button>
       <span class="paywall-lock-sep">·</span>
-      <button class="paywall-lock-text-btn" type="button" onclick="showView('accounts')">Switch to Demo (free)</button>
+      <button class="paywall-lock-text-btn" type="button" onclick="logout()">Sign out</button>
     </div>
   </div>
 </div>
@@ -3180,6 +3180,10 @@ let _prevSpot=null, _lastRead=null;
 // Apply or remove the paywall lock overlay based on current view + license.
 // The interface stays mounted underneath — it's just blurred + click-blocked
 // so the user can SEE what they're paying for (premium "preview-then-pay" UX).
+//
+// Behaviour right now: paywall fires on ANY account (demo OR real) so the
+// owner can see the lock the moment they enter the app. To put Demo back to
+// free later, add `&& CUR && CUR.is_demo === false` to the condition below.
 function applyPaywallLock(view){
   const v = view || (document.querySelector(".view:not([hidden])") || {}).id || "";
   const cleanView = v.replace(/^view-/, "");
@@ -3187,7 +3191,7 @@ function applyPaywallLock(view){
   const needsLock = !!window.REQUIRE_ACCESS
                  && !window.LICENSED
                  && (cleanView === "home" || cleanView === "trade")
-                 && CUR && CUR.is_demo === false;
+                 && !!CUR;   // any logged-in account triggers the paywall
   document.body.classList.toggle("paywall-locked", !!needsLock);
   if(lockEl) lockEl.hidden = !needsLock;
 }
@@ -3449,13 +3453,15 @@ async function pickAccount(id){
     if(!a) return;
     CUR = a;
     // Refresh license status (in case the user just paid on another tab).
-    if(!a.is_demo && window.REQUIRE_ACCESS){
+    // Runs for BOTH demo + real so the paywall is shown to anyone who isn't
+    // a paying member yet.
+    if(window.REQUIRE_ACCESS){
       try{
         const st = await api("/access/status");
         window.LICENSED = !!st.licensed;
       }catch(_){}
     }
-    // Always load the interface — the paywall is now a LOCK overlay on top of
+    // Always load the interface — the paywall is a LOCK overlay on top of
     // the home/trade view, not a separate screen. User sees what they're buying.
     enterApp();
   }catch(_){ }
