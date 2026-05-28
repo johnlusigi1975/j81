@@ -2647,6 +2647,125 @@ document.addEventListener("click", (ev) => {
 setTimeout(()=>{ ["eo","rf","ou"].forEach(k => { try{ _renderRecoveryEngine(k); }catch(_){} }); }, 350);
 
 // ===================================================================
+// SETTINGS PERSISTENCE — saves the user's targets, stake, threshold,
+// martingale, strategy, ticks mode and barrier mode to localStorage so a
+// page reload / new tab / new day picks up exactly where they configured.
+// Loaded at script-start so the boot-time preset auto-apply sees populated
+// inputs and SKIPS overwriting them.
+// ===================================================================
+const _PERSIST_INPUTS = [
+  // EO
+  "eo-tp","eo-sl","eo-thr","eo-stake","eo-streak","eo-mart","eo-mart-cap","eo-ticks",
+  // RF
+  "rf-tp","rf-sl","rf-thr","rf-stake","rf-streak","rf-mart","rf-mart-cap","rf-ticks",
+  // OU
+  "ou-tp","ou-sl","ou-thr","ou-stake","ou-streak","ou-mart","ou-mart-cap","ou-ticks","ou-barrier",
+];
+const _SETTINGS_KEY = "j81_settings_v1";
+function _saveSettings(){
+  try{
+    const out = {};
+    for(const id of _PERSIST_INPUTS){
+      const el = document.getElementById(id);
+      if(el && el.value !== "" && el.value != null) out[id] = el.value;
+    }
+    // Per-game tick mode (AUTO vs manual N)
+    ["eo","rf","ou"].forEach(k => {
+      const on = document.querySelector("#"+k+"-tick-seg button.on");
+      if(on) out["_tickMode_"+k] = (on.dataset.mode || "auto") + ":" + (on.dataset.val || "");
+    });
+    // OU barrier mode (AUTO vs manual digit)
+    const ouBar = document.querySelector("#ou-barrier-row button.on");
+    if(ouBar) out._ouBarrierMode = (ouBar.dataset.mode || "auto") + ":" + (ouBar.dataset.val || "");
+    // Recovery-engine strategy per game (flat / fib / linear)
+    if(typeof _RE_STRATEGY !== "undefined") out._reStrategy = {..._RE_STRATEGY};
+    // Active preset chip per game (for visual restoration only)
+    ["eo","rf","ou"].forEach(k => {
+      const on = document.querySelector("#"+k+"-presets button.on");
+      if(on) out["_preset_"+k] = on.dataset.preset;
+    });
+    localStorage.setItem(_SETTINGS_KEY, JSON.stringify(out));
+  }catch(_){}
+}
+function _loadSettings(){
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(_SETTINGS_KEY) || "null"); }catch(_){}
+  if(!saved) return false;
+  for(const id of _PERSIST_INPUTS){
+    const v = saved[id]; if(v == null) continue;
+    const el = document.getElementById(id);
+    if(el && el.value !== v){
+      el.value = v;
+      try{ el.dispatchEvent(new Event("input", {bubbles:true})); }catch(_){}
+    }
+  }
+  // Tick chip selection
+  ["eo","rf","ou"].forEach(k => {
+    const tm = saved["_tickMode_"+k]; if(!tm) return;
+    const [mode, val] = tm.split(":");
+    document.querySelectorAll("#"+k+"-tick-seg button").forEach(b => {
+      const match = (b.dataset.mode || "") === mode && ((b.dataset.val || "") === (val || ""));
+      b.classList.toggle("on", match);
+    });
+  });
+  // OU barrier mode restoration
+  if(saved._ouBarrierMode){
+    const [mode, val] = saved._ouBarrierMode.split(":");
+    document.querySelectorAll("#ou-barrier-row button").forEach(b => {
+      const match = (b.dataset.mode || "") === mode && ((b.dataset.val || "") === (val || ""));
+      b.classList.toggle("on", match);
+    });
+  }
+  // Recovery-engine strategy
+  if(saved._reStrategy && typeof _reSetStrategy === "function"){
+    ["eo","rf","ou"].forEach(k => {
+      if(saved._reStrategy[k]) try{ _reSetStrategy(k, saved._reStrategy[k]); }catch(_){}
+    });
+  }
+  // Visual preset chip restoration (does NOT re-apply preset values).
+  ["eo","rf","ou"].forEach(k => {
+    const name = saved["_preset_"+k]; if(!name) return;
+    document.querySelectorAll("#"+k+"-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
+  });
+  return true;
+}
+// Load saved settings as early as possible — runs once DOM is parsed, so
+// the boot-time preset auto-apply (~100-130ms) sees populated inputs and
+// SKIPS overwriting whatever the user configured.
+function _bootLoadSettings(){
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", _loadSettings, {once:true});
+  } else {
+    _loadSettings();
+  }
+}
+_bootLoadSettings();
+// Save on every input change to any persisted field. Delegated handler so
+// it survives DOM mutations / re-renders.
+document.addEventListener("input", (ev) => {
+  const t = ev.target;
+  if(!t || !t.id || !_PERSIST_INPUTS.includes(t.id)) return;
+  // Debounce so a slider drag doesn't spam localStorage.
+  clearTimeout(window.__settingsSaveT);
+  window.__settingsSaveT = setTimeout(_saveSettings, 250);
+});
+// Catch chip clicks (tick chips, barrier chips, strategy chips, presets)
+// — these don't always dispatch input events, so save on the click too.
+document.addEventListener("click", (ev) => {
+  const tgt = ev.target.closest && ev.target.closest(
+    "#eo-tick-seg button,#rf-tick-seg button,#ou-tick-seg button,"+
+    "#ou-barrier-row button,"+
+    ".re-strategy button,"+
+    "#eo-presets button,#rf-presets button,#ou-presets button"
+  );
+  if(!tgt) return;
+  clearTimeout(window.__settingsSaveT);
+  window.__settingsSaveT = setTimeout(_saveSettings, 50);
+});
+// Last-resort save before the page unloads.
+window.addEventListener("beforeunload", () => { try{ _saveSettings(); }catch(_){} });
+
+// ===================================================================
 // TOAST NOTIFICATION SYSTEM — top-right slide-in alerts.
 // Used for trade-settled events, cooldown warnings, kbd-shortcut hints.
 // ===================================================================
@@ -2974,6 +3093,9 @@ function enterApp(){
 async function logout(){   // disconnect THIS browser → back to the front page
   try{ await api("/logout",{method:"POST",body:"{}"}); }catch(_){}
   clearNav(); CUR=null; GAME=null; HAS_ACCOUNTS=false;
+  // Personal config (TP/SL/stake/etc.) is per-user — clear it on full
+  // logout so the next person on this device starts with fresh defaults.
+  try{ localStorage.removeItem(_SETTINGS_KEY); }catch(_){}
   try{ LiveWS.stop(); }catch(_){}
   showView("landing");
 }
