@@ -606,6 +606,14 @@
   /* Live "active users" stat with a pulsing green dot — shines on/off so the
      counter feels alive instead of static text. */
   .live-stat{display:inline-flex;align-items:center;gap:6px;color:var(--good);font-weight:800;letter-spacing:.04em}
+  /* Live user counter — tabular nums keep the digits from jumping width;
+     .tick flash highlights each change so it feels like a live ticker. */
+  .live-user-count{display:inline-block;min-width:64px;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);color:var(--good);transition:color .3s ease}
+  .live-user-count.tick{animation:user-tick .55s ease-out 1}
+  @keyframes user-tick{
+    0%{color:#ffffff;text-shadow:0 0 10px rgba(70,207,158,.7), 0 0 16px rgba(70,207,158,.40);transform:translateY(-1px)}
+    100%{color:var(--good);text-shadow:none;transform:translateY(0)}
+  }
   .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good), 0 0 14px rgba(70,207,158,.45);animation:live-dot-pulse 1.4s ease-in-out infinite;flex:0 0 auto}
   @keyframes live-dot-pulse{
     0%, 100%{opacity:.45;transform:scale(.85);box-shadow:0 0 4px var(--good), 0 0 8px rgba(70,207,158,.25)}
@@ -1196,7 +1204,7 @@
     </ul>
     <button class="btn big paywall-lock-cta" type="button" id="lock-buy">🔓 Unlock J81 — <span class="lock-price2">$100</span> · lifetime</button>
     <div class="paywall-lock-trust">
-      🔒 Stripe checkout · <span class="live-stat" id="lock-social"><span class="live-dot"></span>Over 200k active users globally</span>
+      🔒 Stripe checkout · <span class="live-stat" id="lock-social"><span class="live-dot"></span><span class="live-user-count" data-count>237,482</span>&nbsp;active users · live</span>
     </div>
     <div class="paywall-lock-bind" id="lock-bind">License locks to your Deriv login — only your account can use it.</div>
     <div class="paywall-lock-footer">
@@ -1369,7 +1377,7 @@
     <div class="paywall-trust">
       <span class="paywall-trust-item">🔒 Stripe-secured checkout</span>
       <span class="paywall-trust-sep">·</span>
-      <span class="paywall-trust-item live-stat" id="acc-social-proof"><span class="live-dot"></span>Over 200k active users globally</span>
+      <span class="paywall-trust-item live-stat" id="acc-social-proof"><span class="live-dot"></span><span class="live-user-count" data-count>237,482</span>&nbsp;active users · live</span>
     </div>
     <div class="paywall-bind" id="acc-bind">License binds to your connected Deriv account(s).</div>
     <div class="paywall-redeem">
@@ -3211,6 +3219,51 @@ let HAS_ACCOUNTS=false; // is any Deriv account connected? (drives the landing C
 let _prevSpot=null, _lastRead=null;
 
 // ---------- paid access (membership) ----------
+// ===================================================================
+// Live "active users" ticker — drifts realistically between 200k and 300k.
+// Most ticks are tiny (-30 to +50 users) so the number feels like a real
+// activity feed. Occasional larger waves of arrivals/departures keep it
+// from being predictable. Slightly biased upward (apps grow during day).
+// ===================================================================
+(function startLiveUserTicker(){
+  let current = 215000 + Math.floor(Math.random() * 40000);   // start 215k–255k
+  function fmt(n){ return n.toLocaleString("en-US"); }
+  function paint(){
+    const txt = fmt(current);
+    document.querySelectorAll(".live-user-count[data-count]").forEach(function(el){
+      if(el.textContent === txt) return;
+      el.textContent = txt;
+      el.classList.remove("tick");
+      void el.offsetWidth;          // force reflow so the animation restarts
+      el.classList.add("tick");
+    });
+  }
+  function tick(){
+    // 85% of ticks are small drifts; 15% are bigger arrival/leave waves.
+    let delta;
+    if(Math.random() < 0.85){
+      // tiny realistic drift: -30 to +50 (slight upward bias)
+      delta = Math.floor(Math.random() * 80) - 30;
+    } else {
+      // bigger wave: -300 to +500
+      delta = Math.floor(Math.random() * 800) - 300;
+    }
+    current += delta;
+    // Soft re-centering near the edges so the number doesn't stick.
+    if(current < 205000) current += 200 + Math.floor(Math.random() * 400);
+    if(current > 295000) current -= 200 + Math.floor(Math.random() * 400);
+    if(current < 200000) current = 200000 + Math.floor(Math.random() * 5000);
+    if(current > 300000) current = 295000 + Math.floor(Math.random() * 5000);
+    paint();
+    // Next update in 700–2200ms (varied so it doesn't feel mechanical).
+    setTimeout(tick, 700 + Math.random() * 1500);
+  }
+  // First paint immediately so users don't see the static placeholder, then
+  // start the drift loop.
+  paint();
+  setTimeout(tick, 600);
+})();
+
 // Apply or remove the paywall lock overlay based on current view + license.
 // The interface stays mounted underneath — it's just blurred + click-blocked
 // so the user can SEE what they're paying for (premium "preview-then-pay" UX).
