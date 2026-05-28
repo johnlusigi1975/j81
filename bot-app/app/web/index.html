@@ -401,6 +401,54 @@
   .eo-signal.live-over  .eo-signal-side{color:#ffb45a}
   .eo-signal.live-under .eo-signal-side{color:#c8b8ff}
   .eo-signal-bar .over {background:linear-gradient(135deg,#ffd28a 0%,#f0a04a 60%,#c97524 100%);transition:width .35s ease}
+  /* === OU Digit Distribution Heatmap === */
+  .ou-digit-heatmap{margin-top:11px;padding:9px 11px;border:1px solid var(--bd);border-radius:11px;background:linear-gradient(135deg,rgba(20,28,40,.30),rgba(0,0,0,.22))}
+  .ou-heatmap-head{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;margin-bottom:7px;text-transform:uppercase}
+  .ou-heatmap-head .ou-heatmap-lab b{color:var(--text);font-weight:800}
+  .ou-heatmap-bar-tag{color:var(--amber);font-weight:800;letter-spacing:.04em;text-transform:none;font-size:11px;padding:2px 8px;border:1px solid rgba(212,184,122,.35);border-radius:5px;background:rgba(212,184,122,.06)}
+  .ou-heatmap-cells{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+  .ou-heatmap-cell{position:relative;padding:7px 0 5px;text-align:center;border-radius:6px;background:rgba(0,0,0,.32);font-family:var(--mono);transition:all .35s ease;border:1px solid var(--bd);min-height:50px;overflow:hidden}
+  .ou-heatmap-cell .hm-digit{display:block;font-size:13px;font-weight:800;color:var(--text);line-height:1;position:relative;z-index:2}
+  .ou-heatmap-cell .hm-pct{display:block;font-size:9px;color:var(--faint);letter-spacing:.04em;margin-top:3px;font-weight:800;position:relative;z-index:2}
+  .ou-heatmap-cell .hm-bar{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,transparent,rgba(212,184,122,.18));border-radius:0 0 5px 5px;transition:height .4s ease;pointer-events:none;z-index:1}
+  .ou-heatmap-cell.over-side{background:linear-gradient(180deg,rgba(255,180,90,.04),rgba(0,0,0,.28))}
+  .ou-heatmap-cell.under-side{background:linear-gradient(180deg,rgba(155,140,255,.04),rgba(0,0,0,.28))}
+  .ou-heatmap-cell.over-side .hm-bar{background:linear-gradient(180deg,transparent,rgba(255,180,90,.30))}
+  .ou-heatmap-cell.under-side .hm-bar{background:linear-gradient(180deg,transparent,rgba(155,140,255,.30))}
+  .ou-heatmap-cell.barrier{background:linear-gradient(180deg,rgba(212,184,122,.18),rgba(212,184,122,.04));border-color:rgba(212,184,122,.55);box-shadow:0 0 0 1px rgba(212,184,122,.30) inset, 0 4px 14px -4px rgba(212,184,122,.4)}
+  .ou-heatmap-cell.barrier .hm-digit{color:var(--amber)}
+  .ou-heatmap-cell.barrier::before{content:"⌖";position:absolute;top:1px;right:3px;font-size:8px;color:var(--amber);z-index:3}
+  .ou-heatmap-cell.hot{border-color:rgba(255,140,90,.50)}
+  .ou-heatmap-cell.hot .hm-digit{color:#ffb37a}
+  .ou-heatmap-cell.hot::after{content:"🔥";position:absolute;top:1px;left:3px;font-size:8px;z-index:3}
+  .ou-heatmap-cell.cold{border-color:rgba(120,180,255,.40)}
+  .ou-heatmap-cell.cold .hm-digit{color:#9ec3ff}
+  .ou-heatmap-cell.last{outline:1px dashed rgba(70,207,158,.55);outline-offset:-2px}
+  /* === OU Barrier Strength Meter (8 bars) === */
+  .ou-barrier-meter{margin-top:9px;padding:9px 11px 11px;border:1px solid var(--bd);border-radius:11px;background:linear-gradient(135deg,rgba(20,28,40,.30),rgba(0,0,0,.22))}
+  .ou-bm-head{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;margin-bottom:8px;text-transform:uppercase}
+  .ou-bm-tag{color:var(--good);font-weight:800;letter-spacing:.04em;font-size:10.5px;text-transform:none;padding:2px 8px;border:1px solid rgba(70,207,158,.35);border-radius:5px;background:rgba(70,207,158,.06)}
+  .ou-bm-tag.idle{color:var(--faint);border-color:var(--bd);background:transparent}
+  .ou-bm-bars{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;align-items:end;min-height:72px}
+  .ou-bm-bar{display:flex;flex-direction:column;align-items:stretch;gap:3px;cursor:default;position:relative;transition:transform .3s ease}
+  .ou-bm-bar .bm-fill{width:100%;border-radius:5px 5px 2px 2px;border:1px solid var(--bd);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));min-height:8px;transition:all .4s ease}
+  .ou-bm-bar .bm-lab{font-family:var(--mono);font-size:9px;text-align:center;color:var(--faint);letter-spacing:.04em}
+  .ou-bm-bar .bm-pct{font-family:var(--mono);font-size:10px;text-align:center;color:var(--text);font-weight:800;letter-spacing:.02em;line-height:1}
+  .ou-bm-bar .bm-side{font-family:var(--mono);font-size:8.5px;text-align:center;color:var(--faint);letter-spacing:.08em;line-height:1.1;text-transform:uppercase}
+  .ou-bm-bar.over .bm-fill{background:linear-gradient(180deg,rgba(255,180,90,.50),rgba(240,160,74,.08));border-color:rgba(255,180,90,.40)}
+  .ou-bm-bar.over .bm-side{color:#ffb45a}
+  .ou-bm-bar.under .bm-fill{background:linear-gradient(180deg,rgba(155,140,255,.50),rgba(120,108,200,.08));border-color:rgba(155,140,255,.40)}
+  .ou-bm-bar.under .bm-side{color:#c8b8ff}
+  .ou-bm-bar.pick{transform:scale(1.08)}
+  .ou-bm-bar.pick .bm-fill{background:linear-gradient(180deg,#ecd9a8,#d4b87a 55%,#b9985a);border-color:transparent;box-shadow:0 4px 14px -3px rgba(212,184,122,.7), 0 0 0 1px rgba(212,184,122,.45) inset}
+  .ou-bm-bar.pick .bm-pct{color:var(--amber)}
+  .ou-bm-bar.pick .bm-side{color:#241c0a;background:linear-gradient(135deg,#ecd9a8,#d4b87a);border-radius:3px;padding:1px 0;margin-top:1px}
+  .ou-bm-bar.pick::after{content:"★";position:absolute;top:-14px;left:50%;transform:translateX(-50%);color:var(--amber);font-size:12px;filter:drop-shadow(0 0 4px rgba(212,184,122,.7))}
+  .ou-bm-bar .bm-mem{font-family:var(--mono);font-size:8.5px;text-align:center;color:var(--faint);letter-spacing:.04em;line-height:1.3;display:flex;justify-content:center;gap:3px}
+  .ou-bm-bar .bm-mem .bm-w{color:#6ff0a8;font-weight:800}
+  .ou-bm-bar .bm-mem .bm-l{color:#ff9aac;font-weight:800}
+  .ou-bm-bar .bm-mem.empty{color:var(--faint)}
+  @media(max-width:520px){.ou-heatmap-cells{gap:2px}.ou-heatmap-cell{min-height:44px;padding:6px 0 4px}.ou-heatmap-cell .hm-digit{font-size:12px}.ou-heatmap-cell .hm-pct{font-size:8px}.ou-bm-bars{gap:3px;min-height:60px}.ou-bm-bar .bm-mem{font-size:7.5px}}
   .eo-signal-bar .under{background:linear-gradient(135deg,#dfd4ff 0%,#9b8cff 60%,#5e4ed1 100%);transition:width .35s ease}
   /* Barrier picker chips — narrower than ticks chips (8 of them). */
   .eo-barrier{display:grid;grid-template-columns:1.4fr repeat(8,1fr);gap:5px}
@@ -1877,6 +1925,28 @@
           <span>OVER <b id="ou-signal-op">—</b></span>
           <span class="thr-lab">⌖ barrier <b id="ou-signal-bar">4</b> · threshold <b id="ou-signal-thr-lab">70%</b></span>
           <span>UNDER <b id="ou-signal-up">—</b></span>
+        </div>
+        <!-- ── DIGIT DISTRIBUTION HEATMAP — premium 10-cell visualization
+             of the last-50-tick digit frequencies. Hot/cold cells glow,
+             the barrier digit gets a gold ring, OVER/UNDER zones get
+             subtle background tints so you SEE where weight is. -->
+        <div class="ou-digit-heatmap">
+          <div class="ou-heatmap-head">
+            <span class="ou-heatmap-lab">Digit distribution · last <b id="ou-heatmap-n">50</b> ticks</span>
+            <span class="ou-heatmap-bar-tag" id="ou-heatmap-bar">barrier —</span>
+          </div>
+          <div class="ou-heatmap-cells" id="ou-heatmap-cells"></div>
+        </div>
+        <!-- ── BARRIER STRENGTH METER — 8 vertical bars showing the lean
+             magnitude at each barrier (1-8). The AUTO-pick gets a gold
+             glow + star. Each bar shows your session W/L at that barrier
+             once you've traded it. -->
+        <div class="ou-barrier-meter">
+          <div class="ou-bm-head">
+            <span class="ou-bm-lab">Barrier strength scan · all 8 barriers</span>
+            <span class="ou-bm-tag" id="ou-bm-pick">scanning…</span>
+          </div>
+          <div class="ou-bm-bars" id="ou-bm-bars"></div>
         </div>
       </div>
 
@@ -5025,6 +5095,18 @@ window.OUAuto = (function(){
     wrap.innerHTML = html;
   }
   function _renderStats(){ ["wins","losses","streak","trades"].forEach(k=>{ const el=$g("ou-stat-"+k); if(el) el.textContent = S.sess[k]; }); }
+  // Per-barrier W/L memory — accumulates across the session, displayed
+  // on every bar of the Barrier Strength Meter. Resets on a fresh start.
+  window._OU_BARRIER_MEM = window._OU_BARRIER_MEM || {};
+  function _ouBarrierMemRecord(bar, outcome, profit){
+    if(!bar) return;
+    const m = window._OU_BARRIER_MEM[bar] || (window._OU_BARRIER_MEM[bar] = {w:0, l:0});
+    if(profit > 0 || outcome === "won") m.w += 1;
+    else if(profit < 0 || outcome === "lost") m.l += 1;
+  }
+  function _ouBarrierMemReset(){
+    for(const k of Object.keys(window._OU_BARRIER_MEM)) delete window._OU_BARRIER_MEM[k];
+  }
   function _mart(){ return _reMultiplier("ou"); }
   function _baseStake(){ return _reBaseStake("ou"); }
   function _nextStake(){
@@ -5096,6 +5178,86 @@ window.OUAuto = (function(){
       st.innerHTML = overThr
         ? '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire'
         : '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger'; }
+    // -- Digit Distribution Heatmap + Barrier Strength Meter --
+    // Use the largest sample we have (up to last 200 ticks) so the heatmap
+    // and barrier-strength scan reflect a meaningful sample rather than
+    // jumping around on every tick.
+    const sample = d.slice(-Math.min(200, Math.max(20, d.length)));
+    const sampleN = sample.length;
+    const fAll = new Array(10).fill(0);
+    for(const x of sample) fAll[x] += 1;
+    const maxF = Math.max(...fAll) || 1;
+    const minF = Math.min(...fAll);
+    const lastDigit = d[d.length-1];
+    // Heatmap n display
+    const nEl = $g("ou-heatmap-n"); if(nEl) nEl.textContent = sampleN;
+    // Compute the AUTO-would-pick barrier (strongest lean across 1-8)
+    // so the heatmap + meter can highlight it consistently.
+    let autoPickBar = barrier, autoPickLean = -1, autoPickSide = "over";
+    const bmCalc = [];
+    for(let b = 1; b <= 8; b++){
+      const sp2 = _ouSplit(fAll, b);
+      if(!sp2){ bmCalc.push({bar:b, side:"over", pct:50, lean:0}); continue; }
+      const ow = sp2.over_pct >= sp2.under_pct;
+      const pct2 = Math.round(Math.max(sp2.over_pct, sp2.under_pct));
+      const lean2 = pct2 - 50;
+      if(lean2 > autoPickLean){ autoPickLean = lean2; autoPickBar = b; autoPickSide = ow ? "over" : "under"; }
+      bmCalc.push({bar:b, side: ow ? "over" : "under", pct:pct2, lean:lean2});
+    }
+    const isAutoMode = (typeof _barrierMode === "function") ? _barrierMode() === "auto" : false;
+    const focusBar = isAutoMode ? autoPickBar : barrier;
+    // Heatmap cells
+    const cells = $g("ou-heatmap-cells");
+    if(cells){
+      let html = "";
+      for(let i = 0; i < 10; i++){
+        const pct = sampleN ? Math.round(fAll[i]/sampleN*100) : 0;
+        const isHot  = sampleN && fAll[i] === maxF;
+        const isCold = sampleN && fAll[i] === minF && !isHot;
+        const isBarrier = i === focusBar;
+        const isLast = i === lastDigit;
+        const side = i > focusBar ? "over-side" : i < focusBar ? "under-side" : "";
+        const barH = Math.round(40 * fAll[i] / maxF);
+        const cls = (isBarrier ? "barrier" : side) +
+                    (isHot ? " hot" : "") +
+                    (isCold ? " cold" : "") +
+                    (isLast ? " last" : "");
+        html += '<div class="ou-heatmap-cell '+cls+'" title="digit '+i+': '+(fAll[i]||0)+'/'+sampleN+' ('+pct+'%)">'+
+                  '<div class="hm-bar" style="height:'+barH+'px"></div>'+
+                  '<span class="hm-digit">'+i+'</span>'+
+                  '<span class="hm-pct">'+pct+'%</span>'+
+                '</div>';
+      }
+      cells.innerHTML = html;
+    }
+    const hbar = $g("ou-heatmap-bar");
+    if(hbar) hbar.textContent = (isAutoMode ? "AUTO→barrier "+focusBar : "barrier "+focusBar);
+    // Barrier Strength Meter
+    const bmBars = $g("ou-bm-bars");
+    if(bmBars){
+      bmBars.innerHTML = bmCalc.map(b => {
+        const isPick = b.bar === focusBar;
+        const h = Math.max(8, Math.round(b.lean * 1.6));
+        const mem = (typeof _OU_BARRIER_MEM !== "undefined") ? _OU_BARRIER_MEM[b.bar] : null;
+        const memHtml = mem
+          ? '<div class="bm-mem"><span class="bm-w">W'+mem.w+'</span><span class="bm-l">L'+mem.l+'</span></div>'
+          : '<div class="bm-mem empty">·</div>';
+        return '<div class="ou-bm-bar '+b.side+(isPick?" pick":"")+'" title="barrier '+b.bar+' · '+b.side.toUpperCase()+' '+b.pct+'% · lean '+b.lean+'pp">'+
+                 '<div class="bm-fill" style="height:'+h+'px"></div>'+
+                 '<div class="bm-pct">'+b.pct+'%</div>'+
+                 '<div class="bm-side">'+b.side+'</div>'+
+                 '<div class="bm-lab">B'+b.bar+'</div>'+
+                 memHtml+
+               '</div>';
+      }).join("");
+    }
+    const bmTag = $g("ou-bm-pick");
+    if(bmTag){
+      bmTag.classList.toggle("idle", autoPickLean < 1);
+      bmTag.textContent = isAutoMode
+        ? "AUTO → B"+autoPickBar+" "+autoPickSide.toUpperCase()+" "+(50+autoPickLean)+"%"
+        : "manual B"+barrier+" locked";
+    }
   }
   // Read "barrier mode" — AUTO scans every barrier 1-8 across every
   // market and locks onto the strongest combo. Manual fixes one barrier.
@@ -5246,6 +5408,8 @@ window.OUAuto = (function(){
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       try{ if(outcome !== "pending") _brainLogResult("ou", outcome, profit, S.sess.streak, pick.symbol, pick.name); }catch(_){}
+      // Per-barrier session memory — track W/L on the barrier we just used.
+      try{ if(outcome !== "pending") _ouBarrierMemRecord(pick.barrier, outcome, profit); }catch(_){}
       if(S.sess.thrAuto){
         const slider = $g("ou-thr"); if(slider){
           const prev = Number(slider.value);
@@ -5282,6 +5446,7 @@ window.OUAuto = (function(){
     if(!(opts && opts.resume)){
       S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
       try{ _marketMemReset("ou"); }catch(_){}
+      try{ _ouBarrierMemReset(); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
     _setStatus("⌗ <b>running</b> — reading the tape…");
