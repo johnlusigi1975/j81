@@ -2806,11 +2806,17 @@ function showView(v){
   if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ stopRfScan(); }catch(_){} try{ stopOuScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} try{ window.OUAuto && window.OUAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
-  // Remember the section so a refresh lands the user right back here.
-  // Also save "connect" so a refresh on the auth screen doesn't bounce you
-  // straight into the account picker — if you went to connect, you wanted to
-  // re-auth, so respect that until you actually pick an account.
-  if(inApp || v==="connect"){ try{ localStorage.setItem("j81_nav", JSON.stringify({view:v, account:CUR?CUR.id:null, game:GAME})); }catch(_){} } }
+  // Remember the section in sessionStorage (NOT localStorage) so a refresh
+  // in the same tab lands the user right back here, but opening a NEW tab
+  // or a fresh browser session sends them through the normal entry flow
+  // (auth/connect → accounts → home) instead of deep-linking into the page
+  // they had open yesterday. Logout clears it explicitly too.
+  if(inApp || v==="connect"){
+    try{ sessionStorage.setItem("j81_nav", JSON.stringify({view:v, account:CUR?CUR.id:null, game:GAME})); }catch(_){}
+    // Sweep any legacy localStorage key from older builds so it can't shadow.
+    try{ localStorage.removeItem("j81_nav"); }catch(_){}
+  }
+}
 
 // floating REAL gold bars + REAL banknotes — premium wealth background (login)
 function spawnMoney(){
@@ -2928,8 +2934,12 @@ async function boot(){
     return;
   }
   // Returning OR refresh → restore the exact section they were in (don't bounce
-  // them to the beginning).
-  let nav=null; try{ nav=JSON.parse(localStorage.getItem("j81_nav")||"null"); }catch(_){}
+  // them to the beginning). sessionStorage means "same tab still alive" —
+  // a fresh tab / new browser session has no nav marker and falls through to
+  // the default entry flow below.
+  let nav=null; try{ nav=JSON.parse(sessionStorage.getItem("j81_nav")||"null"); }catch(_){}
+  // Legacy: remove any stale localStorage copy so it can't reappear next refresh.
+  try{ localStorage.removeItem("j81_nav"); }catch(_){}
   if(nav && nav.account){ CUR = accts.find(a=>a.id===nav.account) || null; }
   // If they last went to "connect" (e.g. to re-auth), keep them on connect on
   // refresh instead of bouncing into the account picker just because they
@@ -2940,7 +2950,10 @@ async function boot(){
   if(nav && nav.view==="accounts"){ showView("accounts"); return; }
   if(accts.length>1){ showView("accounts"); } else { CUR=accts[0]; enterApp(); }
 }
-function clearNav(){ try{ localStorage.removeItem("j81_nav"); }catch(_){} }
+function clearNav(){
+  try{ sessionStorage.removeItem("j81_nav"); }catch(_){}
+  try{ localStorage.removeItem("j81_nav"); }catch(_){}   // legacy sweep
+}
 // One-tap: go straight to Deriv's sign-in/consent (no intermediate screen).
 function startDeriv(){ location.href = "/oauth/start"; }
 function setupLanding(){
