@@ -72,9 +72,10 @@ class Settings(BaseSettings):
     # auto-mints + binds a lifetime license to the buyer's Deriv loginids,
     # so the moment they're back in the app they're unlocked.
     access_buy_url: str = ""
-    # Master switch: when False, the whole app is open (no paywall). Flip to
-    # True (REQUIRE_ACCESS=true) to charge for REAL accounts (demo stays free).
-    require_access: bool = False
+    # Master switch: when True, REAL accounts are paywalled (demo stays free).
+    # Default ON so the paywall ships engaged. Set REQUIRE_ACCESS=false in env
+    # if you want the app fully open while testing.
+    require_access: bool = True
     # Stripe webhook signing secret (whsec_…) — set in the dashboard to auto-issue
     # a code when a payment completes. Blank disables the webhook.
     stripe_webhook_secret: str = ""

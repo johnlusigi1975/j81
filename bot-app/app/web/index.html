@@ -526,6 +526,46 @@
   .eo-signal-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
   .eo-signal-meta b{color:var(--text);font-weight:800}
   .eo-signal-meta .thr-lab{font-size:10px}
+  /* === Paywall LOCK overlay — interface visible behind, blocked on top === */
+  /* When body.paywall-locked, the interface views get blurred + dimmed and
+     pointer events are blocked. The premium "see what you're paying for" UX. */
+  body.paywall-locked #view-home,
+  body.paywall-locked #view-trade{filter:blur(4px) brightness(.55) saturate(.7);pointer-events:none;user-select:none;transition:filter .4s ease}
+  body.paywall-locked #view-home::after,
+  body.paywall-locked #view-trade::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.60));pointer-events:none;z-index:2}
+  body.paywall-locked .nav{filter:saturate(.6) brightness(.85);pointer-events:none}
+  body.paywall-locked .nav .api-pulse,
+  body.paywall-locked .nav .navbtn[id="nav-help"]{pointer-events:auto}
+  .paywall-lock{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none;animation:paywall-fade .35s ease 1}
+  body.paywall-locked .paywall-lock{pointer-events:auto}
+  @keyframes paywall-fade{0%{opacity:0;backdrop-filter:blur(0)}100%{opacity:1;backdrop-filter:blur(6px)}}
+  .paywall-lock[hidden]{display:none}
+  .paywall-lock-card{max-width:520px;width:100%;padding:26px 26px 22px;border:1px solid rgba(212,184,122,.55);border-radius:18px;background:linear-gradient(135deg,rgba(20,28,40,.97),rgba(8,12,18,.97));box-shadow:0 30px 90px -20px rgba(0,0,0,.7), 0 0 0 1px rgba(212,184,122,.22) inset, 0 0 60px -10px rgba(212,184,122,.25);position:relative;overflow:hidden;animation:lock-rise .45s cubic-bezier(.18,.96,.30,1) 1}
+  @keyframes lock-rise{0%{transform:translateY(20px) scale(.97);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
+  .paywall-lock-card::before{content:"";position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,184,122,.10),transparent);animation:brain-sweep 6s ease-in-out infinite;pointer-events:none}
+  .paywall-lock-eyebrow{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.22em;color:var(--amber);font-weight:800;text-align:center;margin-bottom:14px;position:relative;z-index:2}
+  .paywall-lock-price-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;position:relative;z-index:2}
+  .paywall-lock-price{font-family:var(--serif);font-size:54px;font-weight:800;line-height:1;letter-spacing:-.02em;background:linear-gradient(135deg,#fff6da,#f1d27e 55%,#d6af48);-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:flex-start}
+  .paywall-lock-price .paywall-lock-currency{font-size:26px;margin-top:6px;margin-right:1px}
+  .paywall-lock-tag{display:flex;flex-direction:column;gap:1px;text-align:left}
+  .paywall-lock-once{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);font-weight:800}
+  .paywall-lock-life{font-family:var(--mono);font-size:11.5px;color:#6ff0a8;font-weight:800;letter-spacing:.04em}
+  .paywall-lock-anchor{text-align:center;font-size:12.5px;color:var(--dim);font-style:italic;margin-bottom:14px;position:relative;z-index:2}
+  .paywall-lock-features{list-style:none;padding:0;margin:0 0 16px;display:grid;gap:5px;font-size:12px;color:var(--dim);text-align:center;position:relative;z-index:2;line-height:1.4}
+  .paywall-lock-features li{padding:3px 0;border-top:1px solid rgba(255,255,255,.04)}
+  .paywall-lock-features li:first-child{border-top:0}
+  .paywall-lock-cta{display:block;width:100%;font-family:var(--serif);font-size:17px;font-weight:800;padding:15px 18px !important;letter-spacing:.01em;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a) !important;color:#241c0a !important;border-color:transparent !important;box-shadow:0 12px 32px -10px rgba(212,184,122,.6), 0 0 0 1px rgba(212,184,122,.25) inset;transition:transform .15s ease, box-shadow .15s ease;position:relative;z-index:2}
+  .paywall-lock-cta:hover{transform:translateY(-1px);box-shadow:0 16px 36px -10px rgba(212,184,122,.8), 0 0 0 1px rgba(212,184,122,.35) inset}
+  .paywall-lock-cta:active{transform:translateY(0)}
+  .paywall-lock-cta.firing{opacity:.7;pointer-events:none}
+  .paywall-lock-trust{margin-top:11px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em;line-height:1.5;position:relative;z-index:2}
+  .paywall-lock-bind{margin-top:10px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.04em;padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:rgba(0,0,0,.20);position:relative;z-index:2;line-height:1.5}
+  .paywall-lock-bind b{color:var(--amber);font-weight:800}
+  .paywall-lock-footer{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);position:relative;z-index:2}
+  .paywall-lock-text-btn{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.04em;cursor:pointer;padding:4px 6px;text-transform:none}
+  .paywall-lock-text-btn:hover{color:var(--text)}
+  .paywall-lock-sep{color:var(--bd);font-family:var(--mono);font-size:10px}
+  @media(max-width:520px){.paywall-lock-price{font-size:46px}.paywall-lock-card{padding:22px 18px 18px}.paywall-lock-cta{font-size:15px;padding:13px 16px !important}}
   /* === Lifetime paywall card === */
   .paywall-eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:var(--amber);font-weight:800;margin-bottom:8px}
   .paywall-card{max-width:600px;margin:0 auto;padding:26px 26px 22px}
@@ -1106,6 +1146,43 @@
      and keyboard-shortcut feedback. Toasts auto-dismiss after 4s and
      slide out gracefully. -->
 <div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+<!-- ── PAYWALL LOCK OVERLAY ────────────────────────────────────────────
+     When the user has connected a REAL Deriv account but hasn't paid,
+     this overlay sits on TOP of the home/trade interface. The interface
+     stays visible behind it (blurred + dimmed) so the user SEES what
+     they're buying. Pay $100 → overlay disappears → full access.
+     Toggled by body.paywall-locked. -->
+<div id="paywall-lock" class="paywall-lock" hidden>
+  <div class="paywall-lock-card">
+    <div class="paywall-lock-eyebrow">REAL-ACCOUNT ACCESS · LIFETIME UNLOCK</div>
+    <div class="paywall-lock-price-row">
+      <span class="paywall-lock-price"><span class="paywall-lock-currency">$</span><span id="lock-price">100</span></span>
+      <div class="paywall-lock-tag">
+        <div class="paywall-lock-once">one-time</div>
+        <div class="paywall-lock-life">lifetime · all updates</div>
+      </div>
+    </div>
+    <div class="paywall-lock-anchor">Pay once. Use forever. No subscription.</div>
+    <ul class="paywall-lock-features">
+      <li>Trading Brain · Recovery Engine · AUTO ticks &amp; barrier</li>
+      <li>Risk gauge · multi-window confidence · digit heatmap</li>
+      <li>All your Deriv accounts unlock — any device, any time</li>
+    </ul>
+    <button class="btn big paywall-lock-cta" type="button" id="lock-buy">🔓 Unlock J81 — <span class="lock-price2">$100</span> · lifetime</button>
+    <div class="paywall-lock-trust">
+      🛡 7-day money-back · 🔒 Stripe checkout · <span id="lock-social">join the first traders</span>
+    </div>
+    <div class="paywall-lock-bind" id="lock-bind">License locks to your Deriv login — only your account can use it.</div>
+    <div class="paywall-lock-footer">
+      <button class="paywall-lock-text-btn" type="button" onclick="showView('access')">More info</button>
+      <span class="paywall-lock-sep">·</span>
+      <button class="paywall-lock-text-btn" type="button" onclick="(function(){var el=document.querySelector('.paywall-redeem-fallback'); if(el){ showView('access'); setTimeout(function(){el.open=true;},120);} })()">Have a code?</button>
+      <span class="paywall-lock-sep">·</span>
+      <button class="paywall-lock-text-btn" type="button" onclick="showView('accounts')">Switch to Demo (free)</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── KEYBOARD SHORTCUTS HELP OVERLAY (toggled with ?) ──────────────── -->
 <div id="kbd-help" class="kbd-help" hidden>
@@ -3029,14 +3106,11 @@ const _BACK_TARGETS = {
 function navBack(){ var t=window._BACK_TO; if(t) showView(t); }
 
 function showView(v){
-  // Paywall: DEMO is always free; REAL needs a lifetime license. Only block
-  // the desk if the current account is real AND the user isn't licensed.
-  // (CUR.is_demo true = demo, false = real, null/missing = haven't picked yet.)
-  if(window.REQUIRE_ACCESS && !window.LICENSED
-     && (v==="home"||v==="trade")
-     && CUR && CUR.is_demo === false){
-    v = "access";
-  }
+  // Paywall lock: DEMO is always free; REAL on home/trade gets the SEE-BUT-
+  // LOCKED overlay — the interface still renders (so the user sees what they're
+  // buying), but it's blurred + click-disabled with the $100 paywall on top.
+  // The user can still navigate to the full info page via the "More info" link.
+  applyPaywallLock(v);
   VIEWS.forEach(n=>{const e=$("view-"+n); if(e) e.hidden=(n!==v);}); window.scrollTo(0,0);
   // Wire the sticky back button (in the nav) — visible on every view except the
   // entry points (landing/loading). Access uses a dynamic target.
@@ -3103,11 +3177,69 @@ let HAS_ACCOUNTS=false; // is any Deriv account connected? (drives the landing C
 let _prevSpot=null, _lastRead=null;
 
 // ---------- paid access (membership) ----------
+// Apply or remove the paywall lock overlay based on current view + license.
+// The interface stays mounted underneath — it's just blurred + click-blocked
+// so the user can SEE what they're paying for (premium "preview-then-pay" UX).
+function applyPaywallLock(view){
+  const v = view || (document.querySelector(".view:not([hidden])") || {}).id || "";
+  const cleanView = v.replace(/^view-/, "");
+  const lockEl = document.getElementById("paywall-lock");
+  const needsLock = !!window.REQUIRE_ACCESS
+                 && !window.LICENSED
+                 && (cleanView === "home" || cleanView === "trade")
+                 && CUR && CUR.is_demo === false;
+  document.body.classList.toggle("paywall-locked", !!needsLock);
+  if(lockEl) lockEl.hidden = !needsLock;
+}
+// Wire the Unlock button in the lock overlay — uses the same checkout link
+// helper as the full paywall card.
+document.addEventListener("click", function(ev){
+  const t = ev.target.closest && ev.target.closest("#lock-buy");
+  if(!t) return;
+  t.classList.add("firing");
+  (async function(){
+    try{
+      const r = await api("/access/checkout_link");
+      if(r && r.url){ location.href = r.url; return; }
+      if(r && r.reason === "connect_first"){
+        try{ toast({kind:"warn", title:"Connect Deriv first", msg:"We bind your purchase to your Deriv account."}); }catch(_){}
+        showView("connect"); return;
+      }
+      try{ toast({kind:"warn", title:"Checkout unavailable", msg:"Payment link not configured yet."}); }catch(_){}
+    }catch(_){}
+    finally{ t.classList.remove("firing"); }
+  })();
+});
 async function checkAccess(){
   try{
     const a=await api("/access/status");
     window.REQUIRE_ACCESS = !!a.require_access;
     window.LICENSED = !a.require_access || !!a.licensed;   // open app when paywall off
+    // Paint the lock overlay's prices + tags too (they mirror the full paywall).
+    if(a.price_label){
+      var raw2 = String(a.price_label).replace(/^\$/, "");
+      var lp = document.getElementById("lock-price"); if(lp) lp.textContent = raw2;
+      document.querySelectorAll(".lock-price2").forEach(function(e){ e.textContent = a.price_label; });
+    }
+    var ls = document.getElementById("lock-social");
+    if(ls){
+      var n2 = a.customers || 0;
+      ls.textContent = n2 >= 25 ? ("join "+n2+" traders")
+                    : n2 >= 1  ? ("join the first "+n2+" traders")
+                              : "be among the first";
+    }
+    var lb = document.getElementById("lock-bind");
+    if(lb){
+      try{
+        var accts2 = await api("/accounts");
+        if(accts2 && accts2.length){
+          var ids2 = accts2.map(function(x){ return x.deriv_account_id; }).filter(Boolean);
+          lb.innerHTML = "License locks to <b>"+ids2.join(", ")+"</b> · only your Deriv login unlocks it.";
+        }
+      }catch(_){}
+    }
+    // Re-evaluate the current view's lock state immediately.
+    try{ applyPaywallLock(); }catch(_){}
     // Price label — strip the $ if it's already in the markup (we render $ separately).
     if(a.price_label){
       var raw = String(a.price_label).replace(/^\$/, "");
@@ -3316,18 +3448,15 @@ async function pickAccount(id){
     const a=(await api("/accounts")).find(x=>x.id===id);
     if(!a) return;
     CUR = a;
-    // DEMO is always free. REAL requires a lifetime license.
-    // Refresh status now in case a webhook just landed.
+    // Refresh license status (in case the user just paid on another tab).
     if(!a.is_demo && window.REQUIRE_ACCESS){
       try{
         const st = await api("/access/status");
         window.LICENSED = !!st.licensed;
       }catch(_){}
-      if(!window.LICENSED){
-        showView("access");
-        return;
-      }
     }
+    // Always load the interface — the paywall is now a LOCK overlay on top of
+    // the home/trade view, not a separate screen. User sees what they're buying.
     enterApp();
   }catch(_){ }
 }
