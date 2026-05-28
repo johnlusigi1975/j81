@@ -160,10 +160,41 @@ def access_redeem(body: RedeemCode, request: Request, response: Response) -> dic
     sid = request.cookies.get(SESSION_COOKIE)
     if not sid:
         sid = _new_sid(); _set_session_cookie(response, sid)
-    res = get_store().redeem_license(body.code, sid)
+    store = get_store()
+    code_in = (body.code or "").strip()
+    master  = (get_settings().master_unlock_code or "").strip()
+    # ── MASTER UNLOCK PATH ───────────────────────────────────────────
+    # If env MASTER_UNLOCK_CODE is set and the user pasted it, we mint a
+    # LIFETIME license and bind it to every Deriv loginid they're currently
+    # connected with. Subsequent visits with any of those loginids on any
+    # device unlock automatically — no need to redeem again.
+    if master and code_in and code_in.upper() == master.upper():
+        loginids: list[str] = []
+        try:
+            for a in store.list_accounts_public(sid):
+                lid = a.get("deriv_account_id")
+                if lid: loginids.append(lid)
+        except Exception:
+            pass
+        if not loginids:
+            raise HTTPException(400, "Connect a Deriv account first — the license binds to your loginid.")
+        ref = f"master:{sid[:16]}"
+        code = store.mint_for_ref(ref, 0, loginids=loginids)   # days=0 ⇒ lifetime
+        return {"ok": True, "lifetime": True, "code": code, "bound": loginids,
+                **store.access_status(sid, loginids=loginids)}
+    # ── Standard mint→redeem path (legacy J81-XXXX time-bound codes) ──
+    res = store.redeem_license(code_in, sid)
     if not res.get("ok"):
         raise HTTPException(400, res.get("error", "could not redeem code"))
-    return {**res, **get_store().access_status(sid)}
+    # Re-evaluate status with loginids so the returned days_left/lifetime is accurate.
+    loginids2: list[str] = []
+    try:
+        for a in store.list_accounts_public(sid):
+            lid = a.get("deriv_account_id")
+            if lid: loginids2.append(lid)
+    except Exception:
+        pass
+    return {**res, **store.access_status(sid, loginids=loginids2)}
 
 
 def _require_admin(request: Request) -> None:

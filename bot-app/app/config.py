@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     # Stripe webhook signing secret (whsec_…) — set in the dashboard to auto-issue
     # a code when a payment completes. Blank disables the webhook.
     stripe_webhook_secret: str = ""
+    # MASTER UNLOCK CODE — anyone who pastes this exact string in the "Have a
+    # code?" form gets LIFETIME access bound to whichever Deriv account(s)
+    # they're connected with. Use it for yourself, comp access for friends, or
+    # influencer keys. Blank disables the feature. Pick something you don't
+    # want guessed — e.g. "J81-OWNR-LIFE-7Z3K".
+    master_unlock_code: str = ""
 
 
 @lru_cache
