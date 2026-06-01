@@ -103,6 +103,30 @@ def home(request: Request) -> FileResponse:
     return _no_cache(resp)
 
 
+def _require_member(request: Request) -> None:
+    """Server-side paywall enforcement for trade-placing endpoints.
+    Without this, anyone could flip `window.LICENSED = true` in DevTools
+    and trade for free — the frontend gate is cosmetic. This is the real
+    gate. No-ops if REQUIRE_ACCESS is False (open mode)."""
+    s = get_settings()
+    if not s.require_access:
+        return
+    sid = request.cookies.get(SESSION_COOKIE) or ""
+    store = get_store()
+    # Collect Deriv loginids this session owns — same logic as /access/status.
+    loginids: list[str] = []
+    try:
+        for a in store.list_accounts_public(sid):
+            lid = a.get("deriv_account_id")
+            if lid: loginids.append(lid)
+    except Exception:
+        pass
+    st = store.access_status(sid, loginids=loginids)
+    if not st.get("licensed"):
+        # HTTP 402 Payment Required — the only really-meant-for-this-purpose code.
+        raise HTTPException(402, "paid membership required — please complete checkout")
+
+
 @app.get("/owner", include_in_schema=False)
 def owner_page() -> FileResponse:
     """Owner console to mint/copy membership codes (guarded by ADMIN_KEY on the
@@ -1005,6 +1029,7 @@ def account_delete(account_id: str, request: Request) -> dict:
 async def account_trade_now(account_id: str, request: Request, symbol: str = "R_100") -> dict:
     """One-shot: ask analyser for a decision and execute through the
     risk gates. Useful for testing without waiting for the autonomous loop."""
+    _require_member(request)   # ← server-side paywall
     _require_own(request, account_id)
     acct = get_store().get_internal(account_id)
     if acct is None:
@@ -1361,6 +1386,7 @@ class ManualTradeRequest(BaseModel):
 async def trade_manual(req: ManualTradeRequest, request: Request) -> dict:
     """Place a trade the user picked themselves (Rise/Fall or Even/Odd).
     Honours DRY_RUN + the account's stake/daily caps."""
+    _require_member(request)   # ← server-side paywall (no frontend bypass)
     _require_own(request, req.account_id)
     acct = get_store().get_internal(req.account_id)
     if acct is None:

@@ -583,6 +583,47 @@
   .paywall-lock-owner-body .btn{padding:8px 14px;font-size:12px}
   .paywall-lock-owner-msg{flex-basis:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;margin-top:4px}
   @media(max-width:520px){.paywall-lock-price{font-size:46px}.paywall-lock-card{padding:22px 18px 18px}.paywall-lock-cta{font-size:15px;padding:13px 16px !important}}
+  /* === Welcome modal (shown once on first unlock) === */
+  .welcome-modal{position:fixed;inset:0;z-index:11000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);animation:welcome-fade .4s ease 1}
+  .welcome-modal[hidden]{display:none}
+  @keyframes welcome-fade{0%{opacity:0;backdrop-filter:blur(0)}100%{opacity:1;backdrop-filter:blur(10px)}}
+  .welcome-card{max-width:520px;width:100%;padding:36px 32px;border:1px solid rgba(212,184,122,.55);border-radius:22px;background:linear-gradient(135deg,rgba(20,28,40,.98),rgba(8,12,18,.98));box-shadow:0 40px 100px -20px rgba(0,0,0,.75), 0 0 0 1px rgba(212,184,122,.20) inset, 0 0 80px -10px rgba(212,184,122,.25);text-align:center;position:relative;overflow:hidden;animation:welcome-rise .55s cubic-bezier(.18,.96,.30,1) 1}
+  @keyframes welcome-rise{0%{transform:translateY(24px) scale(.95);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
+  .welcome-card::before{content:"";position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,184,122,.10),transparent);animation:brain-sweep 5s ease-in-out infinite;pointer-events:none}
+  .welcome-icon{font-size:48px;line-height:1;margin-bottom:8px;position:relative;z-index:2}
+  .welcome-eyebrow{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.22em;color:#6ff0a8;font-weight:800;margin-bottom:11px;position:relative;z-index:2}
+  .welcome-card h2{font-family:var(--serif);font-size:32px;font-weight:800;letter-spacing:-.02em;margin:0 0 14px;line-height:1.15;position:relative;z-index:2}
+  .welcome-card h2 .g{background:linear-gradient(135deg,#fff6da,#f1d27e 55%,#d6af48);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .welcome-card p{font-size:14.5px;line-height:1.55;color:var(--dim);margin:0 0 11px;position:relative;z-index:2}
+  .welcome-card p:last-of-type{margin-bottom:0}
+  .welcome-actions{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:22px;position:relative;z-index:2}
+  .welcome-actions .btn.big{padding:14px 28px !important;font-family:var(--serif);font-size:16px;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a) !important;color:#241c0a !important;border-color:transparent !important;box-shadow:0 12px 32px -10px rgba(212,184,122,.6), 0 0 0 1px rgba(212,184,122,.25) inset;transition:transform .15s ease, box-shadow .15s ease;width:min(280px,100%)}
+  .welcome-actions .btn.big:hover{transform:translateY(-1px);box-shadow:0 16px 36px -10px rgba(212,184,122,.8), 0 0 0 1px rgba(212,184,122,.35) inset}
+  .welcome-skip{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;cursor:pointer;padding:6px 10px}
+  .welcome-skip:hover{color:var(--text)}
+  /* === Onboarding tour spotlight === */
+  .tour-overlay{position:fixed;inset:0;z-index:10500;pointer-events:none}
+  .tour-overlay[hidden]{display:none}
+  .tour-cutout{position:absolute;pointer-events:none;border-radius:14px;border:2px solid #6ff0a8;box-shadow:0 0 0 9999px rgba(0,0,0,.74), 0 0 0 4px rgba(70,207,158,.20), 0 0 30px rgba(70,207,158,.55);transition:all .45s cubic-bezier(.18,.96,.30,1);animation:tour-cutout-pulse 2s ease-in-out infinite}
+  @keyframes tour-cutout-pulse{0%,100%{box-shadow:0 0 0 9999px rgba(0,0,0,.74), 0 0 0 4px rgba(70,207,158,.20), 0 0 30px rgba(70,207,158,.40)}50%{box-shadow:0 0 0 9999px rgba(0,0,0,.74), 0 0 0 8px rgba(70,207,158,.30), 0 0 50px rgba(70,207,158,.65)}}
+  .tour-tip{position:absolute;pointer-events:auto;max-width:380px;width:calc(100vw - 40px);padding:18px 20px 16px;border:1px solid rgba(212,184,122,.50);border-radius:14px;background:linear-gradient(135deg,rgba(20,28,40,.98),rgba(8,12,18,.98));box-shadow:0 26px 70px -16px rgba(0,0,0,.65), 0 0 0 1px rgba(212,184,122,.18) inset;animation:tour-tip-in .35s ease 1;transition:top .45s cubic-bezier(.18,.96,.30,1), left .45s cubic-bezier(.18,.96,.30,1)}
+  @keyframes tour-tip-in{0%{opacity:0;transform:scale(.95)}100%{opacity:1;transform:scale(1)}}
+  .tour-tip-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .tour-tip-step{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase}
+  .tour-tip-step b{color:var(--amber);font-weight:800}
+  .tour-tip-skip{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.04em;cursor:pointer;padding:2px 6px}
+  .tour-tip-skip:hover{color:var(--text)}
+  .tour-tip h3{font-family:var(--serif);font-size:18px;font-weight:800;letter-spacing:-.01em;margin:0 0 8px;color:var(--text)}
+  .tour-tip p{font-size:13px;line-height:1.55;color:var(--dim);margin:0 0 12px}
+  .tour-progress{height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;margin:0 0 12px}
+  .tour-progress i{display:block;height:100%;background:linear-gradient(90deg,#6ff0a8,#46cf9e);width:0;transition:width .15s linear}
+  .tour-tip-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .tour-tip-prev{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;cursor:pointer;padding:6px 10px}
+  .tour-tip-prev:hover{color:var(--text)}
+  .tour-tip-prev:disabled{opacity:.4;cursor:not-allowed}
+  .tour-tip-next{padding:8px 16px !important;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:linear-gradient(135deg,#ecd9a8,#d4b87a 55%,#b9985a) !important;color:#241c0a !important;border-color:transparent !important;box-shadow:0 6px 16px -4px rgba(212,184,122,.5);cursor:pointer}
+  .tour-tip-next:hover{box-shadow:0 8px 20px -4px rgba(212,184,122,.7)}
+  @media(max-width:520px){.welcome-card{padding:28px 22px}.welcome-card h2{font-size:26px}.tour-tip{max-width:none;width:calc(100vw - 24px);left:12px !important;right:12px !important}}
   /* === Lifetime paywall card === */
   .paywall-eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:var(--amber);font-weight:800;margin-bottom:8px}
   .paywall-card{max-width:600px;margin:0 auto;padding:26px 26px 22px}
@@ -1179,6 +1220,47 @@
      and keyboard-shortcut feedback. Toasts auto-dismiss after 4s and
      slide out gracefully. -->
 <div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+<!-- ── WELCOME MODAL ────────────────────────────────────────────────────
+     Shown the FIRST time a user lands on the app fully unlocked (after
+     paying or after redeeming a code). Sets the tone, offers the tour,
+     "Skip" lets power users go straight to the desk. Suppressed on
+     subsequent visits via j81_welcomed in localStorage. -->
+<div id="welcome-modal" class="welcome-modal" hidden>
+  <div class="welcome-card">
+    <div class="welcome-icon">🎉</div>
+    <div class="welcome-eyebrow">LIFETIME ACCESS · ACTIVATED</div>
+    <h2>Welcome to <span class="g">J81 Trade Desk</span></h2>
+    <p>You're a lifetime member now. Every Deriv account under your login is unlocked, on every device.</p>
+    <p>Want a 60-second guided tour of every feature?</p>
+    <div class="welcome-actions">
+      <button class="btn big" id="welcome-tour-start">✨ Show me around</button>
+      <button class="welcome-skip" id="welcome-skip">I'll explore on my own →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ONBOARDING TOUR OVERLAY ──────────────────────────────────────────
+     A guided spotlight tour that highlights each feature for ~4s and
+     auto-advances. Cutout dims the rest of the screen and pulses around
+     the target element. Tip box sits adjacent to it with title/body and
+     Skip / Next / Back controls. -->
+<div id="tour-overlay" class="tour-overlay" hidden>
+  <div class="tour-cutout" id="tour-cutout"></div>
+  <div class="tour-tip" id="tour-tip">
+    <div class="tour-tip-head">
+      <span class="tour-tip-step"><b id="tour-step-n">1</b> / <span id="tour-step-total">7</span></span>
+      <button class="tour-tip-skip" id="tour-skip" type="button">Skip tour ×</button>
+    </div>
+    <h3 id="tour-tip-title">…</h3>
+    <p id="tour-tip-body">…</p>
+    <div class="tour-progress"><i id="tour-progress-bar"></i></div>
+    <div class="tour-tip-actions">
+      <button class="tour-tip-prev" id="tour-prev" type="button">← Back</button>
+      <button class="btn primary tour-tip-next" id="tour-next" type="button">Next →</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── PAYWALL LOCK OVERLAY ────────────────────────────────────────────
      When the user has connected a REAL Deriv account but hasn't paid,
@@ -3261,6 +3343,211 @@ let _prevSpot=null, _lastRead=null;
   setTimeout(tick, 600);
 })();
 
+// ===================================================================
+// WELCOME MODAL + ONBOARDING TOUR
+// First-time users (post-payment / first redeem) see a welcome modal
+// offering a guided 60-second tour. The tour walks them through Game
+// picker → Brain → Recovery Engine → AUTO ticks → Start button → Stop.
+// Each step auto-advances after 4.5s; Skip / Next / Back always available.
+// "Tour completed/skipped" is remembered in localStorage so it never
+// re-fires on subsequent visits.
+// ===================================================================
+const TOUR_STEPS = [
+  {
+    selector: ".gcard",
+    view: "home",
+    title: "Pick your game",
+    body: "Three trade types are available — Even/Odd, Rise/Fall, Over/Under. Each has its own auto-trader, live signal radar, and recovery engine. We'll dive into one now."
+  },
+  {
+    selector: "#eo-signal",
+    view: "trade", openGame: "even_odd",
+    title: "Live Signal Radar",
+    body: "Real-time read of the market lean. The percentage shows the dominant side's strength; the gold marker is your threshold. When the bar pulses green it means a trade would fire."
+  },
+  {
+    selector: "#eo-brain",
+    view: "trade",
+    title: "The Trading Brain",
+    body: "Watch the engine think. It scans all 10 markets every cycle, ranks them, picks the strongest lean, and logs every decision. The candidates panel shows the top 3 markets it's weighing."
+  },
+  {
+    selector: "#eo-re",
+    view: "trade",
+    title: "Recovery Engine (Smart Martingale)",
+    body: "When a trade loses, the engine increases the next stake to recover. Choose Flat × / Fibonacci / Linear, set a max-step cap, and watch the visual ladder. The cap prevents runaway losses."
+  },
+  {
+    selector: "#eo-tick-seg",
+    view: "trade",
+    title: "AUTO Ticks (1–10)",
+    body: "The engine picks the best trade duration (1 to 10 ticks) based on signal strength — stronger lean means shorter ticks. You can also pick manually if you prefer fixed durations."
+  },
+  {
+    selector: "#eo-go",
+    view: "trade",
+    title: "Start auto-trading",
+    body: "When you're set, hit this. The bot picks markets, fires trades, manages stake recovery, and stops at your take-profit or stop-loss limits — all automatically. You can pause it anytime."
+  },
+  {
+    selector: "#eo-stop-all",
+    view: "trade",
+    title: "Emergency stop (always visible)",
+    body: "This black button stops EVERY running auto-trader on your account instantly. Plus you can press Esc anywhere as a global panic button. Trade safely."
+  },
+];
+const TOUR_DURATION = 4500;   // ms per step
+let _tourIdx = 0;
+let _tourTimer = null;
+let _tourTickTimer = null;
+let _tourStartedAt = 0;
+
+function _q(sel){ return document.querySelector(sel); }
+
+function _shouldShowWelcome(){
+  if(!window.LICENSED) return false;
+  try{
+    if(localStorage.getItem("j81_welcomed") === "1") return false;
+  }catch(_){}
+  return true;
+}
+
+function showWelcome(){
+  const m = document.getElementById("welcome-modal"); if(!m) return;
+  m.hidden = false;
+  // Mark immediately so a refresh during the welcome doesn't show it twice.
+  try{ localStorage.setItem("j81_welcomed", "1"); }catch(_){}
+}
+function dismissWelcome(){
+  const m = document.getElementById("welcome-modal"); if(m) m.hidden = true;
+}
+function startTour(){
+  dismissWelcome();
+  _tourIdx = 0;
+  const total = document.getElementById("tour-step-total"); if(total) total.textContent = TOUR_STEPS.length;
+  const ov = document.getElementById("tour-overlay"); if(ov) ov.hidden = false;
+  _showTourStep();
+}
+function endTour(skipped){
+  if(_tourTimer){ clearTimeout(_tourTimer); _tourTimer = null; }
+  if(_tourTickTimer){ clearInterval(_tourTickTimer); _tourTickTimer = null; }
+  const ov = document.getElementById("tour-overlay"); if(ov) ov.hidden = true;
+  try{ localStorage.setItem(skipped ? "j81_tour_skipped" : "j81_tour_done", "1"); }catch(_){}
+}
+function _showTourStep(){
+  if(_tourTimer){ clearTimeout(_tourTimer); _tourTimer = null; }
+  if(_tourTickTimer){ clearInterval(_tourTickTimer); _tourTickTimer = null; }
+  if(_tourIdx >= TOUR_STEPS.length){ endTour(false); return; }
+  const step = TOUR_STEPS[_tourIdx];
+  // Navigate / open the right view first
+  if(step.view === "home"){ try{ showView("home"); }catch(_){} }
+  if(step.view === "trade"){
+    if(step.openGame && (!CUR || GAME !== step.openGame)){
+      // Need an account first — if no CUR, can't open trade view
+      if(!CUR){
+        // Skip steps that need a trade-view if no account yet
+        _tourIdx++;
+        setTimeout(_showTourStep, 50);
+        return;
+      }
+      try{ openTrade(step.openGame); }catch(_){}
+    } else {
+      try{ showView("trade"); }catch(_){}
+    }
+  }
+  // Wait for layout, then position
+  setTimeout(()=>_positionTourStep(step), 280);
+}
+function _positionTourStep(step){
+  const target = _q(step.selector);
+  if(!target){
+    // Target missing — auto-skip this step
+    _tourIdx++;
+    setTimeout(_showTourStep, 50);
+    return;
+  }
+  // Scroll target into view so the spotlight is visible
+  try{ target.scrollIntoView({behavior:"smooth", block:"center"}); }catch(_){}
+  setTimeout(()=>_drawTourStep(step, target), 350);
+}
+function _drawTourStep(step, target){
+  const r = target.getBoundingClientRect();
+  const cutout = document.getElementById("tour-cutout");
+  if(cutout){
+    const pad = 8;
+    cutout.style.top    = (r.top    - pad) + "px";
+    cutout.style.left   = (r.left   - pad) + "px";
+    cutout.style.width  = (r.width  + pad*2) + "px";
+    cutout.style.height = (r.height + pad*2) + "px";
+  }
+  // Position the tip — below target if there's room, else above
+  const tip = document.getElementById("tour-tip"); if(!tip) return;
+  const tipW = Math.min(380, window.innerWidth - 40);
+  const tipH = 220;   // approx
+  const below = r.bottom + 18;
+  const above = r.top - tipH - 18;
+  let top, left;
+  if(below + tipH < window.innerHeight - 12){
+    top = below;
+  } else if(above > 12){
+    top = above;
+  } else {
+    top = Math.max(12, (window.innerHeight - tipH) / 2);
+  }
+  left = r.left + (r.width / 2) - (tipW / 2);
+  left = Math.max(12, Math.min(window.innerWidth - tipW - 12, left));
+  tip.style.top = top + "px";
+  tip.style.left = left + "px";
+  tip.style.width = tipW + "px";
+  // Update content
+  document.getElementById("tour-step-n").textContent = _tourIdx + 1;
+  document.getElementById("tour-tip-title").textContent = step.title;
+  document.getElementById("tour-tip-body").textContent = step.body;
+  const prev = document.getElementById("tour-prev"); if(prev) prev.disabled = _tourIdx === 0;
+  const next = document.getElementById("tour-next"); if(next) next.textContent = (_tourIdx === TOUR_STEPS.length - 1) ? "Finish ✓" : "Next →";
+  // Reset + start progress bar
+  const bar = document.getElementById("tour-progress-bar");
+  if(bar){ bar.style.width = "0%"; }
+  _tourStartedAt = Date.now();
+  if(_tourTickTimer) clearInterval(_tourTickTimer);
+  _tourTickTimer = setInterval(()=>{
+    const elapsed = Date.now() - _tourStartedAt;
+    const pct = Math.min(100, (elapsed / TOUR_DURATION) * 100);
+    if(bar) bar.style.width = pct + "%";
+  }, 60);
+  if(_tourTimer) clearTimeout(_tourTimer);
+  _tourTimer = setTimeout(()=>{
+    _tourIdx++;
+    _showTourStep();
+  }, TOUR_DURATION);
+}
+// Wire welcome + tour buttons
+document.addEventListener("click", function(ev){
+  const t = ev.target.closest && ev.target.closest("#welcome-tour-start");
+  if(t){ startTour(); return; }
+  const sk = ev.target.closest && ev.target.closest("#welcome-skip");
+  if(sk){ dismissWelcome(); try{ localStorage.setItem("j81_tour_skipped","1"); }catch(_){} return; }
+  const tn = ev.target.closest && ev.target.closest("#tour-next");
+  if(tn){
+    if(_tourTimer){ clearTimeout(_tourTimer); _tourTimer = null; }
+    if(_tourTickTimer){ clearInterval(_tourTickTimer); _tourTickTimer = null; }
+    _tourIdx++;
+    _showTourStep();
+    return;
+  }
+  const tp = ev.target.closest && ev.target.closest("#tour-prev");
+  if(tp){
+    if(_tourIdx === 0) return;
+    if(_tourTimer){ clearTimeout(_tourTimer); _tourTimer = null; }
+    if(_tourTickTimer){ clearInterval(_tourTickTimer); _tourTickTimer = null; }
+    _tourIdx--;
+    _showTourStep();
+    return;
+  }
+  const ts = ev.target.closest && ev.target.closest("#tour-skip");
+  if(ts){ endTour(true); }
+});
+
 // Apply or remove the paywall lock overlay based on current view + license.
 // The interface stays mounted underneath — it's just blurred + click-blocked
 // so the user can SEE what they're paying for (premium "preview-then-pay" UX).
@@ -3445,7 +3732,8 @@ async function redeemCode(){
 async function claimPaid(sid){
   // After Stripe checkout the webhook auto-binds the license to the buyer's
   // Deriv loginids — no code redeem needed. We just poll /access/status
-  // until it reports licensed=true, then drop the user back into the app.
+  // until it reports licensed=true, then drop the user back into the app
+  // AND mark them as "needs welcome" so the modal fires on next enterApp.
   showView("access");
   var msg=$("acc-msg"); if(msg) msg.innerHTML='<span class="faint">✓ Payment received — confirming your license…</span>';
   for(var i=0;i<10;i++){
@@ -3453,8 +3741,10 @@ async function claimPaid(sid){
       var st = await api("/access/status");
       if(st && st.licensed){
         window.LICENSED = true;
-        if(msg) msg.innerHTML='<span style="color:var(--good)">✓ Lifetime access unlocked. Welcome to J81.</span>';
-        try{ toast({kind:"win", title:"Lifetime access unlocked", msg:"Thank you — your account is now permanent.", ttl:6000}); }catch(_){}
+        // Clear the "welcomed" flag so the welcome modal fires on next entry.
+        try{ localStorage.removeItem("j81_welcomed"); localStorage.removeItem("j81_tour_done"); localStorage.removeItem("j81_tour_skipped"); }catch(_){}
+        if(msg) msg.innerHTML='<span style="color:var(--good)">✓ Lifetime access unlocked. Loading your desk…</span>';
+        try{ toast({kind:"win", title:"Lifetime access unlocked", msg:"Thank you — every Deriv account under your login is now lifetime.", ttl:6000}); }catch(_){}
         setTimeout(function(){ location.replace("/"); }, 900);
         return;
       }
@@ -3529,6 +3819,8 @@ function enterApp(){
   setTimeout(()=>{ try{ resumeAutoSessions(); }catch(_){} }, 250);
   // Brain consoles start in idle state until a controller is engaged.
   setTimeout(()=>{ try{ ["eo","rf","ou"].forEach(k => _brainSetIdle(k, true)); }catch(_){} }, 260);
+  // First-time welcome: fires once per user (resets after a fresh payment).
+  setTimeout(()=>{ try{ if(typeof _shouldShowWelcome === "function" && _shouldShowWelcome()) showWelcome(); }catch(_){} }, 600);
 }
 async function logout(){   // disconnect THIS browser → back to the front page
   try{ await api("/logout",{method:"POST",body:"{}"}); }catch(_){}
