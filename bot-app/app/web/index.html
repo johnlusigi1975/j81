@@ -1188,7 +1188,7 @@
      Toggled by body.paywall-locked. -->
 <div id="paywall-lock" class="paywall-lock" hidden>
   <div class="paywall-lock-card">
-    <div class="paywall-lock-eyebrow">REAL-ACCOUNT ACCESS · LIFETIME UNLOCK</div>
+    <div class="paywall-lock-eyebrow">FULL ACCESS · LIFETIME UNLOCK</div>
     <div class="paywall-lock-price-row">
       <span class="paywall-lock-price"><span class="paywall-lock-currency">$</span><span id="lock-price">100</span></span>
       <div class="paywall-lock-tag">
@@ -1349,9 +1349,9 @@
 <div class="view wrap" id="view-access" hidden>
   <button class="backbtn" onclick="showView(HAS_ACCOUNTS?'accounts':'landing')">← back</button>
   <div class="hero">
-    <div class="paywall-eyebrow">REAL-ACCOUNT ACCESS · DEMO ALWAYS FREE</div>
+    <div class="paywall-eyebrow">FULL ACCESS · LIFETIME UNLOCK</div>
     <h1>One payment. <span class="g">Lifetime</span> access.</h1>
-    <p>Unlock real-account trading on J81 once and use it forever. No subscription, no rebills, no surprises. Demo trading stays free so you can prove the desk on simulated money before you ever pay.</p>
+    <p>Unlock J81 once and use it forever — demo and real, every account under your Deriv login, on any device. No subscription, no rebills, no surprises.</p>
   </div>
   <div class="glass paywall-card">
     <div class="paywall-price-row">
@@ -1393,7 +1393,7 @@
     </div>
     <div class="paywall-honesty">
       <b>Honest disclosure:</b> J81 is a set of analysis, sizing, and discipline tools — <b>not</b> financial advice and <b>not</b> a guarantee of profit.
-      Deriv synthetic indices are an audited random-number generator with a built-in house edge, so <b>no tool can predict the next tick</b> and you can lose money. Demo first; trade only what you can afford to lose. "Lifetime" means as long as J81 is operated by us.
+      Deriv synthetic indices are an audited random-number generator with a built-in house edge, so <b>no tool can predict the next tick</b> and you can lose money. Trade only what you can afford to lose. "Lifetime" means as long as J81 is operated by us.
     </div>
   </div>
 </div>
@@ -3268,9 +3268,9 @@ let _prevSpot=null, _lastRead=null;
 // The interface stays mounted underneath — it's just blurred + click-blocked
 // so the user can SEE what they're paying for (premium "preview-then-pay" UX).
 //
-// Behaviour right now: paywall fires on ANY account (demo OR real) so the
-// owner can see the lock the moment they enter the app. To put Demo back to
-// free later, add `&& CUR && CUR.is_demo === false` to the condition below.
+// Policy: paywall fires on ANY account (demo + real). One $100 lifetime
+// purchase unlocks everything for the buyer's Deriv login set forever.
+// To allow Demo free again, add `&& CUR && CUR.is_demo === false` below.
 function applyPaywallLock(view){
   const v = view || (document.querySelector(".view:not([hidden])") || {}).id || "";
   const cleanView = v.replace(/^view-/, "");
