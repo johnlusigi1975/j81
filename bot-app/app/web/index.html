@@ -1373,7 +1373,7 @@
       <li><b>All accounts under your Deriv login unlock</b> — demo + real, on any device</li>
       <li><b>All future updates included</b> — no upsells</li>
     </ul>
-    <a id="acc-buy" class="btn big paywall-cta" href="#" rel="noopener" style="display:block;text-align:center;text-decoration:none">Unlock J81 — <span class="acc-price2">$100</span> · lifetime</a>
+    <button id="acc-buy" class="btn big paywall-cta" type="button" style="display:block;width:100%;text-align:center">Unlock J81 — <span class="acc-price2">$100</span> · lifetime</button>
     <div class="paywall-trust">
       <span class="paywall-trust-item">🔒 Stripe-secured checkout</span>
       <span class="paywall-trust-sep">·</span>
@@ -1381,15 +1381,12 @@
     </div>
     <div class="paywall-bind" id="acc-bind">License binds to your connected Deriv account(s).</div>
     <div class="paywall-redeem">
-      <div class="paywall-redeem-lab">Already paid on another device? Reconnect with the same Deriv login — you're unlocked automatically.</div>
-      <details class="paywall-redeem-fallback">
-        <summary>Have a manual code instead?</summary>
-        <div class="row" style="gap:8px;margin-top:8px">
-          <input id="acc-code" placeholder="J81-XXXX-XXXX-XXXX" style="flex:1;text-transform:uppercase;font-family:var(--mono)">
-          <button class="btn" id="acc-redeem" type="button">Unlock</button>
-        </div>
-        <div id="acc-msg" style="margin-top:8px;font-size:13px"></div>
-      </details>
+      <div class="paywall-redeem-lab"><b>Have an access code?</b> Paste it below and unlock instantly. Already paid on another device? Reconnect with the same Deriv login and you'll be unlocked automatically.</div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <input id="acc-code" placeholder="J81-XXXX-XXXX-XXXX" style="flex:1;text-transform:uppercase;font-family:var(--mono)" autocomplete="off" spellcheck="false">
+        <button class="btn" id="acc-redeem" type="button">Unlock</button>
+      </div>
+      <div id="acc-msg" style="margin-top:8px;font-size:13px"></div>
     </div>
     <div class="paywall-honesty">
       <b>Honest disclosure:</b> J81 is a set of analysis, sizing, and discipline tools — <b>not</b> financial advice and <b>not</b> a guarantee of profit.
@@ -3392,13 +3389,15 @@ async function checkAccess(){
         }
       }catch(_){}
     }
-    // Buy CTA — hit our checkout_link endpoint so Stripe gets client_reference_id
-    // (the Deriv loginids). On click we fetch a fresh URL because the user might
-    // have connected more accounts since page load.
+    // Buy CTA — ALWAYS goes through /access/checkout_link so Stripe receives
+    // the client_reference_id (the Deriv loginids). Since this is a <button>,
+    // there's no href fallback the browser could follow if the JS handler is
+    // late/erroring — the click does nothing harmful in that case.
     var buy=$("acc-buy");
     if(buy){
       buy.onclick = async function(e){
         e.preventDefault();
+        if(buy.classList.contains("firing")) return;  // ignore double-clicks
         buy.classList.add("firing");
         try{
           var r = await api("/access/checkout_link");
@@ -3408,10 +3407,14 @@ async function checkAccess(){
             showView("connect"); return;
           }
           toast({kind:"warn", title:"Checkout unavailable", msg:"Payment link not configured yet — contact support."});
-        }catch(_){ }
+        }catch(err){
+          toast({kind:"warn", title:"Couldn't start checkout", msg:(err && err.message) || "Try again in a moment."});
+        }
         finally{ buy.classList.remove("firing"); }
       };
-      if(a.buy_url) buy.href = a.buy_url; else buy.style.display = "none";
+      // Hide the button entirely if no payment link is configured server-side.
+      if(!a.buy_url) buy.style.display = "none";
+      else buy.style.display = "";
     }
     // Membership chip in the nav
     var chip=$("nav-member");

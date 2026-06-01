@@ -363,6 +363,38 @@ def access_owner_unlock(body: OwnerUnlockReq, request: Request, response: Respon
     return {"ok": True, "code": code, "bound": loginids, "lifetime": True}
 
 
+@app.get("/access/unlock_self")
+def access_unlock_self(request: Request, response: Response) -> dict:
+    """Owner-only escape hatch — GRANTS a lifetime license to the caller's
+    Deriv loginids. Mirror of /access/owner_unlock but as a GET so you can
+    hit it from the browser address bar without any form. Use:
+        /access/unlock_self?key=<ADMIN_KEY>
+    """
+    expected = (get_settings().admin_key or "").strip()
+    if not expected:
+        raise HTTPException(503, "unlock disabled — set ADMIN_KEY in the dashboard first")
+    got = (request.headers.get("X-Admin-Key") or request.query_params.get("key") or "").strip()
+    if got != expected:
+        raise HTTPException(403, "bad admin key")
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not sid:
+        sid = _new_sid(); _set_session_cookie(response, sid)
+    store = get_store()
+    loginids: list[str] = []
+    try:
+        for a in store.list_accounts_public(sid):
+            lid = a.get("deriv_account_id")
+            if lid: loginids.append(lid)
+    except Exception:
+        pass
+    if not loginids:
+        raise HTTPException(400, "connect a Deriv account first — the license binds to your loginids")
+    ref = f"owner:{sid[:16]}"
+    code = store.mint_for_ref(ref, 0, loginids=loginids)
+    return {"ok": True, "code": code, "bound": loginids, "lifetime": True,
+            "note": "Refresh the J81 site — you're unlocked."}
+
+
 @app.get("/access/revoke_self")
 def access_revoke_self(request: Request) -> dict:
     """Owner-only escape hatch — revokes every license bound to the caller's
