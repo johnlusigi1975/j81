@@ -363,6 +363,34 @@ def access_owner_unlock(body: OwnerUnlockReq, request: Request, response: Respon
     return {"ok": True, "code": code, "bound": loginids, "lifetime": True}
 
 
+@app.get("/access/revoke_self")
+def access_revoke_self(request: Request) -> dict:
+    """Owner-only escape hatch — revokes every license bound to the caller's
+    Deriv loginids so the paywall fires again on the next visit. Used for
+    testing the payment flow when you've previously unlocked yourself with
+    the master code or owner unlock. Requires ADMIN_KEY (?key=...)."""
+    expected = (get_settings().admin_key or "").strip()
+    if not expected:
+        raise HTTPException(503, "revoke disabled — set ADMIN_KEY in the dashboard first")
+    got = (request.headers.get("X-Admin-Key") or request.query_params.get("key") or "").strip()
+    if got != expected:
+        raise HTTPException(403, "bad admin key")
+    sid = request.cookies.get(SESSION_COOKIE) or ""
+    store = get_store()
+    loginids: list[str] = []
+    try:
+        for a in store.list_accounts_public(sid):
+            lid = a.get("deriv_account_id")
+            if lid: loginids.append(lid)
+    except Exception:
+        pass
+    if not loginids:
+        raise HTTPException(400, "no Deriv account connected on this session — nothing to revoke")
+    n = store.revoke_licenses_for_loginids(loginids)
+    return {"ok": True, "revoked": n, "loginids": loginids,
+            "note": "Refresh the J81 site; you'll see the paywall again."}
+
+
 @app.get("/access/checkout_link")
 def access_checkout_link(request: Request) -> dict:
     """Returns the Stripe payment URL with this user's Deriv loginids attached
@@ -445,6 +473,14 @@ def og_image() -> Response:
         '</svg>'
     )
     return Response(svg, media_type="image/svg+xml")
+
+
+@app.get("/version")
+def version() -> dict:
+    """Tiny health-pulse endpoint. Front-end pings every 12s to colour the
+    nav-bar API status dot. Cheap on purpose — just confirms the server
+    is alive and what version is running."""
+    return {"app": APP_NAME, "version": APP_VERSION, "ok": True}
 
 
 @app.get("/health")

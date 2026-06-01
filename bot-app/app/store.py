@@ -783,6 +783,24 @@ class BotStore:
             self._conn.commit()
         return added
 
+    def revoke_licenses_for_loginids(self, loginids: list[str]) -> int:
+        """Revoke EVERY active license tied to any of these Deriv loginids.
+        Used by the owner /access/revoke_self endpoint to wipe their own
+        access for testing (so the paywall fires again on the next visit).
+        Returns the number of licenses revoked."""
+        ids = [x for x in (loginids or []) if x]
+        if not ids: return 0
+        placeholders = ",".join("?" for _ in ids)
+        with self._lock:
+            cur = self._conn.execute(
+                f"UPDATE licenses SET status='revoked' "
+                f"WHERE status='active' AND code IN ("
+                f"  SELECT license_code FROM license_logins WHERE loginid IN ({placeholders})"
+                f")",
+                tuple(ids))
+            self._conn.commit()
+            return cur.rowcount
+
     def revoke_license_by_ref(self, ref: str) -> bool:
         """Mark the license for an external ref (e.g. a Stripe session) as
         revoked. Called from the Stripe refund webhook. Returns True if a row
