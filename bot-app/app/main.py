@@ -169,6 +169,15 @@ def access_status(request: Request, response: Response) -> dict:
         st["customers"] = store.count_active_licenses()
     except Exception:
         pass
+    # If they're licensed, look up their actual license code so the front-end
+    # can show it in the welcome modal ("your lifetime receipt"). Only returned
+    # to the rightful owner — license_by_loginid_any only matches their loginids.
+    try:
+        if st.get("licensed") and loginids:
+            lic = store.license_by_loginid_any(loginids)
+            if lic: st["license_code"] = lic.get("code")
+    except Exception:
+        pass
     return {**st, "require_access": s.require_access,
             "price_label": s.access_price_label, "buy_url": s.access_buy_url,
             "days_per_membership": s.access_days,
@@ -206,11 +215,9 @@ def access_redeem(body: RedeemCode, request: Request, response: Response) -> dic
         code = store.mint_for_ref(ref, 0, loginids=loginids)   # days=0 ⇒ lifetime
         return {"ok": True, "lifetime": True, "code": code, "bound": loginids,
                 **store.access_status(sid, loginids=loginids)}
-    # ── Standard mint→redeem path (legacy J81-XXXX time-bound codes) ──
-    res = store.redeem_license(code_in, sid)
-    if not res.get("ok"):
-        raise HTTPException(400, res.get("error", "could not redeem code"))
-    # Re-evaluate status with loginids so the returned days_left/lifetime is accurate.
+    # ── Standard redeem path with ANTI-SHARING enforcement ──
+    # Collect the caller's Deriv loginids first — we need them BEFORE we redeem
+    # so we can check ownership properly.
     loginids2: list[str] = []
     try:
         for a in store.list_accounts_public(sid):
@@ -218,7 +225,39 @@ def access_redeem(body: RedeemCode, request: Request, response: Response) -> dic
             if lid: loginids2.append(lid)
     except Exception:
         pass
-    return {**res, **store.access_status(sid, loginids=loginids2)}
+    code_norm = (code_in or "").strip().upper()
+    # Check existing bindings BEFORE redeeming — this is the anti-sharing gate.
+    existing_bindings = store.loginids_for_license(code_norm)
+    if existing_bindings and loginids2:
+        # License is already locked to specific Deriv loginids — reject if the
+        # caller doesn't own any of them.
+        owns_any = any(lid in existing_bindings for lid in loginids2)
+        if not owns_any:
+            raise HTTPException(403,
+                "This code is locked to a different Deriv account. "
+                "It belongs to " + existing_bindings[0] + " — only that user can unlock with it.")
+    elif existing_bindings and not loginids2:
+        # Code is owned by someone, but the caller has no Deriv account on this
+        # session. Tell them to connect first so we can verify ownership.
+        raise HTTPException(400,
+            "Connect your Deriv account first — this code is locked to a specific Deriv login.")
+    # Now run the standard redeem (validates code exists + status + session).
+    res = store.redeem_license(code_norm, sid)
+    if not res.get("ok"):
+        raise HTTPException(400, res.get("error", "could not redeem code"))
+    # If the license is an orphan (no bindings yet) and the caller has Deriv
+    # accounts, adopt the code to them. This covers two cases:
+    #   1. Master-unlock-code path (above) already binds at mint time.
+    #   2. Legacy Stripe payments that fired with client_reference_id=null —
+    #      the buyer can paste their own code from the Stripe receipt and the
+    #      code adopts to their Deriv login. No support ticket needed.
+    if loginids2 and not existing_bindings:
+        try:
+            store.bind_loginids_to_license(code_norm, loginids2)
+        except Exception:
+            pass
+    return {**res, "code": code_norm, "bound": loginids2,
+            **store.access_status(sid, loginids=loginids2)}
 
 
 def _require_admin(request: Request) -> None:

@@ -760,6 +760,17 @@ class BotStore:
             tuple(ids)).fetchone()
         return dict(row) if row else None
 
+    def loginids_for_license(self, code: str) -> list[str]:
+        """Return every Deriv loginid currently bound to this license code.
+        Used by /access/redeem to enforce "this code is locked to a specific
+        Deriv account" — if someone else tries to paste it, we can detect
+        the mismatch and reject cleanly."""
+        if not code: return []
+        rows = self._conn.execute(
+            "SELECT loginid FROM license_logins WHERE license_code=?",
+            (code.strip().upper(),)).fetchall()
+        return [r["loginid"] for r in rows]
+
     def bind_loginids_to_license(self, code: str, loginids: list[str]) -> int:
         """Attach every loginid the user owns to this license code (idempotent).
         Returns the number of NEW bindings created. Called when a payment lands

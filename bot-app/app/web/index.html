@@ -601,6 +601,15 @@
   .welcome-actions .btn.big:hover{transform:translateY(-1px);box-shadow:0 16px 36px -10px rgba(212,184,122,.8), 0 0 0 1px rgba(212,184,122,.35) inset}
   .welcome-skip{background:transparent;border:0;color:var(--faint);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;cursor:pointer;padding:6px 10px}
   .welcome-skip:hover{color:var(--text)}
+  /* User's permanent license code shown post-unlock — their "receipt" */
+  .welcome-code{margin:18px 0 4px;padding:14px;border:1px solid rgba(212,184,122,.35);border-radius:11px;background:linear-gradient(135deg,rgba(212,184,122,.08),rgba(0,0,0,.20));text-align:center;position:relative;z-index:2}
+  .welcome-code-lab{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--amber);font-weight:800;margin-bottom:7px}
+  .welcome-code-row{display:flex;align-items:center;justify-content:center;gap:8px}
+  .welcome-code-row code{font-family:var(--mono);font-size:15px;font-weight:800;color:var(--text);letter-spacing:.06em;padding:6px 11px;border:1px dashed rgba(212,184,122,.45);border-radius:7px;background:rgba(0,0,0,.30);user-select:all}
+  .welcome-code-row .btn.small{padding:6px 10px;font-size:13px;background:rgba(0,0,0,.30);border:1px solid var(--bd);color:var(--text);border-radius:7px;cursor:pointer}
+  .welcome-code-row .btn.small:hover{border-color:var(--amber);color:var(--amber)}
+  .welcome-code-bind{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em;margin-top:8px;line-height:1.5}
+  .welcome-code-bind b{color:var(--amber);font-weight:800}
   /* === Onboarding tour spotlight === */
   .tour-overlay{position:fixed;inset:0;z-index:10500;pointer-events:none}
   .tour-overlay[hidden]{display:none}
@@ -1232,6 +1241,16 @@
     <div class="welcome-eyebrow">LIFETIME ACCESS · ACTIVATED</div>
     <h2>Welcome to <span class="g">J81 Trade Desk</span></h2>
     <p>You're a lifetime member now. Every Deriv account under your login is unlocked, on every device.</p>
+    <!-- The user's license code — their permanent receipt. Tied to their Deriv
+         login set; sharing won't help anyone else (server rejects on mismatch). -->
+    <div class="welcome-code" id="welcome-code-wrap" hidden>
+      <div class="welcome-code-lab">Your lifetime license code</div>
+      <div class="welcome-code-row">
+        <code id="welcome-code">J81-XXXX-XXXX-XXXX</code>
+        <button class="btn small" type="button" id="welcome-code-copy" title="Copy">📋</button>
+      </div>
+      <div class="welcome-code-bind" id="welcome-code-bind">Locked to your Deriv login — only your account can use it.</div>
+    </div>
     <p>Want a 60-second guided tour of every feature?</p>
     <div class="welcome-actions">
       <button class="btn big" id="welcome-tour-start">✨ Show me around</button>
@@ -3412,12 +3431,45 @@ function _shouldShowWelcome(){
   return true;
 }
 
-function showWelcome(){
+async function showWelcome(){
   const m = document.getElementById("welcome-modal"); if(!m) return;
   m.hidden = false;
   // Mark immediately so a refresh during the welcome doesn't show it twice.
   try{ localStorage.setItem("j81_welcomed", "1"); }catch(_){}
+  // Fetch the user's license code from /access/status (only returned to the
+  // rightful Deriv-login owner) so we can show them their permanent "receipt".
+  try{
+    const st = await api("/access/status");
+    const wrap = document.getElementById("welcome-code-wrap");
+    const codeEl = document.getElementById("welcome-code");
+    const bind = document.getElementById("welcome-code-bind");
+    if(st && st.license_code && wrap && codeEl){
+      codeEl.textContent = st.license_code;
+      wrap.hidden = false;
+      // Show which Deriv loginids the code is locked to
+      try{
+        const accts = await api("/accounts");
+        if(accts && accts.length && bind){
+          const ids = accts.map(x => x.deriv_account_id).filter(Boolean);
+          bind.innerHTML = "🔒 Locked to <b>"+ids.join(", ")+"</b>. Only your Deriv login can redeem this — sharing it won't help anyone else.";
+        }
+      }catch(_){}
+    }
+  }catch(_){}
 }
+// Copy button for the license code
+document.addEventListener("click", function(ev){
+  const t = ev.target.closest && ev.target.closest("#welcome-code-copy");
+  if(!t) return;
+  const codeEl = document.getElementById("welcome-code");
+  if(!codeEl) return;
+  const code = codeEl.textContent || "";
+  try{
+    navigator.clipboard.writeText(code).then(()=>{
+      try{ toast({kind:"win", title:"Code copied", msg:"Save it somewhere safe — it's your lifetime receipt.", ttl:3500}); }catch(_){}
+    });
+  }catch(_){}
+});
 function dismissWelcome(){
   const m = document.getElementById("welcome-modal"); if(m) m.hidden = true;
 }
