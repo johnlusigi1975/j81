@@ -481,6 +481,29 @@ def access_unlock_self(request: Request, response: Response) -> dict:
             "note": "Refresh the J81 site — you're unlocked."}
 
 
+@app.get("/admin/revoke_loginid")
+def admin_revoke_loginid(request: Request) -> dict:
+    """Admin tool — revoke every active license bound to a SPECIFIC Deriv
+    loginid, regardless of which session is asking. Useful for refunds,
+    testing on a fresh browser, or banning abusers. Pass:
+        /admin/revoke_loginid?key=<ADMIN_KEY>&loginid=DOT91992522
+    Returns {revoked: n, loginid: "..."}.
+    """
+    expected = (get_settings().admin_key or "").strip()
+    if not expected:
+        raise HTTPException(503, "admin tools disabled — set ADMIN_KEY first")
+    got = (request.headers.get("X-Admin-Key") or request.query_params.get("key") or "").strip()
+    if got != expected:
+        raise HTTPException(403, "bad admin key")
+    lid = (request.query_params.get("loginid") or "").strip().upper()
+    if not lid:
+        raise HTTPException(400, "missing ?loginid=DOTxxxx parameter")
+    n = get_store().revoke_licenses_for_loginids([lid])
+    return {"ok": True, "revoked": n, "loginid": lid,
+            "note": f"All active licenses bound to {lid} are now revoked. "
+                    "Tombstones cleared too, so a fresh payment can re-bind cleanly."}
+
+
 @app.get("/access/revoke_self")
 def access_revoke_self(request: Request) -> dict:
     """Owner-only escape hatch — revokes every license bound to the caller's
