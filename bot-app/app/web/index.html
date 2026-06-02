@@ -3273,12 +3273,14 @@ function showView(v){
   if(v!=="trade"){ try{ LiveWS.stop(); }catch(_){} try{ RFScan.stop(); }catch(_){} try{ stopEoScan(); }catch(_){} try{ stopRfScan(); }catch(_){} try{ stopOuScan(); }catch(_){} try{ window.EOAuto && window.EOAuto.stopSignal(); }catch(_){} try{ window.RFAuto && window.RFAuto.stopSignal(); }catch(_){} try{ window.OUAuto && window.OUAuto.stopSignal(); }catch(_){} }   // stop live sockets when leaving the trade view
   if(v==="landing"){ try{ setupLanding(); }catch(_){} }
   if(v==="home") loadHome(); if(v==="accounts") loadAccounts();
-  // Remember the section in sessionStorage (NOT localStorage) so a refresh
-  // in the same tab lands the user right back here, but opening a NEW tab
-  // or a fresh browser session sends them through the normal entry flow
-  // (auth/connect → accounts → home) instead of deep-linking into the page
-  // they had open yesterday. Logout clears it explicitly too.
-  if(inApp || v==="connect"){
+  // Remember EVERY navigable view in sessionStorage so refresh always stays
+  // on the same screen. (Previously only inApp + connect were saved, so
+  // refreshing on the paywall, access info, or any other intermediate
+  // screen fell through to the default and bounced you to the accounts
+  // picker.) sessionStorage is per-tab, so a new tab still goes through
+  // the entry flow — exactly what we want.
+  const _SKIP_NAV = new Set(["loading", "landing"]);   // transient — don't save
+  if(!_SKIP_NAV.has(v)){
     try{ sessionStorage.setItem("j81_nav", JSON.stringify({view:v, account:CUR?CUR.id:null, game:GAME})); }catch(_){}
     // Sweep any legacy localStorage key from older builds so it can't shadow.
     try{ localStorage.removeItem("j81_nav"); }catch(_){}
@@ -3902,8 +3904,15 @@ async function boot(){
   // refresh instead of bouncing into the account picker just because they
   // happen to have an account on file.
   if(nav && nav.view==="connect"){ showView("connect"); return; }
+  if(nav && nav.view==="access"){ showView("access"); return; }
   if(nav && nav.view==="trade" && CUR && nav.game){ updateNav(); openTrade(nav.game); return; }
+  // Trade view requested but CUR or game lost — degrade gracefully to home
+  // (still in-app) rather than dumping the user back to the accounts picker.
+  if(nav && nav.view==="trade" && CUR){ enterApp(); return; }
   if(nav && nav.view==="home" && CUR){ enterApp(); return; }
+  // Home requested but CUR missing — try to use the only account if there's
+  // exactly one, otherwise let them pick.
+  if(nav && nav.view==="home" && !CUR && accts.length===1){ CUR=accts[0]; enterApp(); return; }
   if(nav && nav.view==="accounts"){ showView("accounts"); return; }
   if(accts.length>1){ showView("accounts"); } else { CUR=accts[0]; enterApp(); }
 }
