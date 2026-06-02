@@ -190,6 +190,23 @@ class BotStore:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
             except sqlite3.OperationalError:
                 pass  # column already exists
+        # ── ONE-TIME CLEANUP: remove license_logins entries that point at
+        # revoked or missing licenses. Before this fix, revoking a license
+        # left its loginid bindings behind, which blocked future payments
+        # from re-binding those loginids. Run on every startup — it's idempotent.
+        try:
+            self._conn.execute(
+                "DELETE FROM license_logins WHERE license_code IN ("
+                "  SELECT code FROM licenses WHERE status != 'active'"
+                ")")
+            # Also nuke any loginid bindings that reference a license that no
+            # longer exists at all (paranoia — shouldn't happen but cheap).
+            self._conn.execute(
+                "DELETE FROM license_logins WHERE license_code NOT IN ("
+                "  SELECT code FROM licenses"
+                ")")
+        except sqlite3.OperationalError:
+            pass   # license_logins table doesn't exist yet on a fresh DB
 
     # --------------------------------------------------------------- accounts
 
@@ -772,45 +789,69 @@ class BotStore:
         return [r["loginid"] for r in rows]
 
     def bind_loginids_to_license(self, code: str, loginids: list[str]) -> int:
-        """Attach every loginid the user owns to this license code (idempotent).
-        Returns the number of NEW bindings created. Called when a payment lands
-        AND when an already-paid user adds a new Deriv account later."""
+        """Attach every loginid the user owns to this license code. Smart about
+        existing bindings:
+          • Already bound to an ACTIVE license → leave it (first-active wins).
+          • Already bound to a REVOKED license (tombstone) → re-point to this
+            new active code (otherwise a new payment can't rescue a user whose
+            previous license was revoked).
+          • Not bound yet → INSERT.
+        Returns the count of new + re-pointed bindings."""
         from datetime import datetime, timezone
         ids = [x for x in (loginids or []) if x]
         if not ids or not code: return 0
         now = datetime.now(timezone.utc).isoformat()
+        code = code.strip().upper()
         added = 0
         with self._lock:
             for lid in ids:
-                try:
+                row = self._conn.execute(
+                    "SELECT ll.license_code, l.status "
+                    "FROM license_logins ll LEFT JOIN licenses l ON l.code = ll.license_code "
+                    "WHERE ll.loginid = ?", (lid,)).fetchone()
+                if row is None:
+                    # Fresh — insert
                     self._conn.execute(
                         "INSERT INTO license_logins(loginid, license_code, bound_at) "
                         "VALUES (?,?,?)", (lid, code, now))
                     added += 1
-                except sqlite3.IntegrityError:
-                    # loginid already bound (to this or another license — first
-                    # binding wins; we never silently transfer between licenses).
-                    pass
+                elif row["status"] != "active":
+                    # Tombstoned (revoked or missing) — repoint to the new code
+                    self._conn.execute(
+                        "UPDATE license_logins SET license_code=?, bound_at=? WHERE loginid=?",
+                        (code, now, lid))
+                    added += 1
+                # else: active binding exists — leave it (no double-claim)
             self._conn.commit()
         return added
 
     def revoke_licenses_for_loginids(self, loginids: list[str]) -> int:
-        """Revoke EVERY active license tied to any of these Deriv loginids.
-        Used by the owner /access/revoke_self endpoint to wipe their own
-        access for testing (so the paywall fires again on the next visit).
-        Returns the number of licenses revoked."""
+        """Revoke EVERY active license tied to any of these Deriv loginids
+        AND clear the loginid → license bindings so a future payment can
+        rebind those loginids to a fresh license. Returns count revoked."""
         ids = [x for x in (loginids or []) if x]
         if not ids: return 0
         placeholders = ",".join("?" for _ in ids)
         with self._lock:
+            # 1. Find license codes that are currently bound to these loginids
+            rows = self._conn.execute(
+                f"SELECT DISTINCT license_code FROM license_logins "
+                f"WHERE loginid IN ({placeholders})", tuple(ids)).fetchall()
+            codes = [r["license_code"] for r in rows]
+            if not codes:
+                return 0
+            code_phs = ",".join("?" for _ in codes)
+            # 2. Mark those licenses revoked (only if currently active)
             cur = self._conn.execute(
                 f"UPDATE licenses SET status='revoked' "
-                f"WHERE status='active' AND code IN ("
-                f"  SELECT license_code FROM license_logins WHERE loginid IN ({placeholders})"
-                f")",
-                tuple(ids))
+                f"WHERE status='active' AND code IN ({code_phs})", tuple(codes))
+            n = cur.rowcount
+            # 3. Delete the bindings so future payments can re-claim these loginids
+            self._conn.execute(
+                f"DELETE FROM license_logins WHERE license_code IN ({code_phs})",
+                tuple(codes))
             self._conn.commit()
-            return cur.rowcount
+            return n
 
     def revoke_license_by_ref(self, ref: str) -> bool:
         """Mark the license for an external ref (e.g. a Stripe session) as
