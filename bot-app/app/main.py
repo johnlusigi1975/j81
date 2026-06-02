@@ -197,11 +197,15 @@ def access_redeem(body: RedeemCode, request: Request, response: Response) -> dic
     code_in = (body.code or "").strip()
     master  = (get_settings().master_unlock_code or "").strip()
     # ── MASTER UNLOCK PATH ───────────────────────────────────────────
-    # If env MASTER_UNLOCK_CODE is set and the user pasted it, we mint a
-    # LIFETIME license and bind it to every Deriv loginid they're currently
-    # connected with. Subsequent visits with any of those loginids on any
-    # device unlock automatically — no need to redeem again.
-    if master and code_in and code_in.upper() == master.upper():
+    # Constant-time comparison (hmac.compare_digest) prevents timing-side-
+    # channel brute-force on the master code. Case-insensitive by upper().
+    import hmac as _hmac
+    is_master = bool(
+        master and code_in
+        and len(code_in) == len(master)
+        and _hmac.compare_digest(code_in.upper().encode(), master.upper().encode())
+    )
+    if is_master:
         loginids: list[str] = []
         try:
             for a in store.list_accounts_public(sid):
@@ -1047,6 +1051,20 @@ def _require_own(request: Request, account_id: str) -> None:
 @app.patch("/accounts/{account_id}")
 def account_patch(account_id: str, body: AccountPatch, request: Request) -> dict:
     _require_own(request, account_id)
+    # Anti-bypass: a non-paying user could otherwise turn ON auto-trade flags
+    # (brain_auto / mpro_enabled / proven_auto / rf_config) via this PATCH and
+    # the background trading loop would fire trades for them. Block any flag
+    # that ENABLES trading unless the caller is a paid member. Disabling those
+    # flags is always allowed (so a downgraded user can turn things OFF).
+    enabling_trade = any([
+        body.enabled is True,
+        body.mpro_enabled is True,
+        body.proven_auto is True,
+        body.brain_auto is True,
+        (isinstance(body.rf_config, dict) and body.rf_config.get("enabled") is True),
+    ])
+    if enabling_trade:
+        _require_member(request)
     if not get_store().update_account_settings(
         account_id,
         enabled=body.enabled,

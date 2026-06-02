@@ -91,7 +91,23 @@ class TradingLoop:
         # First, settle any live contracts that have expired since last cycle.
         await self._settle_pending()
 
-        accounts = [a for a in store.list_accounts_public() if a["enabled"]]
+        # Server-side paywall enforcement at the LOOP level — the most
+        # important gate. Even if a user has flipped on auto-trade flags
+        # in their account row, the background loop will not fire trades
+        # unless their Deriv login is currently bound to an active license.
+        # Refund / revoke → trading stops on the next cycle, no manual
+        # intervention needed.
+        from app.config import get_settings as _gs
+        require_paid = _gs().require_access
+        def _is_paid(acct: dict) -> bool:
+            if not require_paid:
+                return True   # paywall off → don't gate
+            try:
+                lic = store.license_by_loginid(acct.get("deriv_account_id") or "")
+                return bool(lic and lic.get("status") == "active")
+            except Exception:
+                return False   # fail-closed — never trade if we can't verify
+        accounts = [a for a in store.list_accounts_public() if a["enabled"] and _is_paid(a)]
         if not accounts:
             self.status["last_summary"] = [{"note": "no accounts enabled"}]
             return
