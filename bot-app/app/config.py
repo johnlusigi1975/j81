@@ -85,6 +85,15 @@ class Settings(BaseSettings):
     # influencer keys. Blank disables the feature. Pick something you don't
     # want guessed — e.g. "J81-OWNR-LIFE-7Z3K".
     master_unlock_code: str = ""
+    # Resend (resend.com) API key for emailing the lifetime license code to
+    # the buyer after their Stripe payment succeeds. Free tier: 3,000/mo. Set
+    # RESEND_API_KEY in the dashboard. Blank disables emails (paywall still
+    # works — buyers just have to find their code via /access/code manually).
+    resend_api_key: str = ""
+    # "From" address for transactional emails (must be a verified domain in
+    # Resend, OR use the default onboarding@resend.dev for testing). Format:
+    #   "J81 Trade Desk <noreply@yourdomain.com>"  or just  "noreply@your.com"
+    email_from: str = ""
 
 
 @lru_cache

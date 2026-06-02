@@ -349,15 +349,34 @@ async def stripe_webhook(request: Request) -> dict:
         paid = obj.get("payment_status") in ("paid", "no_payment_required") or obj.get("status") == "complete"
         if sid and paid:
             # `client_reference_id` carries a comma-joined list of the buyer's
-            # Deriv loginids (we set it when generating the checkout URL).
-            # Any loginid passed here becomes a permanent unlock key for them
-            # — log in with that loginid anywhere = unlocked.
+            # Deriv loginids when they came through the J81 unlock button.
+            # OPTIONAL — if missing, the buyer still gets their code by email
+            # and can paste it in J81 to bind it on first use.
             cref = (obj.get("client_reference_id") or "").strip()
             loginids = [x.strip() for x in cref.split(",") if x.strip()] if cref else None
-            # days=0 ⇒ LIFETIME (no expiry). The licensing model is one-time
-            # purchase, lifetime use as long as J81 is operated.
+            # days=0 ⇒ LIFETIME (no expiry).
             code = store.mint_for_ref(f"stripe:{sid}", 0, loginids=loginids)
-            return {"ok": True, "issued": True, "code": code, "bound": len(loginids or [])}
+            # Always email the buyer their code so they have it no matter how
+            # they got to Stripe (J81 button, shared link, etc.). The "Have a
+            # code?" form will adopt it to their Deriv loginids on first use.
+            email = ""
+            try:
+                cd = obj.get("customer_details") or {}
+                email = (cd.get("email") or obj.get("customer_email") or "").strip()
+            except Exception:
+                pass
+            mail_result = {"sent": False, "reason": "no email"}
+            if email:
+                try:
+                    from app import email_sender
+                    mail_result = email_sender.send_license_email(
+                        email, code, loginids or [], sid)
+                except Exception as exc:
+                    mail_result = {"sent": False, "reason": "exception", "detail": repr(exc)[:160]}
+            return {"ok": True, "issued": True, "code": code,
+                    "bound": len(loginids or []),
+                    "emailed_to": email if mail_result.get("sent") else None,
+                    "email_status": mail_result}
         return {"ok": True, "issued": False, "reason": "not paid"}
     if etype in ("charge.refunded", "charge.dispute.closed"):
         # The refund payload has `payment_intent`; the related checkout session
