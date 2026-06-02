@@ -1316,7 +1316,7 @@
     <div class="paywall-lock-footer">
       <button class="paywall-lock-text-btn" type="button" onclick="showView('access')">More info</button>
       <span class="paywall-lock-sep">·</span>
-      <button class="paywall-lock-text-btn" type="button" onclick="(function(){var el=document.querySelector('.paywall-redeem-fallback'); if(el){ showView('access'); setTimeout(function(){el.open=true;},120);} })()">Have a code?</button>
+      <button class="paywall-lock-text-btn" type="button" onclick="(function(){ showView('access'); setTimeout(function(){var i=document.getElementById('acc-code'); if(i){i.focus(); i.scrollIntoView({behavior:'smooth',block:'center'});}},250); })()">Have a code?</button>
       <span class="paywall-lock-sep">·</span>
       <button class="paywall-lock-text-btn" type="button" onclick="logout()">Sign out</button>
     </div>
