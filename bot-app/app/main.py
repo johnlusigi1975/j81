@@ -968,6 +968,50 @@ async def account_balance(account_id: str, request: Request) -> dict:
     return result
 
 
+@app.post("/accounts/{account_id}/topup_demo")
+async def account_topup_demo(account_id: str, request: Request) -> dict:
+    """Reset a demo account's virtual balance to 10,000 USD. Server-side gate:
+      • Caller must own the account (_require_own).
+      • Account must be a DEMO/virtual loginid — refused for real accounts.
+    Routes through the new-platform OTP WS or the legacy authorize WS based
+    on how the account was originally connected. Returns the new balance so
+    the front-end can repaint without an extra /balance call."""
+    _require_own(request, account_id)
+    store = get_store()
+    acct = store.get_internal(account_id)
+    if acct is None:
+        raise HTTPException(404, "account not found")
+    deriv_id = (acct["deriv_account_id"] or "").upper()
+    # Demo detection — Deriv synthetic demos start with VR (legacy) or DOT/VRTC
+    # in the new platform. Anything else is a real account → refuse the topup.
+    if not (deriv_id.startswith("VR") or deriv_id.startswith("DOT")):
+        raise HTTPException(400, "topup only allowed on demo (virtual) accounts")
+    from app import tokens
+    token = await tokens.get_access_token(account_id)
+    if not token:
+        raise HTTPException(401, "no stored token — please reconnect Deriv")
+    platform = (acct.get("platform") or "legacy").lower()
+    try:
+        if platform == "new":
+            from app import deriv_new
+            async def _topup(tk):
+                ws_url = await deriv_new.request_otp_ws(tk, deriv_id)
+                return await deriv_new.topup_virtual(ws_url)
+            b = await tokens.with_fresh_token(account_id, _topup)
+        else:
+            from app.deriv import topup_virtual as _legacy_topup
+            b = await _legacy_topup(token)
+    except DerivBotError as exc:
+        raise HTTPException(502, f"Deriv refused the topup: {exc}")
+    except Exception as exc:
+        raise HTTPException(502, f"topup failed: {exc!r}"[:160])
+    # Bust the balance cache so the next /balance call returns the new value.
+    _BALANCE_CACHE.pop(account_id, None)
+    return {"ok": True, "balance": b.get("balance"), "currency": b.get("currency") or "USD",
+            "deriv_account_id": deriv_id,
+            "message": "Demo balance reset to "+str(int(b.get("balance") or 0))+" "+(b.get("currency") or "USD")}
+
+
 @app.post("/logout")
 def logout(response: Response) -> dict:
     """Disconnect THIS browser: clear its session cookie so it no longer sees

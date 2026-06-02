@@ -172,6 +172,17 @@ async def balance(ws_url: str) -> dict:
             "loginid": b.get("loginid")}
 
 
+async def topup_virtual(ws_url: str) -> dict:
+    """Reset the virtual (demo) balance back to 10,000 USD. Only works on demo
+    accounts — Deriv rejects this call on real accounts. Returns the new balance
+    so the front-end can update without a separate /balance round-trip."""
+    msg = await _ws_request(ws_url, {"topup_virtual": 1}, "topup_virtual")
+    body = msg.get("topup_virtual") if isinstance(msg.get("topup_virtual"), dict) else msg
+    return {"amount": _to_float(body.get("amount")),
+            "currency": body.get("currency"),
+            "balance": _to_float(body.get("amount"))}
+
+
 def _new_params(body: dict) -> dict:
     """Convert the legacy buy `parameters` block to the new platform's shape:
       * `symbol` → `underlying_symbol` (the new field name)

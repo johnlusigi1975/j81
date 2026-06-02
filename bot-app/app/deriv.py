@@ -165,6 +165,26 @@ async def place_contract(
         return buy_msg.get("buy") or {}
 
 
+async def topup_virtual(deriv_token: str, timeout: float = 20.0) -> dict:
+    """Reset the virtual (demo) balance to 10,000 USD. Only valid on virtual
+    accounts — Deriv returns an error on real accounts. Authorizes first,
+    then sends {"topup_virtual":1}. Returns the new balance/currency."""
+    url = DERIV_WS_URL_TEMPLATE.format(app_id=_ws_app_id())
+    async with websockets.connect(url, open_timeout=timeout) as ws:
+        await ws.send(json.dumps({"authorize": deriv_token, "req_id": 1}))
+        auth_msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
+        if "error" in auth_msg:
+            raise DerivBotError(f"authorize failed: {auth_msg['error'].get('message')}")
+        await ws.send(json.dumps({"topup_virtual": 1, "req_id": 2}))
+        msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout))
+        if "error" in msg:
+            raise DerivBotError(msg["error"].get("message", "topup failed"))
+        body = msg.get("topup_virtual") or {}
+        return {"amount": float(body.get("amount") or 0),
+                "currency": body.get("currency") or "USD",
+                "balance": float(body.get("amount") or 0)}
+
+
 async def authorize_account(deriv_token: str, timeout: float = 20.0) -> dict:
     """Authorize a token (a pasted Personal Access Token, or an OAuth token)
     and return the account it controls plus the user's full account list.
