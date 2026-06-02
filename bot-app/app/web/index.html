@@ -3383,49 +3383,79 @@ let _prevSpot=null, _lastRead=null;
 // ===================================================================
 const TOUR_STEPS = [
   {
-    selector: ".gcard",
+    selector: ".home-hero",
     view: "home",
-    title: "Pick your game",
-    body: "Three trade types are available — Even/Odd, Rise/Fall, Over/Under. Each has its own auto-trader, live signal radar, and recovery engine. We'll dive into one now."
+    title: "Welcome to your desk",
+    body: "This is your home base. Everything you need to trade lives below — three trade types, a self-driving Brain, a Recovery Engine for losing streaks, and your live profit stats. The tour walks you through every button. About a minute."
+  },
+  {
+    selector: "#brain-card",
+    view: "home",
+    title: "🤖 Brain Auto (one-tap autopilot)",
+    body: "Flip this on and J81 picks ONE Even/Odd trade per cycle on the highest-payout market — automatically, around the clock. Your TP/SL and stake limits stay in force. Tap once, walk away, come back to results."
+  },
+  {
+    selector: ".statstrip",
+    view: "home",
+    title: "Your live stats",
+    body: "Profit today, wins vs settled trades, total trade count, and your live Deriv balance — all updated in real time. Use these to know at a glance whether the desk is having a good or rough session."
+  },
+  {
+    selector: ".engines-wrap",
+    view: "home",
+    title: "Execution Desk (always-on)",
+    body: "Your dedicated stack on our servers — Market Intelligence reads the tape, Execution Desk routes orders with TP/SL rails. 24/7. Flip 'Bring desk online' to watch it boot in real time."
+  },
+  {
+    selector: "#choose-grid",
+    view: "home",
+    title: "Pick your trade type",
+    body: "Three precision instruments: EVEN/ODD (digit parity · highest payouts), RISE/FALL (price direction · confidence-gated Auto), OVER/UNDER (digit > or < a barrier). Tap any card to open its console. We'll dive into Even/Odd next."
   },
   {
     selector: "#eo-signal",
     view: "trade", openGame: "even_odd",
     title: "Live Signal Radar",
-    body: "Real-time read of the market lean. The percentage shows the dominant side's strength; the gold marker is your threshold. When the bar pulses green it means a trade would fire."
-  },
-  {
-    selector: "#eo-brain",
-    view: "trade",
-    title: "The Trading Brain",
-    body: "Watch the engine think. It scans all 10 markets every cycle, ranks them, picks the strongest lean, and logs every decision. The candidates panel shows the top 3 markets it's weighing."
-  },
-  {
-    selector: "#eo-re",
-    view: "trade",
-    title: "Recovery Engine (Smart Martingale)",
-    body: "When a trade loses, the engine increases the next stake to recover. Choose Flat × / Fibonacci / Linear, set a max-step cap, and watch the visual ladder. The cap prevents runaway losses."
+    body: "Real-time read of market lean. The percentage shows the dominant side's strength; the gold marker is your threshold. When the bar pulses green a trade would fire. Confidence score on the right tells you how strong the consensus is."
   },
   {
     selector: "#eo-tick-seg",
     view: "trade",
     title: "AUTO Ticks (1–10)",
-    body: "The engine picks the best trade duration (1 to 10 ticks) based on signal strength — stronger lean means shorter ticks. You can also pick manually if you prefer fixed durations."
+    body: "The bot picks the trade duration (1–10 ticks) based on signal strength — stronger lean → shorter ticks. Leave it on AUTO for adaptive timing, or tap a specific number to lock the duration."
+  },
+  {
+    selector: "#eo-brain",
+    view: "trade",
+    title: "The Trading Brain (live thinking)",
+    body: "Watch the engine think. It scans all 10 markets every cycle, ranks them, picks the strongest lean, and logs every decision. The candidates panel shows the top 3 markets it's weighing — fully transparent."
+  },
+  {
+    selector: "#eo-re",
+    view: "trade",
+    title: "Recovery Engine (Smart Martingale)",
+    body: "When a trade loses, the engine bumps the next stake to claw back the loss. Choose Flat × / Fibonacci / Linear, set the max-step cap (prevents runaway), and watch the visual ladder. Cap acts as your safety brake."
+  },
+  {
+    selector: ".risk-gauge",
+    view: "trade",
+    title: "Risk Gauge + TP / SL",
+    body: "Set your Take-Profit and Stop-Loss above. The gauge shows your live PnL position between them — green = climbing toward TP, red = sliding toward SL. The bot stops the moment either fires."
   },
   {
     selector: "#eo-go",
     view: "trade",
     title: "Start auto-trading",
-    body: "When you're set, hit this. The bot picks markets, fires trades, manages stake recovery, and stops at your take-profit or stop-loss limits — all automatically. You can pause it anytime."
+    body: "When you're set, hit this. The bot picks markets, fires trades, manages stake recovery, and stops at your take-profit or stop-loss — fully automatic. Pause anytime; resume picks up exactly where you left off."
   },
   {
     selector: "#eo-stop-all",
     view: "trade",
     title: "Emergency stop (always visible)",
-    body: "This black button stops EVERY running auto-trader on your account instantly. Plus you can press Esc anywhere as a global panic button. Trade safely."
+    body: "This stops EVERY auto-trader on your account instantly — across all trade types. Press Esc anywhere as a global panic button. You're always in control. Trade safely — and welcome to the desk. 🎉"
   },
 ];
-const TOUR_DURATION = 4500;   // ms per step
+const TOUR_DURATION = 10000;   // ms per step (~10s — enough time to read & absorb)
 let _tourIdx = 0;
 let _tourTimer = null;
 let _tourTickTimer = null;
@@ -3814,26 +3844,42 @@ async function redeemCode(){
   try{
     var r=await api("/access/redeem",{method:"POST",body:JSON.stringify({code:code})});
     window.LICENSED=true;
-    // Reset welcome-modal flags so the post-unlock tour fires after OAuth.
-    // Without this, a returning user who has seen the welcome before would
-    // skip it on the redeem-then-OAuth path.
-    try{ localStorage.removeItem("j81_welcomed"); localStorage.removeItem("j81_tour_done"); localStorage.removeItem("j81_tour_skipped"); }catch(_){}
+    // Reset welcome flags + arm the auto-tour: the tour fires on next enterApp()
+    // without the "Want a tour?" Y/N prompt. Survives a re-OAuth if needed.
+    try{
+      localStorage.removeItem("j81_welcomed");
+      localStorage.removeItem("j81_tour_done");
+      localStorage.removeItem("j81_tour_skipped");
+      localStorage.setItem("j81_pending_tour", "1");
+    }catch(_){}
     var lifetime = r && (r.lifetime === true || r.expires_at === null);
     var unlockedTxt = lifetime ? '✓ Unlocked — lifetime. ' : ('✓ Unlocked — '+(r.days_left||"")+' days. ');
+    // Always refresh license status AND re-fetch accounts. The OAuth session
+    // may still be valid even if HAS_ACCOUNTS was stale from earlier in this
+    // tab's lifetime — never trust the cached value here.
     await checkAccess();
+    var freshAccts=[]; try{ freshAccts = await api("/accounts"); }catch(_){}
+    HAS_ACCOUNTS = !!(freshAccts && freshAccts.length);
     // Route based on whether they've connected Deriv yet:
-    if(!HAS_ACCOUNTS){
-      // Code accepted but no Deriv yet — make it crystal clear they still
-      // need to connect so the license can bind to their account.
-      if(msg) msg.innerHTML = '<span style="color:var(--good)">'+unlockedTxt+'</span>'
-        + '<span class="faint" style="display:block;margin-top:4px">One more step — connect your Deriv account so we can lock the code to it.</span>';
-      setTimeout(function(){ showView("connect"); }, 1200);
-    } else if(CUR){
-      if(msg) msg.innerHTML='<span style="color:var(--good)">'+unlockedTxt+'Loading your desk…</span>';
+    if(HAS_ACCOUNTS){
+      // Deriv is connected (cookie still alive) — go STRAIGHT to the desk.
+      // No second OAuth, no second loading screen.
+      if(!CUR){
+        // Pick the account they were on (from sessionStorage) or default to
+        // the first one — never bounce them through the picker again.
+        var savedId=null; try{ var n=JSON.parse(sessionStorage.getItem("j81_nav")||"null"); if(n) savedId=n.account; }catch(_){}
+        CUR = (savedId && freshAccts.find(function(a){return a.id===savedId;})) || freshAccts[0];
+      }
+      if(msg) msg.innerHTML='<span style="color:var(--good)">'+unlockedTxt+'🎉 Welcome aboard — loading your desk…</span>';
+      try{ toast({kind:"win", title:"🎉 Lifetime access activated", msg:"You're in — every Deriv account under your login is unlocked. A quick tour is starting…", ttl:6000}); }catch(_){}
       setTimeout(function(){ enterApp(); }, 700);
     } else {
-      if(msg) msg.innerHTML='<span style="color:var(--good)">'+unlockedTxt+'Pick your account…</span>';
-      setTimeout(function(){ showView("accounts"); }, 700);
+      // No Deriv on this browser session — they have to OAuth once to bind.
+      // After the callback, the boot path picks up j81_pending_tour and
+      // auto-runs the tour, so the experience still flows.
+      if(msg) msg.innerHTML = '<span style="color:var(--good)">'+unlockedTxt+'</span>'
+        + '<span class="faint" style="display:block;margin-top:4px">One more step — reconnect your Deriv login so the license can lock to it. The tour fires automatically afterwards.</span>';
+      setTimeout(function(){ showView("connect"); }, 1500);
     }
   }catch(e){ if(msg) msg.innerHTML='<span style="color:var(--bad)">'+esc(e.message||"invalid code")+'</span>'; }
 }
@@ -3936,8 +3982,23 @@ function enterApp(){
   setTimeout(()=>{ try{ resumeAutoSessions(); }catch(_){} }, 250);
   // Brain consoles start in idle state until a controller is engaged.
   setTimeout(()=>{ try{ ["eo","rf","ou"].forEach(k => _brainSetIdle(k, true)); }catch(_){} }, 260);
-  // First-time welcome: fires once per user (resets after a fresh payment).
-  setTimeout(()=>{ try{ if(typeof _shouldShowWelcome === "function" && _shouldShowWelcome()) showWelcome(); }catch(_){} }, 600);
+  // Post-redeem auto-tour: if a code was just redeemed, fire the guided tour
+  // straight away — no "Want a tour?" prompt. Otherwise fall back to the
+  // first-time welcome modal (which DOES offer the Y/N).
+  setTimeout(()=>{
+    try{
+      var pending=null; try{ pending = localStorage.getItem("j81_pending_tour"); }catch(_){}
+      if(pending === "1"){
+        try{ localStorage.removeItem("j81_pending_tour"); }catch(_){}
+        try{ localStorage.setItem("j81_welcomed", "1"); }catch(_){}
+        // Tiny "Congrats" toast then auto-launch the tour.
+        try{ toast({kind:"win", title:"🎉 Welcome to J81 — quick tour starting", msg:"Each step explains one button. Hit Skip anytime.", ttl:5000}); }catch(_){}
+        setTimeout(function(){ try{ startTour(); }catch(_){} }, 900);
+        return;
+      }
+      if(typeof _shouldShowWelcome === "function" && _shouldShowWelcome()) showWelcome();
+    }catch(_){}
+  }, 600);
 }
 async function logout(){   // disconnect THIS browser → back to the front page
   try{ await api("/logout",{method:"POST",body:"{}"}); }catch(_){}
