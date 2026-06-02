@@ -798,6 +798,16 @@ async def oauth_callback(request: Request) -> RedirectResponse:
                 store.bind_loginids_to_license(existing["code"], loginids)
         except Exception:
             pass
+        # CLAIM-PENDING: if the user redeemed a license code BEFORE connecting
+        # Deriv (paid via email-only flow), the license is bound to this
+        # session but has no loginids yet. Bind them now so /access/status
+        # immediately reports licensed=true on the next request.
+        try:
+            pending = store.license_by_session(sid)
+            if pending:
+                store.bind_loginids_to_license(pending["code"], loginids)
+        except Exception:
+            pass
         return _ok(saved)
 
     # ---- NEW: OAuth2 PKCE code exchange ----
@@ -856,6 +866,14 @@ async def oauth_callback(request: Request) -> RedirectResponse:
             existing = store.license_by_loginid_any(loginids)
             if existing:
                 store.bind_loginids_to_license(existing["code"], loginids)
+        except Exception:
+            pass
+        # CLAIM-PENDING: license redeemed by this session BEFORE Deriv was
+        # connected → bind the new loginids now.
+        try:
+            pending = store.license_by_session(sid)
+            if pending:
+                store.bind_loginids_to_license(pending["code"], loginids)
         except Exception:
             pass
         return _ok(saved)

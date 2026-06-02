@@ -3812,9 +3812,27 @@ async function redeemCode(){
   try{
     var r=await api("/access/redeem",{method:"POST",body:JSON.stringify({code:code})});
     window.LICENSED=true;
-    if(msg) msg.innerHTML='<span style="color:var(--good)">✓ Unlocked — '+(r.days_left||"")+' days. Loading your desk…</span>';
+    // Reset welcome-modal flags so the post-unlock tour fires after OAuth.
+    // Without this, a returning user who has seen the welcome before would
+    // skip it on the redeem-then-OAuth path.
+    try{ localStorage.removeItem("j81_welcomed"); localStorage.removeItem("j81_tour_done"); localStorage.removeItem("j81_tour_skipped"); }catch(_){}
+    var lifetime = r && (r.lifetime === true || r.expires_at === null);
+    var unlockedTxt = lifetime ? '✓ Unlocked — lifetime. ' : ('✓ Unlocked — '+(r.days_left||"")+' days. ');
     await checkAccess();
-    setTimeout(function(){ HAS_ACCOUNTS ? (CUR?enterApp():showView("accounts")) : showView("connect"); }, 700);
+    // Route based on whether they've connected Deriv yet:
+    if(!HAS_ACCOUNTS){
+      // Code accepted but no Deriv yet — make it crystal clear they still
+      // need to connect so the license can bind to their account.
+      if(msg) msg.innerHTML = '<span style="color:var(--good)">'+unlockedTxt+'</span>'
+        + '<span class="faint" style="display:block;margin-top:4px">One more step — connect your Deriv account so we can lock the code to it.</span>';
+      setTimeout(function(){ showView("connect"); }, 1200);
+    } else if(CUR){
+      if(msg) msg.innerHTML='<span style="color:var(--good)">'+unlockedTxt+'Loading your desk…</span>';
+      setTimeout(function(){ enterApp(); }, 700);
+    } else {
+      if(msg) msg.innerHTML='<span style="color:var(--good)">'+unlockedTxt+'Pick your account…</span>';
+      setTimeout(function(){ showView("accounts"); }, 700);
+    }
   }catch(e){ if(msg) msg.innerHTML='<span style="color:var(--bad)">'+esc(e.message||"invalid code")+'</span>'; }
 }
 // After a Stripe payment, the buyer returns to /?paid=<session_id>. Poll for the

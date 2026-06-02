@@ -789,6 +789,17 @@ class BotStore:
             (loginid,)).fetchone()
         return dict(row) if row else None
 
+    def license_by_session(self, session_id: str) -> dict[str, Any] | None:
+        """Find an active license bound to this BROWSER SESSION (not a Deriv
+        login). Used by the OAuth callback to re-bind the user's loginids to
+        a license they redeemed BEFORE connecting their Deriv account."""
+        if not session_id: return None
+        row = self._conn.execute(
+            "SELECT * FROM licenses WHERE session_id = ? AND status = 'active' "
+            "ORDER BY activated_at DESC LIMIT 1",
+            (session_id,)).fetchone()
+        return dict(row) if row else None
+
     def license_by_loginid_any(self, loginids: list[str]) -> dict[str, Any] | None:
         """Return the first active license tied to ANY of these loginids.
         Used in access_status: a user with multiple Deriv accounts unlocks
