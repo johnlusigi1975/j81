@@ -207,6 +207,17 @@ class BotStore:
                 ")")
         except sqlite3.OperationalError:
             pass   # license_logins table doesn't exist yet on a fresh DB
+        # ── ONE-TIME FIX: lifetime licenses (days=0) that got redeemed
+        # under the old buggy redeem_license — their expires_at was set to
+        # the redemption time (now + 0 days = now), making them immediately
+        # expired. Reset expires_at to NULL for all days=0 licenses so they
+        # behave as true lifetime again. Idempotent.
+        try:
+            self._conn.execute(
+                "UPDATE licenses SET expires_at = NULL "
+                "WHERE days = 0 AND expires_at IS NOT NULL")
+        except sqlite3.OperationalError:
+            pass
 
     # --------------------------------------------------------------- accounts
 
@@ -661,8 +672,12 @@ class BotStore:
         return codes
 
     def redeem_license(self, code: str, session_id: str) -> dict[str, Any]:
-        """Activate a code for this browser session. If the session already has
-        active access, a new code extends from the later of now/current expiry."""
+        """Activate a code. Handles two shapes:
+          • days = 0 → LIFETIME license. expires_at stays NULL.
+          • days > 0 → time-bounded. expires_at = base + days, stacking onto
+            this session's existing access if it's still in the future.
+        If the session already has active access, a new code extends from the
+        later of now/current expiry. Already-active codes are returned as-is."""
         from datetime import datetime, timedelta, timezone
         code = (code or "").strip().upper()
         with self._lock:
@@ -676,18 +691,29 @@ class BotStore:
                 # already used — only the same session may re-check it
                 if d["session_id"] and d["session_id"] != session_id:
                     return {"ok": False, "error": "code already in use on another device"}
-                return {"ok": True, "expires_at": d["expires_at"], "reused": True}
+                return {"ok": True, "expires_at": d["expires_at"],
+                        "lifetime": d["expires_at"] is None, "reused": True}
             now = datetime.now(timezone.utc)
-            base = now
-            cur = self._session_expiry(session_id)
-            if cur and cur > now:
-                base = cur  # stack onto existing access
-            expires = (base + timedelta(days=int(d["days"]))).isoformat()
+            days = int(d["days"] or 0)
+            # ── CRITICAL FIX: days=0 ⇒ LIFETIME (expires_at = NULL).
+            # The old code computed `now + 0 days = now`, which made every
+            # lifetime license expire the instant it was redeemed.
+            if days <= 0:
+                expires_sql: str | None = None
+                expires_ret = None
+            else:
+                base = now
+                cur = self._session_expiry(session_id)
+                if cur and cur > now:
+                    base = cur  # stack onto existing access
+                expires_sql = (base + timedelta(days=days)).isoformat()
+                expires_ret = expires_sql
             self._conn.execute(
                 "UPDATE licenses SET status='active', session_id=?, activated_at=?, "
-                "expires_at=? WHERE code=?", (session_id, now.isoformat(), expires, code))
+                "expires_at=? WHERE code=?",
+                (session_id, now.isoformat(), expires_sql, code))
             self._conn.commit()
-            return {"ok": True, "expires_at": expires}
+            return {"ok": True, "expires_at": expires_ret, "lifetime": expires_sql is None}
 
     def _session_expiry(self, session_id: str):
         from datetime import datetime
