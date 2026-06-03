@@ -2438,7 +2438,7 @@
         <button class="btn" id="auto-btn" style="margin-left:auto">Start Auto</button>
       </div>
       <div class="row" style="margin:0 0 12px;align-items:center">
-        <label class="field">Trade at confidence ≥ %<input id="auto-conf" type="number" min="50" max="95" value="60" style="width:80px"></label>
+        <label class="field">Trade at confidence ≥ %<input id="auto-conf" type="number" min="70" max="95" value="70" style="width:80px"></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:7px;text-transform:none;font-size:12px"><input type="checkbox" id="auto-bg" checked style="width:auto"> Run in the background (keeps trading on our server even if you close the app)</label>
         <button class="btn ghost" id="focus-btn" type="button" style="margin-left:auto">🎯 Focus J81 on this</button>
       </div>
@@ -6715,10 +6715,10 @@ async function updateAutoStatus(){
   const c=$("auto-conf"); if(c) c.addEventListener("input",()=>{ try{ rfReadThreshold(); }catch(_){} });
   window.AUTO_VOL=true; const av=$("autovol"); if(av) av.addEventListener("change",()=>{ window.AUTO_VOL=av.checked; const sel=$("t-symbol"); if(sel) sel.disabled=(av.checked&&GAME==="rise_fall"); }); })();
 // ---- Rise/Fall confidence-gated auto-runner (client-driven; fires only at >=70%) ----
-window.RF_THRESHOLD=60;
+window.RF_THRESHOLD=70;
 let RFAUTO={on:false,target:50,rounds:0,stake:0.35,busy:false,timer:null};
 function rfAutoStatus(t){ const s=$("auto-status"); if(s) s.textContent=t; }
-function rfReadThreshold(){ window.RF_THRESHOLD=Math.max(50,Math.min(95,parseInt($("auto-conf").value||"70",10)||55)); const mk=$("rf-conf-mark"); if(mk) mk.style.left=window.RF_THRESHOLD+"%"; return window.RF_THRESHOLD; }
+function rfReadThreshold(){ window.RF_THRESHOLD=Math.max(70,Math.min(95,parseInt($("auto-conf").value||"70",10)||70)); const mk=$("rf-conf-mark"); if(mk) mk.style.left=window.RF_THRESHOLD+"%"; return window.RF_THRESHOLD; }
 // dispatcher: background (server, keeps trading if you close the app) or this-tab
 async function rfStart(){ const thr=rfReadThreshold(); if($("auto-bg").checked) await rfStartServer(thr); else rfAutoStart(thr); }
 async function rfStop(){

@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     # Default risk limits per user (each user can override)
     default_max_stake_per_trade: float = 1.0
     default_max_trades_per_day: int = 20
-    default_min_confidence: float = 0.65
+    default_min_confidence: float = 0.70
 
     # Trading loop interval
     trade_poll_seconds: int = 120
