@@ -535,13 +535,20 @@ class BotStore:
         return trade_id
 
     def list_trades(
-        self, *, account_id: str | None = None, limit: int = 100
+        self, *, account_id: str | None = None, since: str | None = None,
+        limit: int = 100
     ) -> list[dict[str, Any]]:
+        """List trades, optionally filtered by account_id and by created_at>=since
+        (ISO timestamp). The since filter powers the dashboard "chapter" — every
+        login passes its chapter_start so stats scope to "this session forward"."""
         clauses: list[str] = []
         params: list[Any] = []
         if account_id:
             clauses.append("account_id=?")
             params.append(account_id)
+        if since:
+            clauses.append("created_at >= ?")
+            params.append(since)
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         params.append(max(1, min(limit, 1000)))
         rows = self._conn.execute(
@@ -555,6 +562,25 @@ class BotStore:
             d["decision_payload"] = json.loads(d.get("decision_payload") or "{}")
             out.append(d)
         return out
+
+    def count_trades(self, *, account_id: str | None = None,
+                     since: str | None = None) -> int:
+        """Return the TOTAL number of trades (uncapped). Cheap COUNT(*) — does
+        not load row payloads. Use this instead of len(list_trades()) for the
+        dashboard counter, since list_trades caps at 1000."""
+        clauses: list[str] = []
+        params: list[Any] = []
+        if account_id:
+            clauses.append("account_id=?")
+            params.append(account_id)
+        if since:
+            clauses.append("created_at >= ?")
+            params.append(since)
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        row = self._conn.execute(
+            f"SELECT COUNT(*) AS n FROM trades {where}", params
+        ).fetchone()
+        return int((row or {"n": 0})["n"] or 0)
 
     # ----------------------------------------------------- proven strategies
     def save_proven_strategy(self, s: dict[str, Any]) -> str:

@@ -1503,27 +1503,39 @@ async def assistant_read(symbol: str = "R_100") -> dict:
 
 
 @app.get("/assistant/summary")
-def assistant_summary(account_id: str | None = None) -> dict:
+def assistant_summary(account_id: str | None = None,
+                      chapter_start: str | None = None) -> dict:
     """Today's results in plain numbers for the client — wins, trades, profit.
     When `account_id` is given, the numbers are filtered to that ONE account
     (so switching from demo → real shows real history only, not aggregated).
-    No internal jargon."""
+    When `chapter_start` (ISO timestamp) is given, results are scoped to
+    trades created at-or-after that moment — every login starts a fresh
+    chapter on the dashboard. No internal jargon."""
     store = get_store()
     accts_all = store.list_accounts_public()
     accts = [a for a in accts_all if a["id"] == account_id] if account_id else accts_all
-    trades = store.list_trades(account_id=account_id, limit=500)
+    trades = store.list_trades(account_id=account_id, since=chapter_start, limit=500)
     settled = [t for t in trades if t.get("outcome") in ("won", "lost")]
     wins = sum(1 for t in settled if t.get("outcome") == "won")
-    profit_today = sum(a.get("profit_today", 0.0) for a in accts)
+    # Chapter-scoped profit: sum of settled trade profits since chapter_start.
+    # Without a chapter, fall back to the per-account daily roll-up.
+    if chapter_start:
+        profit_today = round(sum(float(t.get("profit") or 0) for t in settled), 2)
+    else:
+        profit_today = round(sum(a.get("profit_today", 0.0) for a in accts), 2)
     goals = [
         {"account": a["deriv_account_id"], "is_demo": a["is_demo"],
          "profit_today": a.get("profit_today", 0.0),
          "take_profit": a.get("take_profit"), "daily_loss_limit": a.get("daily_loss_limit")}
         for a in accts if a["enabled"]
     ]
-    # trades_total: account-scoped count if account_id given, else global.
+    # trades_total: cheap COUNT(*) — uncapped (previous list-and-len was
+    # clamped at 1000 by list_trades' SQL LIMIT cap, leaving the dashboard
+    # stuck at "1000 trades" forever once the user passed that threshold).
     if account_id:
-        trades_total = len(store.list_trades(account_id=account_id, limit=100000))
+        trades_total = store.count_trades(account_id=account_id, since=chapter_start)
+    elif chapter_start:
+        trades_total = store.count_trades(since=chapter_start)
     else:
         trades_total = store.stats().get("trades_total", 0)
     return {

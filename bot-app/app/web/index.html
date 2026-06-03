@@ -4004,7 +4004,22 @@ function setupLanding(){
     el.innerHTML='<a href="#" onclick="showView(\'connect\');return false">Prefer an API token? Connect that way →</a>';
   });
 }
+// "Trade chapter" — every login starts a fresh dashboard count. Stored in
+// localStorage so refreshes don't reset (only logout clears it). New chapter =
+// new wins/losses/trades/profit numbers on the home dashboard.
+const _CHAPTER_KEY = "j81_chapter_start";
+function _ensureChapter(){
+  try{
+    let v = localStorage.getItem(_CHAPTER_KEY);
+    if(!v){ v = new Date().toISOString(); localStorage.setItem(_CHAPTER_KEY, v); }
+    return v;
+  }catch(_){ return null; }
+}
+function _getChapter(){
+  try{ return localStorage.getItem(_CHAPTER_KEY) || ""; }catch(_){ return ""; }
+}
 function enterApp(){
+  _ensureChapter();   // start a chapter on first entry; preserved across refresh
   updateNav();
   showView("home");
   // Resume any auto-trader that was running before a refresh / tab close.
@@ -4037,6 +4052,8 @@ async function logout(){   // disconnect THIS browser → back to the front page
   // Personal config (TP/SL/stake/etc.) is per-user — clear it on full
   // logout so the next person on this device starts with fresh defaults.
   try{ localStorage.removeItem(_SETTINGS_KEY); }catch(_){}
+  // End the trade chapter — next login starts the dashboard counters at zero.
+  try{ localStorage.removeItem(_CHAPTER_KEY); }catch(_){}
   try{ LiveWS.stop(); }catch(_){}
   showView("landing");
 }
@@ -4172,7 +4189,13 @@ async function loadHome(){
     // Per-account stats: when an account is active, the strip shows ONLY that
     // account's history (so switching demo → real shows real trades, not a
     // mix). Without a selected account, fall back to the global aggregate.
-    const url = CUR ? "/assistant/summary?account_id="+encodeURIComponent(CUR.id) : "/assistant/summary";
+    // chapter_start scopes the numbers to "since this login" — a fresh
+    // dashboard for every new trade chapter.
+    const chapter = _getChapter();
+    const qsParts = [];
+    if(CUR) qsParts.push("account_id="+encodeURIComponent(CUR.id));
+    if(chapter) qsParts.push("chapter_start="+encodeURIComponent(chapter));
+    const url = "/assistant/summary" + (qsParts.length ? "?"+qsParts.join("&") : "");
     const s=await api(url); const p=Number(s.profit_today||0);
     const pe=$("s-profit"); pe.textContent=(p>=0?"+$":"-$")+Math.abs(p).toFixed(2); pe.style.color=p>=0?"var(--good)":"var(--bad)";
     $("s-wins").textContent=s.settled?`${s.wins}/${s.settled}`:"0/0"; $("s-trades").textContent=s.trades_total;
