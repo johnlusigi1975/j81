@@ -1223,6 +1223,11 @@
   .backbtn{display:none}
   .backbtn:hover{color:var(--text)}
   footer{max-width:1080px;margin:0 auto;padding:24px 22px 50px;color:var(--faint);font-size:12px;border-top:1px solid var(--bd)}
+  /* Verse line — always-glowing pulse dot beside a quiet Philippians 4:13 */
+  .verse-line{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(212,184,122,.18);font-family:var(--serif);font-style:italic;font-size:12.5px;color:rgba(212,184,122,.78);letter-spacing:.01em;text-align:center}
+  .verse-line .vdot{width:8px;height:8px;border-radius:50%;background:#6ff0a8;box-shadow:0 0 0 0 rgba(111,240,168,.7), 0 0 10px rgba(111,240,168,.85);animation:verse-pulse 1.8s ease-in-out infinite;flex:0 0 auto}
+  .verse-line .vref{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.10em;font-style:normal;text-transform:uppercase;margin-left:6px}
+  @keyframes verse-pulse{0%,100%{box-shadow:0 0 0 0 rgba(111,240,168,.7), 0 0 8px rgba(111,240,168,.65)}50%{box-shadow:0 0 0 6px rgba(111,240,168,0), 0 0 14px rgba(111,240,168,.95)}}
 </style>
 </head>
 <body>
@@ -2496,7 +2501,10 @@
   </div>
 </div>
 
-<footer class="wrap">J81 Trade Desk · trades on your Deriv account · practice mode keeps it pretend until you go live. Trading carries risk — never stake money you can’t afford to lose.</footer>
+<footer class="wrap">
+  <div>J81 Trade Desk · trades on your Deriv account · practice mode keeps it pretend until you go live. Trading carries risk — never stake money you can’t afford to lose.</div>
+  <div class="verse-line"><span class="vdot"></span><span>“I can do all things through Christ who strengthens me.”</span><span class="vref">Philippians 4:13</span></div>
+</footer>
 
 <script>
 // ---------- helpers ----------
