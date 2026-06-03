@@ -416,7 +416,164 @@ async def stripe_webhook(request: Request) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# FLUTTERWAVE WEBHOOK — Kenya-friendly payment processor (M-Pesa + cards)
+# INTASEND WEBHOOK — Kenyan fintech, primary processor
+# ─────────────────────────────────────────────────────────────────────
+@app.post("/webhooks/intasend", include_in_schema=False)
+async def intasend_webhook(request: Request) -> dict:
+    """IntaSend posts here when a checkout completes.
+
+    Verification: IntaSend sends a `challenge` field in the body (or the
+    `X-IntaSend-Signature` header on newer deliveries). We compare it to
+    INTASEND_WEBHOOK_CHALLENGE that you configured in the dashboard.
+
+    Successful state="COMPLETE" → mint LIFETIME license keyed to
+    `intasend:<api_ref>` (idempotent), bind to the buyer's Deriv loginids
+    from meta_data, auto-redeem under their session_id if present, and
+    email them the code via Resend.
+
+    Failed/cancelled states → acknowledge and ignore.
+    """
+    s = get_settings()
+    expected = (s.intasend_webhook_challenge or "").strip()
+    if not expected:
+        raise HTTPException(503, "intasend webhook not configured (set INTASEND_WEBHOOK_CHALLENGE)")
+    import json as _json
+    try:
+        body = _json.loads(await request.body())
+    except Exception:
+        raise HTTPException(400, "bad payload")
+    # IntaSend supports two verification styles — accept either.
+    got_challenge = (body.get("challenge") or "").strip()
+    got_header = (request.headers.get("X-IntaSend-Signature") or "").strip()
+    if got_challenge != expected and got_header != expected:
+        raise HTTPException(401, "bad webhook signature")
+    state = (body.get("state") or "").upper()
+    api_ref = (body.get("api_ref") or "").strip()
+    store = get_store()
+    if state == "COMPLETE" and api_ref:
+        meta = body.get("meta_data") or body.get("metadata") or {}
+        cref = (meta.get("loginids") or "").strip()
+        loginids = [x.strip() for x in cref.split(",") if x.strip()] if cref else None
+        sid_meta = (meta.get("session_id") or "").strip()
+        # days=0 ⇒ LIFETIME. Idempotent ref → retries return the same code.
+        code = store.mint_for_ref(f"intasend:{api_ref}", 0, loginids=loginids)
+        if sid_meta:
+            try:
+                store.redeem_license(code, sid_meta)
+            except Exception:
+                pass
+        # Email the buyer their code regardless — they may close the tab.
+        email = ""
+        try:
+            customer = body.get("customer") or {}
+            email = (customer.get("email") or body.get("email") or "").strip()
+        except Exception:
+            pass
+        mail_result = {"sent": False, "reason": "no email"}
+        if email and "@" in email:
+            try:
+                from app import email_sender
+                mail_result = email_sender.send_license_email(
+                    email, code, loginids or [], api_ref)
+            except Exception as exc:
+                mail_result = {"sent": False, "reason": "exception", "detail": repr(exc)[:160]}
+        return {"ok": True, "issued": True, "code": code,
+                "bound": len(loginids or []),
+                "emailed_to": email if mail_result.get("sent") else None,
+                "email_status": mail_result}
+    if state in ("FAILED", "CANCELLED", "PENDING", "PROCESSING"):
+        return {"ok": True, "issued": False, "reason": "state=" + state}
+    return {"ok": True, "ignored": True, "state": state}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# SELAR WEBHOOK — current live processor (M-Pesa + cards via Selar)
+# ─────────────────────────────────────────────────────────────────────
+@app.post("/webhooks/selar", include_in_schema=False)
+async def selar_webhook(request: Request) -> dict:
+    """Selar posts here when an order is completed.
+
+    Verification: Selar signs the body with HMAC-SHA256 using
+    SELAR_WEBHOOK_SECRET and sends the hex digest in the `x-selar-signature`
+    header. We also accept a `secret` field in the JSON body as a fallback
+    (Selar's older webhook style).
+
+    On successful_purchase / paid status, we:
+      1. Mint a LIFETIME license keyed to `selar:<order_id>` (idempotent —
+         retries return the same code).
+      2. Email the buyer the code via Resend so they get it instantly.
+
+    The customer pastes the code back in J81 → it auto-binds to their
+    Deriv loginids at redeem time (existing orphan-adoption flow).
+    """
+    s = get_settings()
+    secret = (s.selar_webhook_secret or "").strip()
+    if not secret:
+        raise HTTPException(503, "selar webhook not configured (set SELAR_WEBHOOK_SECRET)")
+    payload = await request.body()
+    # ── Signature verification ─────────────────────────────────
+    import hmac as _hmac
+    import hashlib as _hashlib
+    import json as _json
+    expected = _hmac.new(secret.encode(), payload, _hashlib.sha256).hexdigest()
+    got_header = (request.headers.get("x-selar-signature")
+                  or request.headers.get("X-Selar-Signature") or "").strip()
+    sig_ok = bool(got_header) and _hmac.compare_digest(got_header, expected)
+    # Parse body now (also enables the fallback secret check)
+    try:
+        body = _json.loads(payload) if payload else {}
+    except Exception:
+        raise HTTPException(400, "bad payload")
+    if not sig_ok:
+        # Fallback: shared-secret field in the body (older Selar webhook style)
+        body_secret = (body.get("secret") or "").strip() if isinstance(body, dict) else ""
+        if not body_secret or body_secret != secret:
+            raise HTTPException(401, "bad webhook signature")
+    # ── Extract order details ──────────────────────────────────
+    event_type = (body.get("event") or body.get("event_type") or "").lower()
+    data = body.get("data") if isinstance(body.get("data"), dict) else body
+    status = (data.get("status") or data.get("payment_status") or "").lower()
+    order_id = (data.get("order_id") or data.get("id")
+                or data.get("reference") or data.get("transaction_id") or "")
+    order_id = str(order_id).strip()
+    if not order_id:
+        return {"ok": True, "ignored": True, "reason": "no order id"}
+    # Buyer email — Selar nests this in customer{} or buyer{} depending on event
+    customer = (data.get("customer") if isinstance(data.get("customer"), dict)
+                else data.get("buyer") if isinstance(data.get("buyer"), dict) else {})
+    email = (customer.get("email") or data.get("email")
+             or data.get("customer_email") or "").strip()
+    # Optional: any custom checkout-form fields end up in data.get("custom_fields")
+    # or data.get("answers"); preserved for potential future binding hints.
+    store = get_store()
+    # ── Only act on successful payments ────────────────────────
+    is_success = (event_type in ("successful_purchase", "order.paid",
+                                  "transaction.success", "payment.successful")
+                  or status in ("successful", "completed", "paid", "success"))
+    if is_success:
+        # days=0 ⇒ LIFETIME. Idempotent ref means retries hit the same code.
+        code = store.mint_for_ref(f"selar:{order_id}", 0, loginids=None)
+        mail_result = {"sent": False, "reason": "no email"}
+        if email and "@" in email:
+            try:
+                from app import email_sender
+                mail_result = email_sender.send_license_email(
+                    email, code, [], order_id)
+            except Exception as exc:
+                mail_result = {"sent": False, "reason": "exception",
+                               "detail": repr(exc)[:160]}
+        return {"ok": True, "issued": True, "code": code,
+                "emailed_to": email if mail_result.get("sent") else None,
+                "email_status": mail_result}
+    # Failed / cancelled / refunded — acknowledge so Selar stops retrying.
+    if event_type in ("refund.completed", "order.refunded") or status == "refunded":
+        revoked = store.revoke_license_by_ref(f"selar:{order_id}")
+        return {"ok": True, "revoked": bool(revoked), "order_id": order_id}
+    return {"ok": True, "ignored": True, "event_type": event_type, "status": status}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# FLUTTERWAVE WEBHOOK — fallback (kept for compatibility)
 # ─────────────────────────────────────────────────────────────────────
 @app.post("/webhooks/flutterwave", include_in_schema=False)
 async def flutterwave_webhook(request: Request) -> dict:
@@ -505,8 +662,12 @@ def access_code(session_id: str) -> dict:
     proof of purchase. Looks up both Stripe (stripe:<sid>) and Flutterwave
     (flw:<tx_ref>) refs since either webhook may have minted it."""
     store = get_store()
-    # Try Stripe first (legacy), then Flutterwave.
-    lic = store.license_by_note(f"stripe:{session_id}") or store.license_by_note(f"flw:{session_id}")
+    # Try every processor's ref format — Selar (current live), IntaSend,
+    # Flutterwave, Stripe (legacy). Whoever minted it, we'll find it.
+    lic = (store.license_by_note(f"selar:{session_id}")
+           or store.license_by_note(f"intasend:{session_id}")
+           or store.license_by_note(f"flw:{session_id}")
+           or store.license_by_note(f"stripe:{session_id}"))
     if not lic:
         return {"ready": False}
     return {"ready": True, "code": lic["code"]}
@@ -661,7 +822,61 @@ async def access_checkout_link(request: Request) -> dict:
         # license. Send them back to connect first.
         return {"url": None, "reason": "connect_first"}
 
-    # ── FLUTTERWAVE PATH ────────────────────────────────────────────
+    # ── INTASEND PATH (primary for Kenya — M-Pesa + cards) ─────────
+    if (s.intasend_secret_key or "").strip():
+        import time as _time
+        import secrets as _secrets
+        import httpx
+        api_ref = f"j81-{_secrets.token_hex(8)}-{int(_time.time())}"
+        host = request.headers.get("host", "")
+        scheme = request.headers.get("x-forwarded-proto", "https")
+        site_url = f"{scheme}://{host}" if host else "https://j81-trade-desk.onrender.com"
+        redirect_url = f"{site_url}/?paid=intasend&ref={api_ref}"
+        base = ("https://payment.intasend.com" if s.intasend_live
+                else "https://sandbox.intasend.com")
+        payload = {
+            "public_key": (s.intasend_publishable_key or "").strip() or None,
+            "amount": 100,
+            "currency": "USD",
+            "redirect_url": redirect_url,
+            "api_ref": api_ref,
+            "comment": "J81 Trade Desk · Lifetime access · " + ", ".join(loginids[:2]),
+            "wallet_id": None,
+            # Custom metadata round-trips on the webhook.
+            "meta_data": {
+                "session_id": sid,
+                "loginids": ",".join(loginids[:20]),
+            },
+            # method": let buyer choose at checkout (M-PESA / CARD-PAYMENT / BANK)
+        }
+        # Drop None values (IntaSend rejects null public_key etc.)
+        payload = {k: v for k, v in payload.items() if v is not None}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.post(
+                    f"{base}/api/v1/checkout/",
+                    headers={
+                        "Authorization": f"Bearer {s.intasend_secret_key.strip()}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+            data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        except Exception as exc:
+            log.warning("intasend checkout request failed: %r", exc)
+            return {"url": None, "reason": "intasend_request_failed",
+                    "detail": repr(exc)[:160]}
+        # IntaSend returns the hosted checkout URL on success.
+        url = data.get("url") or (data.get("checkout") or {}).get("url")
+        if not url or r.status_code >= 400:
+            log.warning("intasend checkout error: status=%s body=%s",
+                        r.status_code, str(data)[:200])
+            return {"url": None, "reason": "intasend_error",
+                    "status": r.status_code, "detail": str(data)[:200]}
+        return {"url": url, "provider": "intasend",
+                "bound": loginids[:20], "api_ref": api_ref}
+
+    # ── FLUTTERWAVE PATH (fallback if IntaSend not configured) ──────
     if (s.flw_secret_key or "").strip():
         import time as _time
         import secrets as _secrets

@@ -102,21 +102,38 @@ class Settings(BaseSettings):
     #   "J81 Trade Desk <noreply@yourdomain.com>"  or just  "noreply@your.com"
     email_from: str = ""
 
-    # ── FLUTTERWAVE (Kenya-friendly payment processor, supports M-Pesa) ──
-    # When FLW_SECRET_KEY is set, the paywall switches from Stripe to
-    # Flutterwave hosted checkout: M-Pesa STK push for Kenyan buyers, cards
-    # for everyone else. Settlement in KES or USD per your dashboard config.
-    # Get the secret key from your Flutterwave dashboard → Settings → API.
-    flw_secret_key: str = ""              # FLWSECK-... (server only, never expose)
-    # Secret hash for webhook verification. You choose this string and set
-    # it in the Flutterwave dashboard → Webhooks → Settings; Flutterwave
-    # then sends it in the `verif-hash` header on every webhook delivery.
-    # Pick something unguessable, e.g. "J81-WHK-K3NY4-2026-X1Y2Z3".
+    # ── INTASEND (Kenyan fintech — primary processor) ──────────────
+    # When INTASEND_SECRET_KEY is set, the paywall uses IntaSend hosted
+    # checkout: native M-Pesa STK push for Kenyan buyers + cards (Visa /
+    # Mastercard) for everyone else. Self-serve onboarding accepts solo
+    # creators with a Kenyan Business Name Certificate.
+    # Get keys from dashboard.intasend.com → API & Webhooks → API Keys.
+    # Use TEST keys (ISSecretKey_test_...) for sandbox, LIVE keys for
+    # production. The same code path serves both — IntaSend routes by key.
+    intasend_secret_key: str = ""         # ISSecretKey_test_... or ISSecretKey_live_...
+    intasend_publishable_key: str = ""    # ISPubKey_... (optional, for future client widgets)
+    # IntaSend signs webhooks with this challenge string. You set it in the
+    # dashboard → API & Webhooks → Webhooks; they echo it back in the
+    # `X-IntaSend-Signature` (or `challenge`) field of every delivery.
+    # Pick something unguessable.
+    intasend_webhook_challenge: str = ""
+    # Live vs sandbox switch — set to "true" once IntaSend approves you.
+    # Blank/false uses sandbox (sandbox.intasend.com).
+    intasend_live: bool = False
+    # ── FLUTTERWAVE (kept for fallback; primary is IntaSend now) ──
+    flw_secret_key: str = ""
     flw_secret_hash: str = ""
-    # Where Flutterwave sends the buyer after a successful charge. Blank
-    # auto-reconstructs from the request host. Override if you want to send
-    # them to a different domain or specific path.
     flw_redirect_url: str = ""
+
+    # ── SELAR (Kenya-friendly creator platform — current live processor) ──
+    # Selar handles checkout (cards + M-Pesa via Paystack); we set
+    # ACCESS_BUY_URL to the Selar product URL and Selar posts back to
+    # /webhooks/selar on successful payment.
+    # Configure the webhook URL + secret in Selar dashboard →
+    # Settings → Developer / Webhooks. Selar signs the payload with
+    # HMAC-SHA256 using this secret and sends the signature in the
+    # `x-selar-signature` header. Pick something unguessable.
+    selar_webhook_secret: str = ""
 
 
 @lru_cache
