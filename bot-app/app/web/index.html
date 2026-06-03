@@ -2671,6 +2671,19 @@ function _brainRenderCands(kind, cands){
     const sym = String(c.symbol||"").replace(/"/g,'');
     const name = (c.name || c.symbol || "?");
     const side = String(c.side||"").toUpperCase();
+    // Conviction badge: numeric score + tier color. Only EO surfaces these
+    // (RF/OU fall back to pct-only display until we port the brain there).
+    const conv = (c.adjConv != null) ? c.adjConv : (c.conviction != null ? c.conviction : null);
+    let convHtml = '';
+    if(conv != null){
+      let col = "var(--faint)", tag = "NOISE";
+      if(conv >= 70){ col = "#6ff0a8"; tag = "HIGH"; }
+      else if(conv >= 50){ col = "#6ff0a8"; tag = "STRONG"; }
+      else if(conv >= 35){ col = "var(--amber)"; tag = "FAIR"; }
+      else if(conv >= 20){ col = "#ff9aac"; tag = "WEAK"; }
+      const agreeHtml = (c.agree != null) ? ' · '+c.agree+'/3w' : '';
+      convHtml = '<div class="cand-conv" style="font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:'+col+';font-weight:800;margin-top:3px">conv <b>'+conv+'</b> · '+tag+agreeHtml+'</div>';
+    }
     // Per-market memory: render W/L tally if we've traded this market in
     // this session, otherwise show "fresh" hint.
     const mem = _marketMemFor(kind, sym);
@@ -2680,7 +2693,7 @@ function _brainRenderCands(kind, cands){
     return '<div class="brain-cand'+(isTop?" top":"")+'" data-sym="'+sym+'">'+
              '<span class="cand-mkt">'+esc(name)+'</span>'+
              '<span class="cand-val">'+(c.pct||0)+'% '+esc(side)+'</span>'+
-             memHtml+
+             convHtml + memHtml+
            '</div>';
   }).join("");
 }
@@ -5213,6 +5226,18 @@ window.EOAuto = (function(){
   // hardest right now. Threshold/z/multi-window indicators are still rendered
   // in the radar + scanner as info, but they don't gate firing. Safety rails
   // (TP, SL, loss-streak, martingale cap) are what stops bad runs.
+  // Conviction floor — when the BEST candidate's conviction is below this,
+  // the brain SKIPS the cycle rather than gambling on a weak read. RNG
+  // doesn't make this number negotiable; the brain just waits.
+  const _CONVICTION_FLOOR = 28;
+  // Map a 0–100 conviction score to a human-readable tier.
+  function _convictionTier(c){
+    if(c >= 70) return {tag:"HIGH",   col:"#6ff0a8"};
+    if(c >= 50) return {tag:"STRONG", col:"#6ff0a8"};
+    if(c >= 35) return {tag:"FAIR",   col:"var(--amber)"};
+    if(c >= 20) return {tag:"WEAK",   col:"#ff9aac"};
+    return            {tag:"NOISE",   col:"var(--faint)"};
+  }
   async function _pickBestMarket(threshold){
     try{
       const d = await scanGet();
@@ -5221,43 +5246,74 @@ window.EOAuto = (function(){
         _brainStatus("eo", '<b>warming up</b> · all 10 markets still gathering ticks');
         return {none:true, reason:"all 10 markets still warming up"};
       }
+      // ── CONVICTION-WEIGHTED CANDIDATES ─────────────────────────
+      // Each market is scored by combining FOUR independent factors:
+      //   • lean magnitude  (up to 60 pts) — how far from 50/50
+      //   • multi-window agreement (up to 18 pts) — full + 20-tick + 50-tick
+      //   • z-magnitude     (up to 15 pts) — statistical conviction
+      //   • tick depth      (up to 7 pts)  — more samples = more trust
+      // Total cap: 100. Used as the SORT KEY and threshold gate.
       const cands = ready.map(m => {
-        const evp = Math.round(m.even_pct);
+        const evp  = Math.round(m.even_pct);
         const evWins = evp >= 50;
-        const pct = evWins ? evp : 100 - evp;
-        const z = m.eo_z != null ? Math.abs(Number(m.eo_z)) : 0;
+        const side = evWins ? "even" : "odd";
+        const pct  = evWins ? evp : 100 - evp;
+        const lean = pct - 50;
+        const z    = m.eo_z != null ? Math.abs(Number(m.eo_z)) : 0;
+        // Per-window leans toward the SAME side as the full buffer.
+        const winSides = [m.even_pct_20, m.even_pct_50, m.even_pct].map(v => v == null ? null : (v >= 50 ? "even" : "odd"));
+        const valid = winSides.filter(s => s != null);
+        const agree = valid.length ? valid.filter(s => s === side).length : 1;
+        const ticks = m.ticks || 0;
+        // Sub-scores (all clamped to their own caps so no single factor dominates).
+        const sLean    = Math.min(60, lean * 3.5);            // 50%→0, 60%→35, 70%→60
+        const sAgree   = Math.min(18, agree * 6);              // 0/6/12/18
+        const sZ       = Math.min(15, z * 6);                  // z≥2.5 saturates
+        const sDepth   = Math.min(7, Math.log2(Math.max(1, ticks / 20)) * 2);  // 20t→0, 40t→2, 80t→4, 320t→8
+        const conviction = Math.round(sLean + sAgree + sZ + sDepth);
         return {
           symbol: m.symbol, name: m.name || m.symbol,
-          side: evWins ? "even" : "odd",
-          pct, lean: pct - 50, z,
+          side, pct, lean, z, agree, ticks, conviction,
+          sLean: Math.round(sLean), sAgree, sZ: Math.round(sZ), sDepth: Math.round(sDepth),
         };
       });
       // ── SIDE BALANCE ────────────────────────────────────────────
-      // Without correction, the bot would always fire whichever side
-      // happens to lead by 1% across this snapshot — and on Deriv RNG
-      // that often means a long EVEN streak followed by a long ODD
-      // streak. Track per-session side history; when one side has
-      // dominated (gap ≥ 4 trades) apply a gentle ±3pp lean bonus to
-      // the underrepresented side so the bot rotates naturally while
-      // still honouring genuine signal strength.
+      // Track per-session side fires; when one side has dominated (gap ≥ 4)
+      // apply a gentle ±3pt conviction bonus to the underrepresented side.
+      // Strong genuine convictions still win — this only breaks near-ties.
       const sh = S.sess.sideHist = S.sess.sideHist || {even:0, odd:0};
-      const gap = (sh.even||0) - (sh.odd||0);          // +ve = too many EVEN fires
+      const gap = (sh.even||0) - (sh.odd||0);
       const bias = Math.max(-3, Math.min(3, gap * 0.6));
       cands.forEach(c => {
-        // EVEN over-fired → penalise EVEN candidates, boost ODD.
-        c.adjPct = c.pct + (c.side === "odd" ? bias : -bias);
+        c.adjConv = c.conviction + (c.side === "odd" ? bias : -bias);
       });
-      // Sort by adjusted score. z is the tiebreaker.
-      cands.sort((a, b) => (b.adjPct + b.z * 0.25) - (a.adjPct + a.z * 0.25));
+      // Sort by adjusted conviction. Highest first.
+      cands.sort((a, b) => b.adjConv - a.adjConv);
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
-      // Brain: surface the candidate set + a balance note if rebalancing kicked in.
+      // Render candidate panel.
+      try{ _brainRenderCands("eo", cands); }catch(_){}
+      // ── CONVICTION FLOOR ────────────────────────────────────────
+      // The brain SKIPS the cycle when no candidate has meaningful conviction.
+      // This is the difference between "always firing" and "firing when it matters".
+      if(pick.adjConv < _CONVICTION_FLOOR){
+        const tier = _convictionTier(pick.adjConv);
+        try{
+          _brainStatus("eo", '⏸ <b style="color:'+tier.col+'">holding</b> · best is <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' · conviction <b>'+pick.adjConv+'</b> ('+tier.tag+') < floor '+_CONVICTION_FLOOR);
+          _brainPush("eo", "⏸", "Holding — top conviction "+pick.adjConv+" ("+tier.tag+") below floor "+_CONVICTION_FLOOR, "tune");
+        }catch(_){}
+        return {none:true, reason:"conviction "+pick.adjConv+" below floor "+_CONVICTION_FLOOR};
+      }
+      // Brain status — show conviction tier + balance note.
       try{
-        _brainRenderCands("eo", cands);
+        const tier = _convictionTier(pick.adjConv);
         const balNote = Math.abs(gap) >= 4
           ? ' · ⚖ rebalancing '+(gap>0?'→ODD':'→EVEN')+' (last '+sh.even+'/'+sh.odd+')'
           : '';
-        _brainStatus("eo", '📡 weighing ' + cands.length + ' markets · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2) + balNote);
+        _brainStatus("eo",
+          '🎯 <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'%'+
+          ' · conviction <b style="color:'+tier.col+'">'+pick.adjConv+' ('+tier.tag+')</b>'+
+          ' · '+pick.agree+'/3 windows · z '+pick.z.toFixed(2)+balNote);
       }catch(_){}
       return pick;
     } catch(_){
@@ -5339,7 +5395,10 @@ window.EOAuto = (function(){
     // Brain: log the pick + flash the candidate card so the trader SEES the
     // decision land instead of guessing what just happened.
     try{
-      _brainPush("eo", "🎯", "Picked <b>"+esc(pick.side.toUpperCase())+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      const convStr = (pick.adjConv != null)
+        ? ' · conviction <b>'+pick.adjConv+'</b> ('+_convictionTier(pick.adjConv).tag+', '+pick.agree+'/3w · z '+pick.z.toFixed(2)+')'
+        : '';
+      _brainPush("eo", "🎯", "Picked <b>"+esc(pick.side.toUpperCase())+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2)+convStr);
       _brainFireCand("eo", pick.symbol);
       _brainStatus("eo", '🔥 firing <b>'+esc(pick.side.toUpperCase())+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
     }catch(_){}
