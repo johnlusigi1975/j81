@@ -3240,15 +3240,27 @@ document.addEventListener("keydown", (ev) => {
     const h = document.getElementById("kbd-help"); if(h){ h.hidden = !h.hidden; }
     ev.preventDefault(); return;
   }
-  // Esc — close help if open; else emergency stop everything.
+  // Esc — close help if open; else BRUTAL emergency stop EVERY layer.
   if(ev.key === "Escape"){
     const h = document.getElementById("kbd-help");
     if(h && !h.hidden){ h.hidden = true; ev.preventDefault(); return; }
     let stopped = 0;
     ["EOAuto","RFAuto","OUAuto"].forEach(name => {
-      try{ if(window[name] && window[name].running){ window[name].stop("kbd ESC"); stopped++; } }catch(_){}
+      try{
+        const ctrl = window[name];
+        if(!ctrl) return;
+        // Force-reset regardless of state — bulletproof against any stuck flag.
+        ctrl.running = false;
+        if(ctrl.timer){ try{ clearInterval(ctrl.timer); }catch(_){} ctrl.timer = null; }
+        ctrl.busy = false;
+        try{ ctrl.stop && ctrl.stop("kbd ESC"); }catch(_){}
+        stopped++;
+      }catch(_){}
     });
-    if(stopped > 0) toast({kind:"warn", title:"Emergency stop", msg:"Stopped "+stopped+" running auto-trader"+(stopped===1?"":"s"), icon:"■"});
+    // Kill server-side autos too (Brain Auto + Execution Desk) — without this,
+    // trades keep firing from the server even after the client controllers stop.
+    try{ api("/accounts/stop_all_auto",{method:"POST",timeout:8000}).then(()=>{ try{ refreshBrainAutoUI(); }catch(_){} }).catch(()=>{}); }catch(_){}
+    toast({kind:"warn", title:"🛑 EMERGENCY STOP", msg:"Killed "+stopped+" client trader"+(stopped===1?"":"s")+" + server-side autos. Refresh if anything still moves.", icon:"■", ttl:6000});
     ev.preventDefault(); return;
   }
   // Space — toggle active controller for current game view
@@ -6282,7 +6294,16 @@ window.RFAuto = (function(){
   const rfStake = document.getElementById("rf-stake");
   if(rfStake) rfStake.addEventListener("input", ()=>{ try{ window.RFAuto._renderMart(); }catch(_){ } });
   // Start / stop
-  const rfGo = document.getElementById("rf-go"); if(rfGo) rfGo.addEventListener("click", ()=>window.RFAuto.toggle());
+  const rfGo = document.getElementById("rf-go");
+  if(rfGo) rfGo.addEventListener("click", function(){
+    // Immediate visual feedback — flip the button text the instant the click
+    // registers, before any async work in stop(). Prevents the "did my click
+    // even register?" frustration when the controller is in a slow state.
+    if(window.RFAuto && window.RFAuto.running){
+      try{ rfGo.textContent = "halting…"; rfGo.classList.remove("running"); }catch(_){}
+    }
+    try{ window.RFAuto.toggle(); }catch(_){}
+  });
   const rfStop = document.getElementById("rf-stop-all");
   if(rfStop) rfStop.addEventListener("click", ()=>eoStopEverything(rfStop));
   // Quick presets — same shape as EO but tuned for direction trading
@@ -6981,7 +7002,13 @@ window.OUAuto = (function(){
   const ouStake = document.getElementById("ou-stake");
   if(ouStake) ouStake.addEventListener("input", ()=>{ try{ window.OUAuto._renderMart(); }catch(_){ } });
   // Start / stop
-  const ouGo = document.getElementById("ou-go"); if(ouGo) ouGo.addEventListener("click", ()=>window.OUAuto.toggle());
+  const ouGo = document.getElementById("ou-go");
+  if(ouGo) ouGo.addEventListener("click", function(){
+    if(window.OUAuto && window.OUAuto.running){
+      try{ ouGo.textContent = "halting…"; ouGo.classList.remove("running"); }catch(_){}
+    }
+    try{ window.OUAuto.toggle(); }catch(_){}
+  });
   const ouStop = document.getElementById("ou-stop-all");
   if(ouStop) ouStop.addEventListener("click", ()=>eoStopEverything(ouStop));
   // Quick presets — leave the barrier picker alone so the user's choice
@@ -7067,7 +7094,13 @@ window.OUAuto = (function(){
                           try{ window.EOAuto._renderDots(); }catch(_){} }
   if(streak){ streak.addEventListener("input", _syncStreak); _syncStreak(); }
   // -- Big start button + the AUTO mix button on the trio --
-  const go  = document.getElementById("eo-go");      if(go)  go.addEventListener("click",  ()=>window.EOAuto.toggle());
+  const go  = document.getElementById("eo-go");
+  if(go)  go.addEventListener("click",  function(){
+    if(window.EOAuto && window.EOAuto.running){
+      try{ go.textContent = "halting…"; go.classList.remove("running"); }catch(_){}
+    }
+    try{ window.EOAuto.toggle(); }catch(_){}
+  });
   const mix = document.getElementById("eo-mix-btn"); if(mix) mix.addEventListener("click", ()=>window.EOAuto.toggle());
   // -- Slim "stop" ghost beside the start button: clears every server-side
   //    auto flag so the trading loop doesn't keep firing in the background. --
