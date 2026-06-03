@@ -5777,6 +5777,10 @@ window.EOAuto = (function(){
     // Kill any pending retroactive settle timers — Stop means Stop, no
     // late toasts or brain log lines after the user has paused the desk.
     try{ _cancelPendingSettles("eo"); }catch(_){}
+    // FULL STOP: also kill server-side auto modes (Brain Auto + any backend
+    // runners) so the trader sees ALL trading halt — not just the client
+    // controller. Fire-and-forget; we don't block the UI on it.
+    try{ api("/accounts/stop_all_auto",{method:"POST",timeout:8000}).then(()=>{ try{ refreshBrainAutoUI(); }catch(_){} }).catch(()=>{}); }catch(_){}
     _resetBtn();
     _clearAutoSession("eo");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+
@@ -6231,6 +6235,8 @@ window.RFAuto = (function(){
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer = null; }
     try{ _cancelPendingSettles("rf"); }catch(_){}
+    // FULL STOP: kill server-side auto modes too (Brain Auto + backend runners).
+    try{ api("/accounts/stop_all_auto",{method:"POST",timeout:8000}).then(()=>{ try{ refreshBrainAutoUI(); }catch(_){} }).catch(()=>{}); }catch(_){}
     _resetBtn();
     _clearAutoSession("rf");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
@@ -6906,6 +6912,8 @@ window.OUAuto = (function(){
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer = null; }
     try{ _cancelPendingSettles("ou"); }catch(_){}
+    // FULL STOP: kill server-side auto modes too (Brain Auto + backend runners).
+    try{ api("/accounts/stop_all_auto",{method:"POST",timeout:8000}).then(()=>{ try{ refreshBrainAutoUI(); }catch(_){} }).catch(()=>{}); }catch(_){}
     _resetBtn();
     _clearAutoSession("ou");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
