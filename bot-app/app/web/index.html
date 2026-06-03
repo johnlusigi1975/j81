@@ -3299,11 +3299,25 @@ async function scanGet(maxAgeMs){
   const now = performance.now();
   if(_scanCache && (now - _scanCache.at) < max) return _scanCache.data;
   if(_scanInflight) return _scanInflight;
-  _scanInflight = api("/scan").then(d => {
+  // Use a generous 20s timeout — /scan is heavier than other endpoints
+  // (loads library + observer snapshot + processes all 10 markets), and
+  // cold Render dynos can occasionally take 8-12s. Cap above that so we
+  // don't trip the default 9s abort and blow up the brain with false
+  // "scanner unreachable" toasts. If the call still fails (network/HTTP
+  // error), fall back to the LAST KNOWN GOOD scan cache so the brain
+  // can keep reasoning on slightly-stale data instead of going dark.
+  _scanInflight = api("/scan", {timeout: 20000}).then(d => {
     _scanCache = { at: performance.now(), data: d };
     _scanInflight = null;
     return d;
-  }).catch(e => { _scanInflight = null; throw e; });
+  }).catch(e => {
+    _scanInflight = null;
+    // Stale-while-error fallback — better than throwing.
+    if(_scanCache && (performance.now() - _scanCache.at) < 60000){
+      return _scanCache.data;
+    }
+    throw e;
+  });
   return _scanInflight;
 }
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
