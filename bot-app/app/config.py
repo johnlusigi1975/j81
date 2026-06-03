@@ -102,6 +102,22 @@ class Settings(BaseSettings):
     #   "J81 Trade Desk <noreply@yourdomain.com>"  or just  "noreply@your.com"
     email_from: str = ""
 
+    # ── FLUTTERWAVE (Kenya-friendly payment processor, supports M-Pesa) ──
+    # When FLW_SECRET_KEY is set, the paywall switches from Stripe to
+    # Flutterwave hosted checkout: M-Pesa STK push for Kenyan buyers, cards
+    # for everyone else. Settlement in KES or USD per your dashboard config.
+    # Get the secret key from your Flutterwave dashboard → Settings → API.
+    flw_secret_key: str = ""              # FLWSECK-... (server only, never expose)
+    # Secret hash for webhook verification. You choose this string and set
+    # it in the Flutterwave dashboard → Webhooks → Settings; Flutterwave
+    # then sends it in the `verif-hash` header on every webhook delivery.
+    # Pick something unguessable, e.g. "J81-WHK-K3NY4-2026-X1Y2Z3".
+    flw_secret_hash: str = ""
+    # Where Flutterwave sends the buyer after a successful charge. Blank
+    # auto-reconstructs from the request host. Override if you want to send
+    # them to a different domain or specific path.
+    flw_redirect_url: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

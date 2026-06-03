@@ -415,12 +415,98 @@ async def stripe_webhook(request: Request) -> dict:
     return {"ok": True, "ignored": etype}
 
 
+# ─────────────────────────────────────────────────────────────────────
+# FLUTTERWAVE WEBHOOK — Kenya-friendly payment processor (M-Pesa + cards)
+# ─────────────────────────────────────────────────────────────────────
+@app.post("/webhooks/flutterwave", include_in_schema=False)
+async def flutterwave_webhook(request: Request) -> dict:
+    """Flutterwave posts here when a charge completes (successful or failed).
+
+    Verification:  the `verif-hash` HTTP header must match FLW_SECRET_HASH
+    that you configured in the Flutterwave dashboard → Webhooks → Settings.
+
+    On a successful `charge.completed` (status=successful), we:
+      1. Mint a LIFETIME license keyed to `flw:<tx_ref>` (idempotent on retry).
+      2. Bind it to the buyer's Deriv loginids (carried in meta from the
+         /access/checkout_link call).
+      3. Email the buyer the license code so they can paste it in J81.
+
+    On a refund (`refund.completed`), we revoke the license tied to that
+    tx_ref so the user lands back on the paywall.
+    """
+    s = get_settings()
+    expected = (s.flw_secret_hash or "").strip()
+    if not expected:
+        raise HTTPException(503, "flutterwave webhook not configured (set FLW_SECRET_HASH)")
+    got = (request.headers.get("verif-hash") or "").strip()
+    if not got or got != expected:
+        raise HTTPException(401, "bad webhook signature")
+    import json as _json
+    try:
+        event = _json.loads(await request.body())
+    except Exception:
+        raise HTTPException(400, "bad payload")
+    etype = (event.get("event") or event.get("event.type") or "").lower()
+    data = event.get("data") or {}
+    status = (data.get("status") or "").lower()
+    tx_ref = (data.get("tx_ref") or "").strip()
+    store = get_store()
+    # Successful charge → mint + bind + email.
+    if etype in ("charge.completed",) and status == "successful" and tx_ref:
+        meta = data.get("meta") or {}
+        # `meta.loginids` is a comma-joined list (set in /access/checkout_link).
+        # `meta.session_id` lets the user be auto-unlocked when they return.
+        cref = (meta.get("loginids") or "").strip()
+        loginids = [x.strip() for x in cref.split(",") if x.strip()] if cref else None
+        sid_meta = (meta.get("session_id") or "").strip()
+        # days=0 ⇒ LIFETIME (no expiry). Idempotent ref means a retry returns
+        # the same code without re-minting.
+        code = store.mint_for_ref(f"flw:{tx_ref}", 0, loginids=loginids)
+        # If we have the buyer's J81 session, also redeem the code under that
+        # session so they're auto-unlocked when they return from Flutterwave.
+        if sid_meta:
+            try:
+                store.redeem_license(code, sid_meta)
+            except Exception:
+                pass
+        # Email the code regardless — they may close the tab before redirect.
+        email = ""
+        try:
+            cust = data.get("customer") or {}
+            email = (cust.get("email") or "").strip()
+        except Exception:
+            pass
+        mail_result = {"sent": False, "reason": "no email"}
+        if email and "@" in email:
+            try:
+                from app import email_sender
+                mail_result = email_sender.send_license_email(
+                    email, code, loginids or [], tx_ref)
+            except Exception as exc:
+                mail_result = {"sent": False, "reason": "exception", "detail": repr(exc)[:160]}
+        return {"ok": True, "issued": True, "code": code,
+                "bound": len(loginids or []),
+                "emailed_to": email if mail_result.get("sent") else None,
+                "email_status": mail_result}
+    # Failed charge — no license to issue, just acknowledge.
+    if etype in ("charge.completed",) and status != "successful":
+        return {"ok": True, "issued": False, "reason": "charge status=" + status}
+    # Refund — revoke the license bound to this tx_ref.
+    if etype in ("refund.completed", "transaction.refund.completed") and tx_ref:
+        revoked = store.revoke_license_by_ref(f"flw:{tx_ref}")
+        return {"ok": True, "revoked": bool(revoked), "tx_ref": tx_ref}
+    return {"ok": True, "ignored": etype, "status": status}
+
+
 @app.get("/access/code")
 def access_code(session_id: str) -> dict:
-    """The buyer's success page calls this with the Stripe checkout session id to
-    fetch the code minted for their payment. (The session id is the buyer's own
-    one-time token, so it's the proof of purchase.)"""
-    lic = get_store().license_by_note(f"stripe:{session_id}")
+    """The buyer's success page calls this with the processor's session/tx id
+    to fetch the code minted for their payment. The id is their one-time
+    proof of purchase. Looks up both Stripe (stripe:<sid>) and Flutterwave
+    (flw:<tx_ref>) refs since either webhook may have minted it."""
+    store = get_store()
+    # Try Stripe first (legacy), then Flutterwave.
+    lic = store.license_by_note(f"stripe:{session_id}") or store.license_by_note(f"flw:{session_id}")
     if not lic:
         return {"ready": False}
     return {"ready": True, "code": lic["code"]}
@@ -549,15 +635,18 @@ def access_revoke_self(request: Request) -> dict:
 
 
 @app.get("/access/checkout_link")
-def access_checkout_link(request: Request) -> dict:
-    """Returns the Stripe payment URL with this user's Deriv loginids attached
-    as `client_reference_id`. Stripe echoes that field back on the webhook so
-    we can bind the lifetime license to the exact accounts they connected.
-    The frontend opens whatever URL we return when the user clicks Pay."""
+async def access_checkout_link(request: Request) -> dict:
+    """Generate a hosted checkout URL for this user's Deriv loginids.
+
+    Provider selection:
+      • If FLW_SECRET_KEY is set → Flutterwave (M-Pesa + cards, Kenya-friendly).
+        Each call creates a unique transaction reference; meta carries the
+        loginids + session_id so the webhook can bind the license correctly.
+      • Else if ACCESS_BUY_URL is set → legacy Stripe Payment Link path.
+      • Else → returns reason=buy_url not configured.
+    The frontend just opens whatever URL we return.
+    """
     s = get_settings()
-    base = s.access_buy_url
-    if not base:
-        return {"url": None, "reason": "buy_url not configured"}
     sid = request.cookies.get(SESSION_COOKIE) or ""
     loginids: list[str] = []
     if sid:
@@ -571,12 +660,73 @@ def access_checkout_link(request: Request) -> dict:
         # No Deriv accounts yet — the buyer would pay but we couldn't bind the
         # license. Send them back to connect first.
         return {"url": None, "reason": "connect_first"}
+
+    # ── FLUTTERWAVE PATH ────────────────────────────────────────────
+    if (s.flw_secret_key or "").strip():
+        import time as _time
+        import secrets as _secrets
+        import httpx
+        tx_ref = f"j81-{_secrets.token_hex(8)}-{int(_time.time())}"
+        # Build the return URL — Flutterwave appends ?status=…&tx_ref=…&transaction_id=…
+        host = request.headers.get("host", "")
+        scheme = request.headers.get("x-forwarded-proto", "https")
+        default_redirect = f"{scheme}://{host}/?paid=flw" if host else "https://j81-trade-desk.onrender.com/?paid=flw"
+        redirect_url = (s.flw_redirect_url or default_redirect)
+        payload = {
+            "tx_ref": tx_ref,
+            "amount": "100",
+            "currency": "USD",
+            "redirect_url": redirect_url,
+            "payment_options": "card,mpesa,banktransfer,ussd",
+            "customer": {
+                # Flutterwave checkout will prompt for the real email; this is
+                # just a placeholder identifier tied to the loginids.
+                "email": f"trader+{tx_ref[:8]}@j81.app",
+                "name": ", ".join(loginids[:2]),
+            },
+            "customizations": {
+                "title": "J81 Trade Desk",
+                "description": "Lifetime access · " + ", ".join(loginids[:2]),
+            },
+            "meta": {
+                "session_id": sid,
+                "loginids": ",".join(loginids[:20]),
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.post(
+                    "https://api.flutterwave.com/v3/payments",
+                    headers={
+                        "Authorization": f"Bearer {s.flw_secret_key.strip()}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+            data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        except Exception as exc:
+            log.warning("flutterwave checkout request failed: %r", exc)
+            return {"url": None, "reason": "flw_request_failed", "detail": repr(exc)[:160]}
+        if (data.get("status") or "").lower() != "success":
+            log.warning("flutterwave checkout error: %s", data.get("message", "no detail"))
+            return {"url": None, "reason": "flw_error",
+                    "detail": str(data.get("message") or "")[:200]}
+        link = ((data.get("data") or {}).get("link"))
+        if not link:
+            return {"url": None, "reason": "flw_no_link"}
+        return {"url": link, "provider": "flutterwave",
+                "bound": loginids[:20], "tx_ref": tx_ref}
+
+    # ── STRIPE FALLBACK ─────────────────────────────────────────────
+    base = s.access_buy_url
+    if not base:
+        return {"url": None, "reason": "buy_url not configured"}
     # Stripe Payment Links accept client_reference_id as a query param. The
     # buyer's checkout will send it back on the completed webhook so we can
     # bind the license to those exact loginids.
     sep = "&" if "?" in base else "?"
     url = base + sep + "client_reference_id=" + ",".join(loginids[:20])
-    return {"url": url, "bound": loginids[:20]}
+    return {"url": url, "provider": "stripe", "bound": loginids[:20]}
 
 
 @app.get("/robots.txt", include_in_schema=False)
