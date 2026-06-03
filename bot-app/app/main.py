@@ -1,3 +1,19 @@
+#
+# ─── A blessing over this code ───────────────────────────────────────
+#
+#   "He shall be like a tree planted by the rivers of water, that
+#    bringeth forth his fruit in his season; his leaf also shall not
+#    wither; and whatsoever he doeth shall prosper."
+#                                                       — Psalm 1:3
+#
+#   "Blessed is the man that trusteth in the Lord, and whose hope the
+#    Lord is. For he shall be as a tree planted by the waters, and that
+#    spreadeth out her roots by the river, and shall not see when heat
+#    cometh, but her leaf shall be green; and shall not be careful in
+#    the year of drought, neither shall cease from yielding fruit."
+#                                                  — Jeremiah 17:7-8
+#
+# ──────────────────────────────────────────────────────────────────
 """J81 Bot — execution layer (system 3 of 3).
 
   GET  /                     homepage

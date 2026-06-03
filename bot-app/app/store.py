@@ -1,3 +1,10 @@
+#
+# Psalm 1:3 — planted by the rivers of water · fruit in season · leaf
+# shall not wither · whatsoever he doeth shall prosper.
+#
+# Jeremiah 17:7-8 — trusteth in the Lord · roots by the river · leaf
+# green in the heat · fruit in the year of drought.
+#
 """J81 Bot SQLite store.
 
 Three tables:

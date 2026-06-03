@@ -1,3 +1,10 @@
+#
+# Psalm 1:3 — like a tree planted by the rivers of water · fruit in its
+# season · leaf that shall not wither · whatsoever it doeth shall prosper.
+#
+# Jeremiah 17:7-8 — blessed is the man that trusteth in the Lord · roots
+# spread by the river · leaf green in the heat · fruit in the drought.
+#
 from functools import lru_cache
 from pathlib import Path
 

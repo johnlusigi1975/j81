@@ -1,3 +1,14 @@
+#
+# Psalm 1:3 — "He shall be like a tree planted by the rivers of water,
+# that bringeth forth his fruit in his season; his leaf also shall not
+# wither; and whatsoever he doeth shall prosper."
+#
+# Jeremiah 17:7-8 — "Blessed is the man that trusteth in the Lord...
+# he shall be as a tree planted by the waters, and that spreadeth out
+# her roots by the river, and shall not see when heat cometh, but her
+# leaf shall be green; and shall not be careful in the year of drought,
+# neither shall cease from yielding fruit."
+#
 """Wraps the Deriv trade call with risk limits and the DRY_RUN safety net.
 
 Every code path that could touch real money goes through here. The
