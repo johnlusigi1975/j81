@@ -2745,6 +2745,11 @@ function _brainLogResult(kind, outcome, profit, streak, symbol, market){
     _brainPush(kind, "✗", "LOST −$"+Math.abs(Number(profit||0)).toFixed(2)+" · streak "+(streak||0), "loss");
     if(symbol) _marketMemRecord(kind, symbol, "lost", profit);
     toast({kind:"loss", title:"Trade lost", msg:"−$"+Math.abs(Number(profit||0)).toFixed(2)+(market?" on "+market:"")+" · streak "+(streak||0), icon:"✗"});
+    // Check whether this market has crossed the blacklist threshold (3 losses).
+    try{
+      const ctrl = kind === "eo" ? window.EOAuto : kind === "rf" ? window.RFAuto : window.OUAuto;
+      if(ctrl && ctrl.sess && symbol) _maybeBlacklistMarket(ctrl.sess, kind, symbol);
+    }catch(_){}
   } else {
     _brainPush(kind, "·", "settled · "+(outcome||"unknown"), "");
   }
@@ -5374,6 +5379,20 @@ window.EOAuto = (function(){
     const net = (mem.w || 0) - (mem.l || 0);
     return Math.max(-8, Math.min(6, net * 2));
   }
+  // After 3 LOSSES on the same market in a session, blacklist it for the
+  // remainder of the session. Stops the bot from re-trying losers when
+  // there are 9 other markets to consider. Called from the trade-settle
+  // path in each controller after a recorded loss.
+  function _maybeBlacklistMarket(sess, kind, symbol){
+    if(!sess || !symbol) return;
+    const mem = _marketMemFor(kind, symbol);
+    if(!mem || (mem.l || 0) < 3) return;
+    sess.marketBlacklist = sess.marketBlacklist || new Set();
+    if(sess.marketBlacklist.has(symbol)) return;
+    sess.marketBlacklist.add(symbol);
+    try{ toast({kind:"warn", title:"Market blacklisted", msg:symbol+" cold this session ("+mem.l+" losses) — sitting it out.", ttl:5000}); }catch(_){}
+    try{ _brainPush(kind, "🚫", "Blacklisted <b>"+esc(symbol)+"</b> after "+mem.l+" session losses — rotating to other markets", "tune"); }catch(_){}
+  }
   async function _pickBestMarket(threshold){
     try{
       const d = await scanGet();
@@ -5393,7 +5412,15 @@ window.EOAuto = (function(){
       //   • streak-end reversion (10 pts/penalty) — running-side gets fewer pts
       // Per-market W/L recency adds ±6–8 pts on top.
       // Total can reach ~120 in extreme cases; clamped to 100 for display.
-      const cands = ready.map(m => {
+      // Per-session blacklist: markets that lost 3+ times this session are
+      // filtered out — stops the bot from bleeding on the same loser.
+      const blacklist = (S.sess && S.sess.marketBlacklist) || new Set();
+      const readyAfterBL = ready.filter(m => !blacklist.has(m.symbol));
+      if(!readyAfterBL.length){
+        _brainStatus("eo", '<b>holding</b> · all viable markets blacklisted this session ('+blacklist.size+')');
+        return {none:true, reason:"all markets blacklisted in this session"};
+      }
+      const cands = readyAfterBL.map(m => {
         const evp  = Math.round(m.even_pct);
         const evWins = evp >= 50;
         const side = evWins ? "even" : "odd";
@@ -5698,7 +5725,8 @@ window.EOAuto = (function(){
     S.running = true;
     // resume:true skips the sess reset so localStorage-restored sessions keep their P/L.
     if(!(opts && opts.resume)){
-      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0, sideHist:{even:0, odd:0}};
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0,
+                sideHist:{even:0, odd:0}, marketBlacklist: new Set()};
       try{ _marketMemReset("eo"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
@@ -5948,7 +5976,14 @@ window.RFAuto = (function(){
         return {none:true, reason:"all 10 markets still warming up"};
       }
       // ── CONVICTION-WEIGHTED CANDIDATES ─────────────────────────
-      const cands = ready.map(m => {
+      // Per-session blacklist for RF.
+      const blacklist = (S.sess && S.sess.marketBlacklist) || new Set();
+      const readyAfterBL = ready.filter(m => !blacklist.has(m.symbol));
+      if(!readyAfterBL.length){
+        _brainStatus("rf", '<b>holding</b> · all viable markets blacklisted this session ('+blacklist.size+')');
+        return {none:true, reason:"all markets blacklisted in this session"};
+      }
+      const cands = readyAfterBL.map(m => {
         const up = Math.round(m.up_pct);
         const riseWins = up >= 50;
         const side = riseWins ? "up" : "down";
@@ -6155,7 +6190,8 @@ window.RFAuto = (function(){
     try{ if(window.OUAuto && window.OUAuto.running) window.OUAuto.stop("RF auto started"); }catch(_){}
     S.running = true;
     if(!(opts && opts.resume)){
-      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0, sideHist:{up:0, down:0}};
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0,
+                sideHist:{up:0, down:0}, marketBlacklist: new Set()};
       try{ _marketMemReset("rf"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
@@ -6570,6 +6606,9 @@ window.OUAuto = (function(){
   // Pick best (market, barrier, side) triple. If mode=auto, iterates
   // every barrier 1-8 across every market and returns the strongest.
   // If mode=manual, uses the fixed barrier from the picker.
+  // OVER/UNDER brain — v3, parallels EO/RF. Conviction = lean + multi-window
+  // agreement (freq + freq_20 + freq_50) + z + tick depth + chi-square +
+  // per-market memory. Adaptive floor + OVER/UNDER side balance applied.
   async function _pickBestOuMarket(threshold, barrierManual){
     try{
       const d = await scanGet();
@@ -6579,37 +6618,92 @@ window.OUAuto = (function(){
         return {none:true, reason:"all 10 markets still warming up"};
       }
       const auto = _barrierMode() === "auto";
-      // Build candidates: in auto mode we expand market × barrier (8 each),
-      // in manual mode we just compute over the single chosen barrier.
       const barriers = auto ? [1,2,3,4,5,6,7,8] : [barrierManual];
+      // Per-session blacklist: markets that have lost 3+ times in this session
+      // get filtered out — stop banging head against a bad market.
+      const blacklist = (S.sess && S.sess.marketBlacklist) || new Set();
       const cands = [];
       for(const m of ready){
+        if(blacklist.has(m.symbol)) continue;
         for(const bar of barriers){
           const sp = _ouSplit(m.freq, bar); if(!sp) continue;
           const op = sp.over_pct, upPct = sp.under_pct;
           const overWins = op >= upPct;
+          const side = overWins ? "over" : "under";
           const pct = Math.round(Math.max(op, upPct));
-          const z = Math.abs(_ouZ(m.freq, bar, overWins ? "over" : "under"));
+          const lean = pct - 50;
+          const z = Math.abs(_ouZ(m.freq, bar, side));
+          // Multi-window agreement: check freq_20 + freq_50 + full for the
+          // same OVER/UNDER lean on THIS barrier.
+          const winSides = [m.freq_20, m.freq_50, m.freq].map(f => {
+            if(!Array.isArray(f)) return null;
+            const sp2 = _ouSplit(f, bar);
+            if(!sp2) return null;
+            return sp2.over_pct >= sp2.under_pct ? "over" : "under";
+          });
+          const valid = winSides.filter(s => s != null);
+          const agree = valid.length ? valid.filter(s => s === side).length : 1;
+          const ticks = m.ticks || 0;
+          const sLean   = Math.min(60, lean * 3.5);
+          const sAgree  = Math.min(18, agree * 6);
+          const sZ      = Math.min(15, z * 6);
+          const sDepth  = Math.min(7, Math.log2(Math.max(1, ticks / 20)) * 2);
+          const chi    = Number(m.chi_square || 0);
+          const sChi   = m.chi_anomalous_p01 ? 8 : Math.min(8, Math.max(0, (chi - 9) * 0.4));
+          const sMem = _marketRecencyAdj("ou", m.symbol);
+          const conviction = Math.max(0, Math.min(100, Math.round(sLean + sAgree + sZ + sDepth + sChi + sMem)));
           cands.push({
             symbol:m.symbol, name:m.name||m.symbol,
-            side: overWins ? "over" : "under",
-            barrier: bar, pct, z,
+            side, barrier: bar, pct, lean, z, agree, ticks, conviction,
+            sLean: Math.round(sLean), sAgree, sZ: Math.round(sZ),
+            sDepth: Math.round(sDepth), sChi: Math.round(sChi), sMem,
           });
         }
       }
       if(!cands.length){
-        _brainStatus("ou", '<b>no clear lean</b> · holding for stronger edge');
-        return {none:true, reason:"no markets had a clear lean"};
+        const reason = blacklist.size ? "all viable markets blacklisted this session" : "no markets had a clear lean";
+        _brainStatus("ou", '<b>holding</b> · '+reason);
+        return {none:true, reason};
       }
-      cands.sort((a, b) => (b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
+      // OVER/UNDER side balance — nudge underrepresented side.
+      const sh = S.sess.sideHist = S.sess.sideHist || {over:0, under:0};
+      const gap = (sh.over||0) - (sh.under||0);
+      const bias = Math.max(-3, Math.min(3, gap * 0.6));
+      cands.forEach(c => {
+        c.adjConv = c.conviction + (c.side === "under" ? bias : -bias);
+      });
+      cands.sort((a,b) => b.adjConv - a.adjConv);
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
       try{
-        // Top 3 for the brain — include the barrier when AUTO mode picks across.
         const view = cands.slice(0, 8).map(c => ({...c, side: c.side.toUpperCase()+" "+c.barrier}));
         _brainRenderCands("ou", view);
+      }catch(_){}
+      // Adaptive conviction floor.
+      const FLOOR = _adaptiveFloor(S.sess);
+      if(pick.adjConv < FLOOR){
+        const tier = _convictionTier(pick.adjConv);
+        const floorNote = (FLOOR !== _CONVICTION_FLOOR_BASE)
+          ? ' (adaptive · base '+_CONVICTION_FLOOR_BASE+' → '+FLOOR+')' : '';
+        try{
+          _brainStatus("ou", '⏸ <b style="color:'+tier.col+'">holding</b> · best is <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.barrier+' · conviction <b>'+pick.adjConv+'</b> ('+tier.tag+') < floor '+FLOOR+floorNote);
+          _brainPush("ou", "⏸", "Holding — top conviction "+pick.adjConv+" ("+tier.tag+") below floor "+FLOOR+floorNote, "tune");
+        }catch(_){}
+        return {none:true, reason:"conviction "+pick.adjConv+" below floor "+FLOOR};
+      }
+      try{
+        const tier = _convictionTier(pick.adjConv);
+        const balNote = Math.abs(gap) >= 4
+          ? ' · ⚖ rebal '+(gap>0?'→UNDER':'→OVER')
+          : '';
+        const memNote = (pick.sMem > 0) ? ' · 🔥 mem +'+pick.sMem
+                      : (pick.sMem < 0) ? ' · ❄ mem '+pick.sMem : '';
         const barLab = auto ? 'AUTO→<b>'+pick.barrier+'</b>' : 'barrier '+pick.barrier;
-        _brainStatus("ou", '📡 weighing ' + cands.length + (auto ? ' (market×barrier)' : ' markets') + ' · '+barLab+' · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+        const blNote = blacklist.size ? ' · 🚫 '+blacklist.size+' blacklisted' : '';
+        _brainStatus("ou",
+          '🎯 '+barLab+' · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'%'+
+          ' · conv <b style="color:'+tier.col+'">'+pick.adjConv+' '+tier.tag+'</b>'+
+          ' · '+pick.agree+'/3w · z '+pick.z.toFixed(2)+balNote+memNote+blNote);
       }catch(_){}
       return pick;
     } catch(_){
@@ -6667,10 +6761,16 @@ window.OUAuto = (function(){
     const barTag = barrierMode === "auto" ? 'AUTO→<b>'+barrier+'</b>' : '<b>'+barrier+'</b>';
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> bar "+barTag+" on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    // Track per-session OVER/UNDER history for the side-balance nudge next cycle.
+    S.sess.sideHist = S.sess.sideHist || {over:0, under:0};
+    S.sess.sideHist[pick.side] = (S.sess.sideHist[pick.side] || 0) + 1;
     try{
       const sideTxt = pick.side.toUpperCase()+" "+barrier;
       const barLog = barrierMode === "auto" ? "AUTO→"+barrier : ""+barrier;
-      _brainPush("ou", "🎯", "Picked <b>"+sideTxt+"</b> (barrier "+barLog+") on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      const convStr = (pick.adjConv != null)
+        ? ' · conviction <b>'+pick.adjConv+'</b> ('+_convictionTier(pick.adjConv).tag+', '+pick.agree+'/3w · z '+pick.z.toFixed(2)+')'
+        : '';
+      _brainPush("ou", "🎯", "Picked <b>"+sideTxt+"</b> (barrier "+barLog+") on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2)+convStr);
       _brainFireCand("ou", pick.symbol);
       _brainStatus("ou", '🔥 firing <b>'+sideTxt+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
     }catch(_){}
@@ -6760,7 +6860,8 @@ window.OUAuto = (function(){
     try{ if(window.RFAuto && window.RFAuto.running) window.RFAuto.stop("OU auto started"); }catch(_){}
     S.running = true;
     if(!(opts && opts.resume)){
-      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0,
+                sideHist:{over:0, under:0}, marketBlacklist: new Set()};
       try{ _marketMemReset("ou"); }catch(_){}
       try{ _ouBarrierMemReset(); }catch(_){}
     }
