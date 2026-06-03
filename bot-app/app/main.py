@@ -1102,11 +1102,11 @@ async def account_topup_demo(account_id: str, request: Request) -> dict:
             detail = ("Deriv refused the topup: " + str(exc)
                       + (" · new-platform attempt: " + new_platform_error if new_platform_error else ""))
             return {"ok": False, "error": detail,
-                    "fallback_url": "https://app.deriv.com/cashier/deposit",
+                    "fallback_url": "https://app.deriv.com/cashier/reset-balance",
                     "message": "Couldn't reset automatically — open Deriv to top up."}
         except Exception as exc:
             return {"ok": False, "error": repr(exc)[:160],
-                    "fallback_url": "https://app.deriv.com/cashier/deposit",
+                    "fallback_url": "https://app.deriv.com/cashier/reset-balance",
                     "message": "Couldn't reset automatically — open Deriv to top up."}
     # Bust the balance cache so the next /balance call returns the new value.
     _BALANCE_CACHE.pop(account_id, None)

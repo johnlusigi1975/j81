@@ -3571,6 +3571,33 @@ document.addEventListener("click", function(ev){
     });
   }catch(_){}
 });
+// After we open Deriv's reset page in a new tab, watch for the J81 tab
+// regaining focus — that's when the user has come back from the Deriv
+// reset. Refresh the balance immediately so the new $10,000 shows up
+// without them clicking anything. Auto-disarms after 5 minutes.
+let _BAL_REFRESH_DISARM = null;
+function _armBalanceAutoRefresh(){
+  if(_BAL_REFRESH_DISARM){ try{ _BAL_REFRESH_DISARM(); }catch(_){} }
+  let fired = 0;
+  const onFocus = function(){
+    if(fired > 6 || !CUR) return;
+    fired++;
+    try{ loadBalance(CUR.id).then(showBalance); }catch(_){}
+  };
+  window.addEventListener("focus", onFocus);
+  document.addEventListener("visibilitychange", onFocus);
+  const stopAt = setTimeout(function(){
+    window.removeEventListener("focus", onFocus);
+    document.removeEventListener("visibilitychange", onFocus);
+    _BAL_REFRESH_DISARM = null;
+  }, 5 * 60 * 1000);
+  _BAL_REFRESH_DISARM = function(){
+    clearTimeout(stopAt);
+    window.removeEventListener("focus", onFocus);
+    document.removeEventListener("visibilitychange", onFocus);
+    _BAL_REFRESH_DISARM = null;
+  };
+}
 // Reset demo balance to $10K — calls /accounts/{id}/topup_demo
 document.addEventListener("click", function(ev){
   const t = ev.target.closest && ev.target.closest("#trade-topup");
@@ -3588,11 +3615,18 @@ document.addEventListener("click", function(ev){
     try{
       const r = await api("/accounts/"+encodeURIComponent(CUR.id)+"/topup_demo", {method:"POST", body:"{}"});
       // Both topup paths failed — server returned {ok:false, fallback_url}.
-      // Open Deriv's cashier in a new tab so the user can reset there.
+      // For new-platform (DOT/ROT) accounts, Deriv DOES NOT expose topup_virtual
+      // over their API — it's a platform constraint, not a bug. Open the reset
+      // page in a new tab and listen for the user returning so we can auto-
+      // refresh the balance without them having to click anything.
       if(r && r.ok === false){
-        try{ toast({kind:"warn", title:"Reset on Deriv",
-                    msg:(r.message || "Open Deriv to top up your demo balance — link opening now."), ttl:6000}); }catch(_){}
+        try{ toast({kind:"warn", title:"Deriv-only reset",
+                    msg:"Demo reset isn't available via API for new-platform accounts. Opening Deriv — your balance will refresh automatically when you come back.",
+                    ttl:7000}); }catch(_){}
         try{ if(r.fallback_url) window.open(r.fallback_url, "_blank", "noopener"); }catch(_){}
+        // Auto-refresh balance on window-focus events for the next 5 minutes —
+        // catches the moment the user returns from the Deriv tab.
+        _armBalanceAutoRefresh();
         return;
       }
       try{ toast({kind:"win", title:"Demo balance reset",
