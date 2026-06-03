@@ -5874,9 +5874,11 @@ window.RFAuto = (function(){
       ? '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire'
       : '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger'; }
   }
-  // Same filtered candidate pick as EO but on up_pct + |up_z|>=2 + multi-window.
+  // RISE/FALL brain — v3, parallels EO. Conviction = lean + multi-window
+  // agreement + z-magnitude + tick depth + chi-square bonus + streak
+  // reversion. Adaptive floor lifts in recovery / cold streaks. Side
+  // balance nudges RISE/FALL when one direction has dominated.
   async function _pickBestRfMarket(threshold){
-    // No filter rejection — fire every cycle on the strongest direction lean.
     try{
       const d = await scanGet();
       const ready = (d.markets || []).filter(m => m.ready && m.up_pct != null);
@@ -5884,21 +5886,81 @@ window.RFAuto = (function(){
         _brainStatus("rf", '<b>warming up</b> · all 10 markets still gathering ticks');
         return {none:true, reason:"all 10 markets still warming up"};
       }
+      // ── CONVICTION-WEIGHTED CANDIDATES ─────────────────────────
       const cands = ready.map(m => {
         const up = Math.round(m.up_pct);
         const riseWins = up >= 50;
-        const pct = riseWins ? up : 100-up;
-        const z = m.up_z != null ? Math.abs(Number(m.up_z)) : 0;
-        return { symbol:m.symbol, name:m.name||m.symbol, side:riseWins?"up":"down", pct, z };
+        const side = riseWins ? "up" : "down";
+        const pct  = riseWins ? up : 100 - up;
+        const lean = pct - 50;
+        const z    = m.up_z != null ? Math.abs(Number(m.up_z)) : 0;
+        // Per-window leans toward the SAME direction as the full buffer.
+        const winSides = [m.up_pct_20, m.up_pct_50, m.up_pct].map(v => v == null ? null : (v >= 50 ? "up" : "down"));
+        const valid = winSides.filter(s => s != null);
+        const agree = valid.length ? valid.filter(s => s === side).length : 1;
+        const ticks = m.ticks || 0;
+        // Sub-scores
+        const sLean   = Math.min(60, lean * 3.5);
+        const sAgree  = Math.min(18, agree * 6);
+        const sZ      = Math.min(15, z * 6);
+        const sDepth  = Math.min(7, Math.log2(Math.max(1, ticks / 20)) * 2);
+        // Chi-square bonus (uses EO's digit anomaly as a proxy for "market is
+        // showing non-uniform behaviour right now" — applies to direction too).
+        const chi    = Number(m.chi_square || 0);
+        const sChi   = m.chi_anomalous_p01 ? 8 : Math.min(8, Math.max(0, (chi - 9) * 0.4));
+        // Per-market W/L memory recency (separate from EO's track).
+        const sMem = _marketRecencyAdj("rf", m.symbol);
+        const conviction = Math.max(0, Math.min(100, Math.round(sLean + sAgree + sZ + sDepth + sChi + sMem)));
+        return {
+          symbol: m.symbol, name: m.name || m.symbol,
+          side, pct, lean, z, agree, ticks, conviction,
+          sLean: Math.round(sLean), sAgree, sZ: Math.round(sZ),
+          sDepth: Math.round(sDepth), sChi: Math.round(sChi), sMem,
+        };
       });
-      cands.sort((a,b)=>(b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
+      // ── DIRECTION BALANCE ──────────────────────────────────────
+      // Track per-session RISE vs FALL fires; gentle ±3pt bias when one
+      // side has dominated. Strong genuine convictions still win.
+      const sh = S.sess.sideHist = S.sess.sideHist || {up:0, down:0};
+      const gap = (sh.up||0) - (sh.down||0);   // +ve = too many RISE fires
+      const bias = Math.max(-3, Math.min(3, gap * 0.6));
+      cands.forEach(c => {
+        c.adjConv = c.conviction + (c.side === "down" ? bias : -bias);
+      });
+      cands.sort((a,b) => b.adjConv - a.adjConv);
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
-      // Brain feed
+      // Render candidate panel (using human-friendly side labels).
       try{
-        const view = cands.map(c=>({...c, side: c.side==="up"?"RISE":"FALL"}));
+        const view = cands.map(c => ({...c, side: c.side === "up" ? "RISE" : "FALL"}));
         _brainRenderCands("rf", view);
-        _brainStatus("rf", '📡 weighing ' + cands.length + ' markets · <b>'+esc(pick.name)+'</b> '+(pick.side==="up"?"RISE":"FALL")+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+      }catch(_){}
+      // ── ADAPTIVE CONVICTION FLOOR ───────────────────────────────
+      const FLOOR = _adaptiveFloor(S.sess);
+      if(pick.adjConv < FLOOR){
+        const tier = _convictionTier(pick.adjConv);
+        const floorNote = (FLOOR !== _CONVICTION_FLOOR_BASE)
+          ? ' (adaptive · base '+_CONVICTION_FLOOR_BASE+' → '+FLOOR+')' : '';
+        const sideTxt = pick.side === "up" ? "RISE" : "FALL";
+        try{
+          _brainStatus("rf", '⏸ <b style="color:'+tier.col+'">holding</b> · best is <b>'+esc(pick.name)+'</b> '+sideTxt+' · conviction <b>'+pick.adjConv+'</b> ('+tier.tag+') < floor '+FLOOR+floorNote);
+          _brainPush("rf", "⏸", "Holding — top conviction "+pick.adjConv+" ("+tier.tag+") below floor "+FLOOR+floorNote, "tune");
+        }catch(_){}
+        return {none:true, reason:"conviction "+pick.adjConv+" below floor "+FLOOR};
+      }
+      // Brain status — full signal breakdown.
+      try{
+        const tier = _convictionTier(pick.adjConv);
+        const sideTxt = pick.side === "up" ? "RISE" : "FALL";
+        const balNote = Math.abs(gap) >= 4
+          ? ' · ⚖ rebal '+(gap>0?'→FALL':'→RISE')
+          : '';
+        const memNote = (pick.sMem > 0) ? ' · 🔥 mem +'+pick.sMem
+                      : (pick.sMem < 0) ? ' · ❄ mem '+pick.sMem : '';
+        _brainStatus("rf",
+          '🎯 <b>'+esc(pick.name)+'</b> '+sideTxt+' '+pick.pct+'%'+
+          ' · conv <b style="color:'+tier.col+'">'+pick.adjConv+' '+tier.tag+'</b>'+
+          ' · '+pick.agree+'/3w · z '+pick.z.toFixed(2)+balNote+memNote);
       }catch(_){}
       return pick;
     } catch(_){
@@ -5938,9 +6000,16 @@ window.RFAuto = (function(){
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    // Track per-session direction history so the next _pickBestRfMarket can
+    // rebalance if RISE or FALL has dominated.
+    S.sess.sideHist = S.sess.sideHist || {up:0, down:0};
+    S.sess.sideHist[pick.side] = (S.sess.sideHist[pick.side] || 0) + 1;
     try{
       const sideTxt = pick.side === "up" ? "RISE" : "FALL";
-      _brainPush("rf", "🎯", "Picked <b>"+sideTxt+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2));
+      const convStr = (pick.adjConv != null)
+        ? ' · conviction <b>'+pick.adjConv+'</b> ('+_convictionTier(pick.adjConv).tag+', '+pick.agree+'/3w · z '+pick.z.toFixed(2)+')'
+        : '';
+      _brainPush("rf", "🎯", "Picked <b>"+sideTxt+"</b> on "+esc(pick.name)+" · "+dur+" tick"+(dur>1?"s":"")+" · "+pick.pct+"% lean · $"+cfg.stake.toFixed(2)+convStr);
       _brainFireCand("rf", pick.symbol);
       _brainStatus("rf", '🔥 firing <b>'+sideTxt+'</b> on '+esc(pick.name)+' · '+dur+'t · $'+cfg.stake.toFixed(2));
     }catch(_){}
@@ -6025,7 +6094,7 @@ window.RFAuto = (function(){
     try{ if(window.OUAuto && window.OUAuto.running) window.OUAuto.stop("RF auto started"); }catch(_){}
     S.running = true;
     if(!(opts && opts.resume)){
-      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0, sideHist:{up:0, down:0}};
       try{ _marketMemReset("rf"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
