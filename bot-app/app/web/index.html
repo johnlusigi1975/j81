@@ -3587,13 +3587,22 @@ document.addEventListener("click", function(ev){
   (async ()=>{
     try{
       const r = await api("/accounts/"+encodeURIComponent(CUR.id)+"/topup_demo", {method:"POST", body:"{}"});
+      // Both topup paths failed — server returned {ok:false, fallback_url}.
+      // Open Deriv's cashier in a new tab so the user can reset there.
+      if(r && r.ok === false){
+        try{ toast({kind:"warn", title:"Reset on Deriv",
+                    msg:(r.message || "Open Deriv to top up your demo balance — link opening now."), ttl:6000}); }catch(_){}
+        try{ if(r.fallback_url) window.open(r.fallback_url, "_blank", "noopener"); }catch(_){}
+        return;
+      }
       try{ toast({kind:"win", title:"Demo balance reset",
                   msg:"Now at "+(r.balance ? r.balance.toLocaleString()+" "+(r.currency||"USD") : "10,000 USD"), ttl:5000}); }catch(_){}
       // Re-paint balance — bypass cache by fetching fresh
       try{ const fresh = await loadBalance(CUR.id); showBalance(fresh); }catch(_){}
     }catch(err){
       const m = (err && err.message) || "topup failed";
-      try{ toast({kind:"loss", title:"Reset failed", msg:m, ttl:5000}); }catch(_){}
+      try{ toast({kind:"loss", title:"Reset failed", msg:m+" · Opening Deriv cashier as fallback.", ttl:6000}); }catch(_){}
+      try{ window.open("https://app.deriv.com/cashier/deposit", "_blank", "noopener"); }catch(_){}
     } finally{
       t.dataset.busy = "0";
       t.disabled = false;

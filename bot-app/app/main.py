@@ -1071,20 +1071,43 @@ async def account_topup_demo(account_id: str, request: Request) -> dict:
     if not token:
         raise HTTPException(401, "no stored token — please reconnect Deriv")
     platform = (acct.get("platform") or "legacy").lower()
-    try:
-        if platform == "new":
+    from app.deriv import topup_virtual as _legacy_topup
+    b = None
+    new_platform_error: str | None = None
+    # Try the new-platform Options WS first (if account was connected that way).
+    # If that path errors out — which is expected, since topup_virtual is a v3
+    # API call and the Options WS may not expose it — fall back to the legacy
+    # v3 WS authorising with the same OAuth token. Deriv issues OAuth tokens
+    # that are valid for v3 reads + topup even when scoped for the new platform.
+    if platform == "new":
+        try:
             from app import deriv_new
-            async def _topup(tk):
+            async def _topup_new(tk):
                 ws_url = await deriv_new.request_otp_ws(tk, deriv_id)
                 return await deriv_new.topup_virtual(ws_url)
-            b = await tokens.with_fresh_token(account_id, _topup)
-        else:
-            from app.deriv import topup_virtual as _legacy_topup
-            b = await _legacy_topup(token)
-    except DerivBotError as exc:
-        raise HTTPException(502, f"Deriv refused the topup: {exc}")
-    except Exception as exc:
-        raise HTTPException(502, f"topup failed: {exc!r}"[:160])
+            b = await tokens.with_fresh_token(account_id, _topup_new)
+        except DerivBotError as exc:
+            new_platform_error = str(exc)
+        except Exception as exc:
+            new_platform_error = repr(exc)[:160]
+    # Legacy path — runs when platform=="legacy" OR when the new-platform call
+    # failed above. Authorizes with the stored token on the v3 WS and issues
+    # the canonical {"topup_virtual":1} request.
+    if b is None:
+        try:
+            fresh = await tokens.get_access_token(account_id)
+            b = await _legacy_topup(fresh or token)
+        except DerivBotError as exc:
+            # Both paths failed — surface a clean message with a fallback URL.
+            detail = ("Deriv refused the topup: " + str(exc)
+                      + (" · new-platform attempt: " + new_platform_error if new_platform_error else ""))
+            return {"ok": False, "error": detail,
+                    "fallback_url": "https://app.deriv.com/cashier/deposit",
+                    "message": "Couldn't reset automatically — open Deriv to top up."}
+        except Exception as exc:
+            return {"ok": False, "error": repr(exc)[:160],
+                    "fallback_url": "https://app.deriv.com/cashier/deposit",
+                    "message": "Couldn't reset automatically — open Deriv to top up."}
     # Bust the balance cache so the next /balance call returns the new value.
     _BALANCE_CACHE.pop(account_id, None)
     return {"ok": True, "balance": b.get("balance"), "currency": b.get("currency") or "USD",
