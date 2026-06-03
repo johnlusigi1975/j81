@@ -5226,10 +5226,26 @@ window.EOAuto = (function(){
   // hardest right now. Threshold/z/multi-window indicators are still rendered
   // in the radar + scanner as info, but they don't gate firing. Safety rails
   // (TP, SL, loss-streak, martingale cap) are what stops bad runs.
-  // Conviction floor — when the BEST candidate's conviction is below this,
-  // the brain SKIPS the cycle rather than gambling on a weak read. RNG
-  // doesn't make this number negotiable; the brain just waits.
-  const _CONVICTION_FLOOR = 28;
+  // BASE conviction floor — the brain SKIPS a cycle when the top
+  // candidate is below this. The ACTUAL floor adapts during a session
+  // (see _adaptiveFloor below) — base 28, lifts in recovery, lowers on a
+  // hot streak. RNG doesn't make the number negotiable; brain just waits.
+  const _CONVICTION_FLOOR_BASE = 28;
+  // Adaptive conviction floor: rises when the system is in recovery or
+  // a losing streak (require BETTER setups when risking more / cooling),
+  // drops slightly on a hot streak (capture momentum). Clamped 20–55.
+  function _adaptiveFloor(sess){
+    const martStep = (sess && sess.martStep) || 0;
+    const streak   = (sess && sess.streak)   || 0;     // consecutive losses
+    const wins     = (sess && sess.wins)     || 0;
+    const losses   = (sess && sess.losses)   || 0;
+    const wonRecently = (wins > 0 && streak === 0);
+    let floor = _CONVICTION_FLOOR_BASE;
+    floor += martStep * 4;             // higher recovery step = stricter
+    floor += streak   * 3;             // colder = stricter
+    if(wonRecently && wins >= 3) floor -= 3;  // hot session = relax slightly
+    return Math.max(20, Math.min(55, floor));
+  }
   // Map a 0–100 conviction score to a human-readable tier.
   function _convictionTier(c){
     if(c >= 70) return {tag:"HIGH",   col:"#6ff0a8"};
@@ -5237,6 +5253,15 @@ window.EOAuto = (function(){
     if(c >= 35) return {tag:"FAIR",   col:"var(--amber)"};
     if(c >= 20) return {tag:"WEAK",   col:"#ff9aac"};
     return            {tag:"NOISE",   col:"var(--faint)"};
+  }
+  // Per-market recent-result penalty: each loss on this market in the
+  // session subtracts conviction, each win adds. Caps so one good market
+  // can't blind the brain to a stronger fresh setup elsewhere.
+  function _marketRecencyAdj(kind, symbol){
+    const mem = _marketMemFor(kind, symbol);
+    if(!mem) return 0;
+    const net = (mem.w || 0) - (mem.l || 0);
+    return Math.max(-8, Math.min(6, net * 2));
   }
   async function _pickBestMarket(threshold){
     try{
@@ -5247,12 +5272,16 @@ window.EOAuto = (function(){
         return {none:true, reason:"all 10 markets still warming up"};
       }
       // ── CONVICTION-WEIGHTED CANDIDATES ─────────────────────────
-      // Each market is scored by combining FOUR independent factors:
-      //   • lean magnitude  (up to 60 pts) — how far from 50/50
-      //   • multi-window agreement (up to 18 pts) — full + 20-tick + 50-tick
-      //   • z-magnitude     (up to 15 pts) — statistical conviction
-      //   • tick depth      (up to 7 pts)  — more samples = more trust
-      // Total cap: 100. Used as the SORT KEY and threshold gate.
+      // Brain v3 — each market is scored across SEVEN factors:
+      //   • lean magnitude       (60 pts) — how far from 50/50
+      //   • multi-window agreement (18 pts) — full + 20-tick + 50-tick
+      //   • z-magnitude          (15 pts) — statistical conviction
+      //   • tick depth           (7 pts)  — more samples = more trust
+      //   • chi-square anomaly   (8 pts)  — digit distribution is unusual
+      //   • hot-digit alignment  (5 pts)  — most-frequent digit on side
+      //   • streak-end reversion (10 pts/penalty) — running-side gets fewer pts
+      // Per-market W/L recency adds ±6–8 pts on top.
+      // Total can reach ~120 in extreme cases; clamped to 100 for display.
       const cands = ready.map(m => {
         const evp  = Math.round(m.even_pct);
         const evWins = evp >= 50;
@@ -5265,16 +5294,44 @@ window.EOAuto = (function(){
         const valid = winSides.filter(s => s != null);
         const agree = valid.length ? valid.filter(s => s === side).length : 1;
         const ticks = m.ticks || 0;
-        // Sub-scores (all clamped to their own caps so no single factor dominates).
+        // Base sub-scores (each clamped so no single factor dominates).
         const sLean    = Math.min(60, lean * 3.5);            // 50%→0, 60%→35, 70%→60
         const sAgree   = Math.min(18, agree * 6);              // 0/6/12/18
         const sZ       = Math.min(15, z * 6);                  // z≥2.5 saturates
-        const sDepth   = Math.min(7, Math.log2(Math.max(1, ticks / 20)) * 2);  // 20t→0, 40t→2, 80t→4, 320t→8
-        const conviction = Math.round(sLean + sAgree + sZ + sDepth);
+        const sDepth   = Math.min(7, Math.log2(Math.max(1, ticks / 20)) * 2);
+        // ── Brain v3 additions ─────────────────────────────────
+        // Chi-square: high chi = digit distribution diverges from uniform.
+        // The observer flags p<0.01 anomalies; weight those higher.
+        const chi    = Number(m.chi_square || 0);
+        const sChi   = m.chi_anomalous_p01 ? 8 : Math.min(8, Math.max(0, (chi - 9) * 0.4));
+        // Hot-digit alignment: if the most-frequent digit's parity matches
+        // our chosen side, that's an extra conviction (the lean is backed
+        // by a SPECIFIC dominant digit, not just an even sample fluke).
+        const hot = (m.hot_digit != null) ? Number(m.hot_digit) : null;
+        const hotSide = (hot != null) ? (hot % 2 === 0 ? "even" : "odd") : null;
+        const sHot = (hotSide && hotSide === side) ? 5 : 0;
+        // Streak-end reversion: if the current run is ON the side we're
+        // about to fire, deduct points (runs end). If the run is on the
+        // OPPOSITE side, add points (reversion is likely → our side wins).
+        const runLen = Number(m.current_streak || 0);
+        const runSide = m.streak_side || null;
+        let sStreak = 0;
+        if(runLen >= 4 && runSide){
+          // Long run on same side as our pick → reversion risk, penalise.
+          // Long run on OPPOSITE side → reversion to our side, reward.
+          sStreak = (runSide === side) ? -Math.min(10, (runLen - 3) * 2) : Math.min(10, (runLen - 3) * 2);
+        }
+        const baseConv = sLean + sAgree + sZ + sDepth + sChi + sHot + sStreak;
+        // Per-market memory recency — wins on this market add, losses subtract.
+        const sMem = _marketRecencyAdj("eo", m.symbol);
+        const conviction = Math.max(0, Math.min(100, Math.round(baseConv + sMem)));
         return {
           symbol: m.symbol, name: m.name || m.symbol,
           side, pct, lean, z, agree, ticks, conviction,
-          sLean: Math.round(sLean), sAgree, sZ: Math.round(sZ), sDepth: Math.round(sDepth),
+          runLen, runSide,
+          sLean: Math.round(sLean), sAgree, sZ: Math.round(sZ),
+          sDepth: Math.round(sDepth), sChi: Math.round(sChi),
+          sHot, sStreak, sMem,
         };
       });
       // ── SIDE BALANCE ────────────────────────────────────────────
@@ -5293,27 +5350,35 @@ window.EOAuto = (function(){
       pick.aboveThreshold = pick.pct >= threshold;
       // Render candidate panel.
       try{ _brainRenderCands("eo", cands); }catch(_){}
-      // ── CONVICTION FLOOR ────────────────────────────────────────
-      // The brain SKIPS the cycle when no candidate has meaningful conviction.
-      // This is the difference between "always firing" and "firing when it matters".
-      if(pick.adjConv < _CONVICTION_FLOOR){
+      // ── ADAPTIVE CONVICTION FLOOR ───────────────────────────────
+      // Floor rises in recovery / cold streaks (require BETTER setups
+      // when more is at stake) and dips on hot streaks (capture momentum).
+      const FLOOR = _adaptiveFloor(S.sess);
+      if(pick.adjConv < FLOOR){
         const tier = _convictionTier(pick.adjConv);
+        const floorNote = (FLOOR !== _CONVICTION_FLOOR_BASE)
+          ? ' (adaptive · base '+_CONVICTION_FLOOR_BASE+' → '+FLOOR+')' : '';
         try{
-          _brainStatus("eo", '⏸ <b style="color:'+tier.col+'">holding</b> · best is <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' · conviction <b>'+pick.adjConv+'</b> ('+tier.tag+') < floor '+_CONVICTION_FLOOR);
-          _brainPush("eo", "⏸", "Holding — top conviction "+pick.adjConv+" ("+tier.tag+") below floor "+_CONVICTION_FLOOR, "tune");
+          _brainStatus("eo", '⏸ <b style="color:'+tier.col+'">holding</b> · best is <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' · conviction <b>'+pick.adjConv+'</b> ('+tier.tag+') < floor '+FLOOR+floorNote);
+          _brainPush("eo", "⏸", "Holding — top conviction "+pick.adjConv+" ("+tier.tag+") below floor "+FLOOR+floorNote, "tune");
         }catch(_){}
-        return {none:true, reason:"conviction "+pick.adjConv+" below floor "+_CONVICTION_FLOOR};
+        return {none:true, reason:"conviction "+pick.adjConv+" below floor "+FLOOR};
       }
-      // Brain status — show conviction tier + balance note.
+      // Brain status — show conviction tier + balance note + signals used.
       try{
         const tier = _convictionTier(pick.adjConv);
         const balNote = Math.abs(gap) >= 4
-          ? ' · ⚖ rebalancing '+(gap>0?'→ODD':'→EVEN')+' (last '+sh.even+'/'+sh.odd+')'
+          ? ' · ⚖ rebal '+(gap>0?'→ODD':'→EVEN')
           : '';
+        const runNote = (pick.runLen >= 4 && pick.runSide)
+          ? ' · '+(pick.runSide===pick.side?'⚠ on-run '+pick.runLen:'⤴ reversion '+pick.runLen+' '+pick.runSide.toUpperCase())
+          : '';
+        const memNote = (pick.sMem > 0) ? ' · 🔥 mem +'+pick.sMem
+                      : (pick.sMem < 0) ? ' · ❄ mem '+pick.sMem : '';
         _brainStatus("eo",
           '🎯 <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'%'+
-          ' · conviction <b style="color:'+tier.col+'">'+pick.adjConv+' ('+tier.tag+')</b>'+
-          ' · '+pick.agree+'/3 windows · z '+pick.z.toFixed(2)+balNote);
+          ' · conv <b style="color:'+tier.col+'">'+pick.adjConv+' '+tier.tag+'</b>'+
+          ' · '+pick.agree+'/3w · z '+pick.z.toFixed(2)+balNote+runNote+memNote);
       }catch(_){}
       return pick;
     } catch(_){

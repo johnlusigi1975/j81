@@ -1384,6 +1384,13 @@ async def scan_local() -> dict:
             "freq": m.get("freq"),                # OU client-side barrier math
             "freq_20": m.get("freq_20"),
             "freq_50": m.get("freq_50"),
+            # Brain-v3 signals: statistical anomaly + run momentum + digit heat.
+            "chi_square": m.get("chi_square"),       # uniformity test (higher = more skew)
+            "chi_anomalous_p01": m.get("chi_anomalous_p01"),
+            "current_streak": m.get("current_streak"),  # consecutive same-parity digits
+            "streak_side": m.get("streak_side"),         # "even" / "odd"
+            "hot_digit": m.get("hot_digit"),
+            "cold_digit": m.get("cold_digit"),
             "ticks": m.get("ticks") or 0,
             "ready": bool(m.get("ready")),
             "payout_pct": po.get("payout_pct"),
