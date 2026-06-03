@@ -342,10 +342,12 @@ async def execute_manual_trade(
         store.record_trade(trade_intent)
         return trade_intent
     try:
-        # Watch the contract live on the buy socket so the result is fast — keep
-        # the wait short so the HTTP call stays snappy and well under the client
-        # timeout (longer ticks fall back to the background poll).
-        settle_wait = min(int(trade_intent["duration"]) * 2 + 2, 6)
+        # Watch the contract live on the buy socket so the result is fast.
+        # Wait up to ~20s — covers Vol 25 / 10-tick (~20s) and all shorter
+        # trades. Client timeout is 25s so we stay comfortably under it.
+        # Trades that don't settle in this window fall back to the
+        # frontend's post-fire settle poll.
+        settle_wait = min(int(trade_intent["duration"]) * 2 + 3, 20)
         buy = await _live_buy(
             account, token, settle_wait=settle_wait, symbol=symbol, trade_type=tt,
             direction=direction, prediction=prediction, duration=trade_intent["duration"],

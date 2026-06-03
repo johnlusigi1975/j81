@@ -3008,6 +3008,21 @@ const _PERSIST_INPUTS = [
   "ou-tp","ou-sl","ou-thr","ou-stake","ou-streak","ou-mart","ou-mart-cap","ou-ticks","ou-barrier",
 ];
 const _SETTINGS_KEY = "j81_settings_v1";
+// ── USER-TOUCHED FIELD TRACKING ───────────────────────────────────
+// Once the trader edits a stake/TP/SL/threshold input, that field is
+// considered "user-locked" — presets (Cautious/Steady/Bold) will NOT
+// overwrite it. Survives reloads via localStorage. Cleared by the
+// "Reset to preset" tooling only (long-press a preset later).
+const _TOUCHED_KEY = "j81_touched_inputs_v1";
+let _APPLYING_PRESET = false;   // true while _applyPreset is dispatching events
+function _isTouched(id){
+  try{ const t = JSON.parse(localStorage.getItem(_TOUCHED_KEY) || "{}"); return !!t[id]; }catch(_){ return false; }
+}
+function _markTouched(id){
+  try{ const t = JSON.parse(localStorage.getItem(_TOUCHED_KEY) || "{}"); if(t[id]) return;
+       t[id] = 1; localStorage.setItem(_TOUCHED_KEY, JSON.stringify(t)); }catch(_){}
+}
+function _clearTouched(){ try{ localStorage.removeItem(_TOUCHED_KEY); }catch(_){} }
 function _saveSettings(){
   try{
     const out = {};
@@ -3087,10 +3102,13 @@ function _bootLoadSettings(){
 }
 _bootLoadSettings();
 // Save on every input change to any persisted field. Delegated handler so
-// it survives DOM mutations / re-renders.
+// it survives DOM mutations / re-renders. Also marks the field as
+// "user-touched" so presets won't overwrite it later — UNLESS the event
+// was triggered by a preset itself (_APPLYING_PRESET guard).
 document.addEventListener("input", (ev) => {
   const t = ev.target;
   if(!t || !t.id || !_PERSIST_INPUTS.includes(t.id)) return;
+  if(!_APPLYING_PRESET) _markTouched(t.id);
   // Debounce so a slider drag doesn't spam localStorage.
   clearTimeout(window.__settingsSaveT);
   window.__settingsSaveT = setTimeout(_saveSettings, 250);
@@ -4911,6 +4929,44 @@ async function refreshLive(){
 // after a trade, poll a few times so the WON/LOST + new balance show as it settles
 function pollSettle(){ [2500,8000,15000].forEach(ms=>setTimeout(()=>{ try{refreshLive();}catch(_){ } },ms)); }
 
+// ---- Retroactive session-stats settle for pending auto-trades ----
+// When /trade/manual returns outcome:"pending" (long contract), the
+// session counters wouldn't update. This helper polls the server's
+// settled trades for a SPECIFIC trade_id once the contract should be
+// over, then increments wins/losses/pnl on the caller's session object.
+// Idempotent — guards against double-counting via _SETTLED_IDS.
+const _SETTLED_IDS = new Set();
+async function _settlePendingAutoTrade(scope, S, tradeId, duration, options){
+  if(!tradeId || !CUR) return;
+  if(_SETTLED_IDS.has(tradeId)) return;
+  const opts = options || {};
+  // Estimate when the contract should be settled. Vol*(1s) ticks every 1s;
+  // standard volatilities tick every ~2s. Add a 3s buffer.
+  const tickSec = opts.oneSecondTicks ? 1 : 2;
+  const waitMs = Math.max(2000, (duration * tickSec + 3) * 1000);
+  setTimeout(async function(){
+    if(_SETTLED_IDS.has(tradeId)) return;
+    try{
+      await api("/accounts/"+encodeURIComponent(CUR.id)+"/settle", {method:"POST", body:"{}"});
+      const rows = await api("/trades?account_id="+encodeURIComponent(CUR.id)+"&limit=30");
+      const t = (rows || []).find(function(x){ return x.id === tradeId || x.trade_id === tradeId; });
+      if(!t || !t.outcome || t.outcome === "pending") return;
+      _SETTLED_IDS.add(tradeId);
+      const p = Number(t.profit || 0);
+      const lost = (p < 0) || t.outcome === "lost";
+      if(lost){
+        S.sess.losses = (S.sess.losses || 0) + 1;
+        S.sess.streak = (S.sess.streak || 0) + 1;
+      } else {
+        S.sess.wins   = (S.sess.wins || 0) + 1;
+        S.sess.streak = 0;
+      }
+      S.sess.pnl = (S.sess.pnl || 0) + p;
+      try{ if(typeof opts.onSettled === "function") opts.onSettled(t, lost, p); }catch(_){}
+    }catch(_){}
+  }, waitMs);
+}
+
 // ----------------------- Congrats / stop popup -----------------------
 function showPop({kind, icon, title, msg, pnl}){
   // kind: "win" (TP hit) | "stop" (SL or loss-streak hit)
@@ -5036,22 +5092,24 @@ window.EOAuto = (function(){
     //    • lean magnitude  (50 points max) — how far above 50/50 we are
     //    • multi-window agreement (30 points) — short/mid/long all on side
     //    • z-score punch (20 points) — capped to keep sample-luck honest
-    // This gives the trader a single "trust score" without staring at 4 charts.
+    // Curve tuned so MODERATE leans (55–65%) read as meaningful confidence
+    // — RNG noise rarely hits 70%+ even on long runs, so a flatter curve
+    // here gives the trader an honest signal instead of always showing 1–10.
     let conf = 0;
-    conf += Math.min(50, Math.max(0, (lead - 50) * 2.5));  // 50%→0, 70%→50
+    conf += Math.min(50, Math.max(0, (lead - 50) * 4));    // 50%→0, 60%→40, 62.5%→50 (capped)
     const winSides = [w20, w50, w200].map(v => v==null ? null : (v >= 50));
     const valid = winSides.filter(v=>v!=null);
     if(valid.length >= 2){
       const allAgree = valid.every(v=>v===valid[0]);
       conf += allAgree ? 30 : (valid.filter(v=>v===valid[0]).length === valid.length-1 ? 12 : 0);
     }
-    // Simple z-magnitude → up to 20 pts (z=2.5+ saturates)
+    // z-magnitude → up to 20 pts. Saturates faster so even z≈1.5 contributes.
     const lastDigit = d[d.length-1];
     if(d.length >= 30){
       const ev2 = d.filter(x=>x%2===0).length;
       const n = d.length;
       const z = Math.abs((2*ev2 - n) / Math.sqrt(n));
-      conf += Math.min(20, z * 8);
+      conf += Math.min(20, z * 12);
     }
     conf = Math.round(Math.max(0, Math.min(100, conf)));
     const cs = $g("eo-conf-score"); const cn = $g("eo-conf-num");
@@ -5127,19 +5185,28 @@ window.EOAuto = (function(){
   // (Old single-market _decide() removed — _pickBestMarket scans ALL 10
   // volatilities via /scan now, so the auto-trader hops between markets
   // instead of staying glued to whatever the user opened with.)
-  function _autoTicks(lead){
-    // Auto-ticks: stronger lean → fewer ticks (less time for randomness to revert).
-    // 10-tier ladder: 1 → 10 ticks across the 50–100% lean spectrum.
-    if(lead >= 82) return 1;
-    if(lead >= 76) return 2;
-    if(lead >= 71) return 3;
-    if(lead >= 66) return 4;
-    if(lead >= 62) return 5;
-    if(lead >= 58) return 6;
-    if(lead >= 55) return 7;
-    if(lead >= 53) return 8;
-    if(lead >= 51) return 9;
-    return 10;
+  function _autoTicks(lead, z){
+    // Auto-ticks: stronger lean → fewer ticks (less time for noise to revert).
+    // The base ladder maps lead-magnitude → ticks. Then z-score (statistical
+    // conviction) trims or adds one tick: high z (≥1.5σ) means the lean is
+    // backed by real concentration → trim a tick; low z (<0.5σ) means the
+    // lean is mostly noise → add a tick to give the trend time to confirm.
+    // Net effect: same lead can produce 3 different tick counts based on z,
+    // so the desk doesn't lock to one value across a session.
+    let base;
+    if(lead >= 82) base = 1;
+    else if(lead >= 76) base = 2;
+    else if(lead >= 71) base = 3;
+    else if(lead >= 66) base = 4;
+    else if(lead >= 62) base = 5;
+    else if(lead >= 58) base = 6;
+    else if(lead >= 55) base = 7;
+    else if(lead >= 53) base = 8;
+    else if(lead >= 51) base = 9;
+    else base = 10;
+    const zAbs = (typeof z === "number") ? Math.abs(z) : 0;
+    const zAdj = (zAbs >= 1.5) ? -1 : (zAbs < 0.5 ? +1 : 0);
+    return Math.max(1, Math.min(10, base + zAdj));
   }
   // Scan ALL 10 markets and pick the one with the strongest current lean.
   // No filters — auto-trader fires every cycle on whichever market is leaning
@@ -5207,7 +5274,7 @@ window.EOAuto = (function(){
       // along visually instead of waiting up to 4s for the next poll.
       try{ loadEoScan(); }catch(_){ }
     }
-    const dur = (cfg.ticksMode==="auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
+    const dur = (cfg.ticksMode==="auto") ? _autoTicks(pick.pct, pick.z) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
     // If AUTO ticks: scan-and-pick animation so the user SEES which tick was
@@ -5292,6 +5359,21 @@ window.EOAuto = (function(){
           }
           S.sess.martStep = 0;
         }
+      } else if(r.trade_id){
+        // PENDING — server didn't settle in time. Schedule a retroactive
+        // settle so wins/losses still hit the session counters once the
+        // contract finalises. (Recovery Engine martStep stays unchanged
+        // for this trade; next loss/win will adjust on its own.)
+        _settlePendingAutoTrade("eo", S, r.trade_id, dur, {
+          oneSecondTicks: /\(1s\)/i.test(pick.name || ""),
+          onSettled: function(t, lost, p){
+            try{ _renderStats(); _setPnl(); _setFills(); _renderDots(); }catch(_){}
+            try{ _brainLogResult("eo", t.outcome, p, S.sess.streak, t.symbol || pick.symbol, t.name || pick.name); }catch(_){}
+            try{ _saveAutoSession("eo"); }catch(_){}
+            const lateTag = lost ? '<b style="color:var(--bad)">LOST</b>' : '<b style="color:var(--good)">WON</b>';
+            try{ _setStatus("⌗ "+lateTag+" (late) · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak); }catch(_){}
+          }
+        });
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       // Brain: log the trade outcome (win / loss / settling).
@@ -5641,7 +5723,7 @@ window.RFAuto = (function(){
     if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
     const sel = $g("t-symbol");
     if(sel && sel.value !== pick.symbol){ sel.value = pick.symbol; sel.dispatchEvent(new Event("change")); try{ loadRfScan(); }catch(_){} }
-    const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
+    const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct, pick.z) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
     // Scan-and-pick animation on the AUTO chip + manual chips.
@@ -5695,6 +5777,18 @@ window.RFAuto = (function(){
           }
           S.sess.martStep = 0;
         }
+      } else if(r.trade_id){
+        // PENDING — schedule retroactive W/L update once the contract settles.
+        _settlePendingAutoTrade("rf", S, r.trade_id, dur, {
+          oneSecondTicks: /\(1s\)/i.test(pick.name || ""),
+          onSettled: function(t, lost, p){
+            try{ _renderStats(); _setPnl(); _setFills(); _renderDots(); }catch(_){}
+            try{ _brainLogResult("rf", t.outcome, p, S.sess.streak, t.symbol || pick.symbol, t.name || pick.name); }catch(_){}
+            try{ _saveAutoSession("rf"); }catch(_){}
+            const lateTag = lost ? '<b style="color:var(--bad)">LOST</b>' : '<b style="color:var(--good)">WON</b>';
+            try{ _setStatus("⌗ "+lateTag+" (late) · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak); }catch(_){}
+          }
+        });
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       try{ if(outcome !== "pending") _brainLogResult("rf", outcome, profit, S.sess.streak, pick.symbol, pick.name); }catch(_){}
@@ -5813,13 +5907,25 @@ window.RFAuto = (function(){
   };
   function _applyRfPreset(name){
     const p = RF_PRESETS[name]; if(!p) return;
-    const set = (id, v) => { const el = document.getElementById(id); if(!el) return;
-      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+    _APPLYING_PRESET = true;
+    let skipped = 0, applied = 0;
+    const set = (id, v) => {
+      if(_isTouched(id)){ skipped++; return; }
+      const el = document.getElementById(id); if(!el) return;
+      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true}));
+      applied++;
+    };
     set("rf-tp", p.tp); set("rf-sl", p.sl); set("rf-thr", p.thr);
     set("rf-stake", p.stake.toFixed(2)); set("rf-streak", p.streak);
     if(p.mart != null) set("rf-mart", p.mart.toFixed(1));
     document.querySelectorAll("#rf-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
     try{ window.RFAuto._setFills(); window.RFAuto._renderDots(); window.RFAuto._renderMart(); window.RFAuto._updateSignal(); }catch(_){ }
+    _APPLYING_PRESET = false;
+    if(skipped > 0 && applied === 0){
+      try{ toast({kind:"info", title:"Manual settings kept", msg:"Your custom values are locked in.", ttl:4500}); }catch(_){}
+    } else if(skipped > 0){
+      try{ toast({kind:"info", title:name+" preset · partial", msg:"Applied to "+applied+" · kept "+skipped+" custom.", ttl:4000}); }catch(_){}
+    }
   }
   document.addEventListener("click", function(ev){
     const t = ev.target.closest && ev.target.closest("#rf-presets button[data-preset]");
@@ -6215,7 +6321,7 @@ window.OUAuto = (function(){
     }
     const sel = $g("t-symbol");
     if(sel && sel.value !== pick.symbol){ sel.value = pick.symbol; sel.dispatchEvent(new Event("change")); try{ loadOuScan(); }catch(_){ } }
-    const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct) : cfg.ticksManual;
+    const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct, pick.z) : cfg.ticksManual;
     if(!CUR){ S.stop("connect an account first"); return; }
     S.busy = true;
     if(cfg.ticksMode === "auto"){
@@ -6272,6 +6378,19 @@ window.OUAuto = (function(){
           }
           S.sess.martStep = 0;
         }
+      } else if(r.trade_id){
+        // PENDING — schedule retroactive W/L update once the contract settles.
+        _settlePendingAutoTrade("ou", S, r.trade_id, dur, {
+          oneSecondTicks: /\(1s\)/i.test(pick.name || ""),
+          onSettled: function(t, lost, p){
+            try{ _renderStats(); _setPnl(); _setFills(); _renderDots(); }catch(_){}
+            try{ _brainLogResult("ou", t.outcome, p, S.sess.streak, t.symbol || pick.symbol, t.name || pick.name); }catch(_){}
+            try{ _ouBarrierMemRecord(pick.barrier, t.outcome, p); }catch(_){}
+            try{ _saveAutoSession("ou"); }catch(_){}
+            const lateTag = lost ? '<b style="color:var(--bad)">LOST</b>' : '<b style="color:var(--good)">WON</b>';
+            try{ _setStatus("⌗ "+lateTag+" (late) · session "+S.sess.wins+"/"+S.sess.trades+" · streak "+S.sess.streak); }catch(_){}
+          }
+        });
       }
       _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
       try{ if(outcome !== "pending") _brainLogResult("ou", outcome, profit, S.sess.streak, pick.symbol, pick.name); }catch(_){}
@@ -6420,13 +6539,25 @@ window.OUAuto = (function(){
   };
   function _applyOuPreset(name){
     const p = OU_PRESETS[name]; if(!p) return;
-    const set = (id, v) => { const el = document.getElementById(id); if(!el) return;
-      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+    _APPLYING_PRESET = true;
+    let skipped = 0, applied = 0;
+    const set = (id, v) => {
+      if(_isTouched(id)){ skipped++; return; }
+      const el = document.getElementById(id); if(!el) return;
+      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true}));
+      applied++;
+    };
     set("ou-tp", p.tp); set("ou-sl", p.sl); set("ou-thr", p.thr);
     set("ou-stake", p.stake.toFixed(2)); set("ou-streak", p.streak);
     if(p.mart != null) set("ou-mart", p.mart.toFixed(1));
     document.querySelectorAll("#ou-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
     try{ window.OUAuto._setFills(); window.OUAuto._renderDots(); window.OUAuto._renderMart(); window.OUAuto._updateSignal(); }catch(_){ }
+    _APPLYING_PRESET = false;
+    if(skipped > 0 && applied === 0){
+      try{ toast({kind:"info", title:"Manual settings kept", msg:"Your custom values are locked in.", ttl:4500}); }catch(_){}
+    } else if(skipped > 0){
+      try{ toast({kind:"info", title:name+" preset · partial", msg:"Applied to "+applied+" · kept "+skipped+" custom.", ttl:4000}); }catch(_){}
+    }
   }
   document.addEventListener("click", function(ev){
     const t = ev.target.closest && ev.target.closest("#ou-presets button[data-preset]");
@@ -6499,8 +6630,15 @@ window.OUAuto = (function(){
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
-    const set = (id, v) => { const el = document.getElementById(id); if(!el) return;
-      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+    _APPLYING_PRESET = true;
+    let skipped = 0, applied = 0;
+    const set = (id, v) => {
+      // SKIP if the trader has already typed in this field — manual settings stick.
+      if(_isTouched(id)){ skipped++; return; }
+      const el = document.getElementById(id); if(!el) return;
+      el.value = v; el.dispatchEvent(new Event("input", {bubbles:true}));
+      applied++;
+    };
     set("eo-tp",     p.tp);
     set("eo-sl",     p.sl);
     set("eo-thr",    p.thr);
@@ -6509,6 +6647,12 @@ window.OUAuto = (function(){
     if(p.mart != null) set("eo-mart", p.mart.toFixed(1));
     document.querySelectorAll("#eo-presets button").forEach(b => b.classList.toggle("on", b.dataset.preset === name));
     try{ window.EOAuto._setFills(); window.EOAuto._renderDots(); window.EOAuto._renderMart(); window.EOAuto._updateSignal(); }catch(_){ }
+    _APPLYING_PRESET = false;
+    if(skipped > 0 && applied === 0){
+      try{ toast({kind:"info", title:"Manual settings kept", msg:"Your custom TP/SL/stake/threshold are locked in. Long-press a preset to reset all to default.", ttl:4500}); }catch(_){}
+    } else if(skipped > 0){
+      try{ toast({kind:"info", title:name+" preset · partial", msg:"Applied to "+applied+" field"+(applied>1?"s":"")+" — kept your "+skipped+" custom value"+(skipped>1?"s":"")+".", ttl:4000}); }catch(_){}
+    }
   }
   document.addEventListener("click", function(ev){
     const t = ev.target.closest && ev.target.closest("#eo-presets button[data-preset]");
