@@ -5010,7 +5010,16 @@ function pollSettle(){ [2500,8000,15000].forEach(ms=>setTimeout(()=>{ try{refres
 // settled trades for a SPECIFIC trade_id once the contract should be
 // over, then increments wins/losses/pnl on the caller's session object.
 // Idempotent — guards against double-counting via _SETTLED_IDS.
+// Each timer is tracked per-controller so Stop can cancel them — that's
+// what makes Stop actually mean Stop (no late updates leaking through).
 const _SETTLED_IDS = new Set();
+window._PENDING_SETTLES = window._PENDING_SETTLES || {eo: new Set(), rf: new Set(), ou: new Set()};
+function _cancelPendingSettles(scope){
+  const bag = window._PENDING_SETTLES && window._PENDING_SETTLES[scope];
+  if(!bag) return;
+  bag.forEach(id => { try{ clearTimeout(id); }catch(_){} });
+  bag.clear();
+}
 async function _settlePendingAutoTrade(scope, S, tradeId, duration, options){
   if(!tradeId || !CUR) return;
   if(_SETTLED_IDS.has(tradeId)) return;
@@ -5019,7 +5028,13 @@ async function _settlePendingAutoTrade(scope, S, tradeId, duration, options){
   // standard volatilities tick every ~2s. Add a 3s buffer.
   const tickSec = opts.oneSecondTicks ? 1 : 2;
   const waitMs = Math.max(2000, (duration * tickSec + 3) * 1000);
-  setTimeout(async function(){
+  const bag = (window._PENDING_SETTLES && window._PENDING_SETTLES[scope]) || null;
+  const timerId = setTimeout(async function(){
+    if(bag) bag.delete(timerId);
+    // Bail if the auto-trader was stopped while we were waiting. Trade still
+    // settled on Deriv, but we don't push UI noise after Stop — the user
+    // explicitly asked the bot to be quiet.
+    if(!S.running){ return; }
     if(_SETTLED_IDS.has(tradeId)) return;
     try{
       await api("/accounts/"+encodeURIComponent(CUR.id)+"/settle", {method:"POST", body:"{}"});
@@ -5040,6 +5055,7 @@ async function _settlePendingAutoTrade(scope, S, tradeId, duration, options){
       try{ if(typeof opts.onSettled === "function") opts.onSettled(t, lost, p); }catch(_){}
     }catch(_){}
   }, waitMs);
+  if(bag) bag.add(timerId);
 }
 
 // ----------------------- Congrats / stop popup -----------------------
@@ -5683,6 +5699,9 @@ window.EOAuto = (function(){
     if(!S.running && !S.timer) return;
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer=null; }
+    // Kill any pending retroactive settle timers — Stop means Stop, no
+    // late toasts or brain log lines after the user has paused the desk.
+    try{ _cancelPendingSettles("eo"); }catch(_){}
     _resetBtn();
     _clearAutoSession("eo");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+
@@ -6128,6 +6147,7 @@ window.RFAuto = (function(){
     if(!S.running && !S.timer) return;
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer = null; }
+    try{ _cancelPendingSettles("rf"); }catch(_){}
     _resetBtn();
     _clearAutoSession("rf");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));
@@ -6737,6 +6757,7 @@ window.OUAuto = (function(){
     if(!S.running && !S.timer) return;
     S.running = false;
     if(S.timer){ clearInterval(S.timer); S.timer = null; }
+    try{ _cancelPendingSettles("ou"); }catch(_){}
     _resetBtn();
     _clearAutoSession("ou");
     _setStatus("⌗ stopped — "+esc(reason||"manual stop")+" · "+S.sess.wins+"/"+S.sess.trades+" · "+((S.sess.pnl>=0?"+$":"-$")+Math.abs(S.sess.pnl).toFixed(2)));

@@ -1392,16 +1392,28 @@ async def scan_local() -> dict:
     cached = _SCAN_CACHE.get("v1")
     if cached and (now - cached[0]) < _SCAN_TTL:
         return cached[1]
+    # Never 502 the scanner — the auto-traders poll this every cycle and a
+    # transient observer or library hiccup would otherwise flood the brain
+    # console with "scanner unreachable" toasts. Degrade gracefully: empty
+    # markets + warming note. The next cache window picks up real data once
+    # the observer recovers.
     try:
         from app import library as _lib
-        from app import observer as _obs
         lib = _lib.library()
+    except Exception:
+        lib = {}
+    try:
+        from app import observer as _obs
         obs = _obs.observer_snapshot_safe()
-    except Exception as exc:
-        raise HTTPException(502, f"scan unavailable: {exc!r}")
+    except Exception:
+        obs = {"markets": [], "flagged": [], "ticks_seen": 0, "markets_ready": 0}
+    try:
+        from app import observer as _obs   # re-import for SCAN_SYMBOLS access below
+    except Exception:
+        _obs = None
     payouts_by_sym = ((lib or {}).get("live") or {}).get("even_odd_payouts_by_market") or {}
     # Pretty-name lookup from the observer's symbol list (R_100 → "Vol 100").
-    SYMBOL_NAMES = dict(_obs.SCAN_SYMBOLS)
+    SYMBOL_NAMES = dict(getattr(_obs, "SCAN_SYMBOLS", []) if _obs else [])
     rows: list[dict] = []
     for m in obs.get("markets") or []:
         sym = m.get("symbol")
