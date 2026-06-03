@@ -5232,14 +5232,32 @@ window.EOAuto = (function(){
           pct, lean: pct - 50, z,
         };
       });
-      // Tied lean? favour the higher z-score (still useful as a tiebreaker).
-      cands.sort((a, b) => (b.pct + b.z * 0.25) - (a.pct + a.z * 0.25));
+      // ── SIDE BALANCE ────────────────────────────────────────────
+      // Without correction, the bot would always fire whichever side
+      // happens to lead by 1% across this snapshot — and on Deriv RNG
+      // that often means a long EVEN streak followed by a long ODD
+      // streak. Track per-session side history; when one side has
+      // dominated (gap ≥ 4 trades) apply a gentle ±3pp lean bonus to
+      // the underrepresented side so the bot rotates naturally while
+      // still honouring genuine signal strength.
+      const sh = S.sess.sideHist = S.sess.sideHist || {even:0, odd:0};
+      const gap = (sh.even||0) - (sh.odd||0);          // +ve = too many EVEN fires
+      const bias = Math.max(-3, Math.min(3, gap * 0.6));
+      cands.forEach(c => {
+        // EVEN over-fired → penalise EVEN candidates, boost ODD.
+        c.adjPct = c.pct + (c.side === "odd" ? bias : -bias);
+      });
+      // Sort by adjusted score. z is the tiebreaker.
+      cands.sort((a, b) => (b.adjPct + b.z * 0.25) - (a.adjPct + a.z * 0.25));
       const pick = cands[0];
       pick.aboveThreshold = pick.pct >= threshold;
-      // Brain: surface the live candidate set + heartbeat.
+      // Brain: surface the candidate set + a balance note if rebalancing kicked in.
       try{
         _brainRenderCands("eo", cands);
-        _brainStatus("eo", '📡 weighing ' + cands.length + ' markets · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2));
+        const balNote = Math.abs(gap) >= 4
+          ? ' · ⚖ rebalancing '+(gap>0?'→ODD':'→EVEN')+' (last '+sh.even+'/'+sh.odd+')'
+          : '';
+        _brainStatus("eo", '📡 weighing ' + cands.length + ' markets · <b>'+esc(pick.name)+'</b> '+pick.side.toUpperCase()+' '+pick.pct+'% · z '+pick.z.toFixed(2) + balNote);
       }catch(_){}
       return pick;
     } catch(_){
@@ -5314,6 +5332,10 @@ window.EOAuto = (function(){
     }
     const ticksTag = (cfg.ticksMode === "auto") ? "AUTO→<b>"+dur+"t</b>" : "<b>"+dur+"t</b>";
     _setStatus("⌗ firing <b>"+pick.side.toUpperCase()+"</b> on <b>"+esc(pick.name)+"</b> · "+ticksTag+" · "+pick.pct+"% lean");
+    // Track per-session side history so the next _pickBestMarket can
+    // rebalance if EVEN or ODD has dominated.
+    S.sess.sideHist = S.sess.sideHist || {even:0, odd:0};
+    S.sess.sideHist[pick.side] = (S.sess.sideHist[pick.side] || 0) + 1;
     // Brain: log the pick + flash the candidate card so the trader SEES the
     // decision land instead of guessing what just happened.
     try{
@@ -5441,7 +5463,7 @@ window.EOAuto = (function(){
     S.running = true;
     // resume:true skips the sess reset so localStorage-restored sessions keep their P/L.
     if(!(opts && opts.resume)){
-      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0};
+      S.sess = {pnl:0, wins:0, losses:0, streak:0, trades:0, martStep:0, sideHist:{even:0, odd:0}};
       try{ _marketMemReset("eo"); }catch(_){}
     }
     _setPnl(); _setFills(); _renderDots(); _renderStats(); _renderMart();
