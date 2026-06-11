@@ -910,34 +910,6 @@
   .eo-mart-state .eo-mart-next span{color:var(--amber);font-weight:800;font-size:13px;margin-left:4px}
   .eo-mart-state.warming .eo-mart-next span{color:var(--warn)}
   .eo-mart-state.warming{border-color:rgba(245,158,11,.35);background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(0,0,0,.22))}
-  /* === QUANTUM PROBABILITY ENGINE — real EV + significance + Monte-Carlo.
-     Distinct violet/cyan "quantum" theme so it reads as its own brain in
-     the chain. Every number is real math; it never predicts the tick. === */
-  .q-engine{margin:11px 0 13px;padding:13px 14px 12px;border:1px solid rgba(139,124,255,.30);border-radius:14px;background:linear-gradient(135deg,rgba(139,124,255,.08),rgba(10,16,30,.30) 45%,rgba(70,210,220,.05));position:relative;overflow:hidden}
-  .q-engine::before{content:"";position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(139,124,255,.10),transparent);animation:brain-sweep 5s ease-in-out infinite;pointer-events:none}
-  .q-head{display:flex;align-items:center;gap:9px;margin-bottom:11px;position:relative;z-index:1}
-  .q-orb{width:13px;height:13px;border-radius:50%;flex:0 0 auto;background:radial-gradient(circle at 35% 30%,#c8b8ff,#8b7cff 45%,#46d2dc);box-shadow:0 0 12px rgba(139,124,255,.7),0 0 22px rgba(70,210,220,.35);animation:q-pulse 2.4s ease-in-out infinite}
-  @keyframes q-pulse{0%,100%{transform:scale(1);box-shadow:0 0 12px rgba(139,124,255,.7),0 0 22px rgba(70,210,220,.35)}50%{transform:scale(1.18);box-shadow:0 0 18px rgba(139,124,255,.95),0 0 32px rgba(70,210,220,.6)}}
-  .q-title{font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.16em;background:linear-gradient(90deg,#c8b8ff,#7fe0e8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;flex:1;min-width:0}
-  .q-verdict{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:7px;border:1px solid rgba(139,124,255,.3);color:#c8b8ff;background:rgba(139,124,255,.08);white-space:nowrap}
-  .q-verdict.good{color:#6ff0a8;border-color:rgba(45,220,130,.4);background:rgba(45,220,130,.08)}
-  .q-verdict.warn{color:#ffc24a;border-color:rgba(245,180,60,.4);background:rgba(245,180,60,.08)}
-  .q-verdict.bad{color:#ff9aac;border-color:rgba(255,80,110,.4);background:rgba(255,80,110,.08)}
-  .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;position:relative;z-index:1}
-  .q-cell{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(0,0,0,.22)}
-  .q-cell .q-lab{font-family:var(--mono);font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;font-weight:700}
-  .q-cell .q-val{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.01em}
-  .q-cell .q-val.pos{color:#6ff0a8}.q-cell .q-val.neg{color:#ff9aac}.q-cell .q-val.amber{color:#ffc24a}
-  .q-mc{margin-top:9px;padding:9px 10px;border:1px solid rgba(70,210,220,.18);border-radius:11px;background:rgba(70,210,220,.04);position:relative;z-index:1}
-  .q-mc-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:7px}
-  .q-mc-lab{font-family:var(--mono);font-size:10px;color:#9fe6ec;letter-spacing:.04em}.q-mc-lab b{color:#cffaff}
-  .q-mc-sub{font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.04em}
-  .q-mc-bar{display:flex;height:9px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.06)}
-  .q-mc-tp{height:100%;background:linear-gradient(90deg,#2ddc82,#6ff0a8);transition:width .5s ease}
-  .q-mc-sl{height:100%;background:linear-gradient(90deg,#ff9aac,#e23a52);margin-left:auto;transition:width .5s ease}
-  .q-mc-legend{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-family:var(--mono);font-size:9.5px;color:var(--dim);flex-wrap:wrap}
-  .q-mc-legend b{font-weight:800}.q-mc-tp-lab b{color:#6ff0a8}.q-mc-sl-lab b{color:#ff9aac}.q-mc-ev-lab b{color:var(--text)}
-  .q-note{margin-top:9px;font-family:var(--mono);font-size:9.5px;line-height:1.45;color:var(--faint);letter-spacing:.02em;position:relative;z-index:1}
   /* === RECOVERY ENGINE — premium martingale console ============== */
   .recovery-engine{margin:11px 0 14px;padding:12px 13px 13px;border:1px solid var(--bd2);border-radius:14px;background:linear-gradient(135deg,rgba(212,184,122,.05),rgba(20,28,40,.18) 40%,rgba(0,0,0,.20));position:relative;overflow:hidden}
   .recovery-engine::before{content:"";position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,184,122,.07),transparent);animation:brain-sweep 6s ease-in-out infinite;pointer-events:none}
@@ -1847,34 +1819,6 @@
         <div class="brain-log" id="eo-brain-log"></div>
       </div>
 
-      <!-- ── QUANTUM PROBABILITY ENGINE ── next in the chain after the Brain.
-           Real EV + statistical-significance + Monte-Carlo risk on the LIVE
-           setup. It computes the odds & risk precisely; it never predicts the
-           next digit (nothing can, on a fair RNG). Honest math = real confidence. -->
-      <div class="q-engine" id="eo-quantum">
-        <div class="q-head">
-          <span class="q-orb"></span>
-          <span class="q-title">QUANTUM PROBABILITY ENGINE</span>
-          <span class="q-verdict" id="eo-q-verdict">standing by</span>
-        </div>
-        <div class="q-grid">
-          <div class="q-cell"><span class="q-lab">Expected value / trade</span><span class="q-val" id="eo-q-ev">—</span></div>
-          <div class="q-cell"><span class="q-lab">Signal significance</span><span class="q-val" id="eo-q-sig">—</span></div>
-          <div class="q-cell"><span class="q-lab">Kelly optimal stake</span><span class="q-val" id="eo-q-kelly">—</span></div>
-          <div class="q-cell"><span class="q-lab">Edge vs house</span><span class="q-val" id="eo-q-edge">—</span></div>
-        </div>
-        <div class="q-mc">
-          <div class="q-mc-head"><span class="q-mc-lab">⟁ Monte-Carlo · <b id="eo-q-sims">10,000</b> simulated sessions</span><span class="q-mc-sub" id="eo-q-mc-sub">set your stake / TP / SL</span></div>
-          <div class="q-mc-bar"><div class="q-mc-tp" id="eo-q-mc-tp" style="width:0"></div><div class="q-mc-sl" id="eo-q-mc-sl" style="width:0"></div></div>
-          <div class="q-mc-legend">
-            <span class="q-mc-tp-lab">▲ hit TP first <b id="eo-q-tp-pct">—</b></span>
-            <span class="q-mc-ev-lab">⌀ session <b id="eo-q-mc-ev">—</b></span>
-            <span class="q-mc-sl-lab">▼ risk of ruin <b id="eo-q-ror">—</b></span>
-          </div>
-        </div>
-        <div class="q-note">Computes the odds &amp; risk of your <b>exact</b> setup — EV, whether the lean is statistically real, and 10k simulated sessions. It does <b>not</b> predict the next digit; on a fair RNG nothing can. Honest math, in your corner.</div>
-      </div>
-
       <!-- ── QUICK PRESETS ── one-tap profiles fill TP/SL/threshold/stake/streak.
            Lets the user start trading without filling every field manually. -->
       <div class="eo-presets" id="eo-presets">
@@ -1958,9 +1902,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">fires only when lean ≥ <span class="thr-display-num" id="eo-thr-display">62</span>% AND it holds for 3 scans</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">preferred lean ≥ <span class="thr-display-num" id="eo-thr-display">55</span>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap" id="eo-thr-wrap">
-            <input id="eo-thr" type="range" min="50" max="90" value="62" class="eo-slider"/>
+            <input id="eo-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
           <!-- Live AUTO-tune feed — surfaces what the auto-threshold is thinking
@@ -2023,11 +1967,11 @@
             <div class="re-tile-head"><span class="re-tile-lab" id="eo-re-mult-lab">Multiplier</span><span class="re-tile-hint">stake × <b id="eo-mart-display">1.5</b> per step</span></div>
             <div class="eo-stepper">
               <button type="button" data-step="-0.1" data-tgt="eo-mart">−</button>
-              <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.0"/></span>
+              <span class="cur">×<input id="eo-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
               <button type="button" data-step="+0.1" data-tgt="eo-mart">+</button>
             </div>
             <div class="re-presets" id="eo-mart-presets">
-              <button type="button" data-val="1.0" class="on" title="Flat stake — no martingale ladder (recommended on RNG)">Flat 1.0×</button>
+              <button type="button" data-val="1.5" class="on" title="Smaller losses, partial recovery">Cautious 1.5×</button>
               <button type="button" data-val="2.1" title="True recovery — wins cover all prior losses + small profit">Recovery 2.1×</button>
               <button type="button" data-val="2.5" title="Aggressive — fast recovery, bigger drawdown risk">Aggressive 2.5×</button>
             </div>
@@ -2122,31 +2066,6 @@
         <div class="brain-log" id="rf-brain-log"></div>
       </div>
 
-      <!-- ── QUANTUM PROBABILITY ENGINE (Rise/Fall) ── -->
-      <div class="q-engine" id="rf-quantum">
-        <div class="q-head">
-          <span class="q-orb"></span>
-          <span class="q-title">QUANTUM PROBABILITY ENGINE</span>
-          <span class="q-verdict" id="rf-q-verdict">standing by</span>
-        </div>
-        <div class="q-grid">
-          <div class="q-cell"><span class="q-lab">Expected value / trade</span><span class="q-val" id="rf-q-ev">—</span></div>
-          <div class="q-cell"><span class="q-lab">Signal significance</span><span class="q-val" id="rf-q-sig">—</span></div>
-          <div class="q-cell"><span class="q-lab">Kelly optimal stake</span><span class="q-val" id="rf-q-kelly">—</span></div>
-          <div class="q-cell"><span class="q-lab">Edge vs house</span><span class="q-val" id="rf-q-edge">—</span></div>
-        </div>
-        <div class="q-mc">
-          <div class="q-mc-head"><span class="q-mc-lab">⟁ Monte-Carlo · <b id="rf-q-sims">10,000</b> simulated sessions</span><span class="q-mc-sub" id="rf-q-mc-sub">set your stake / TP / SL</span></div>
-          <div class="q-mc-bar"><div class="q-mc-tp" id="rf-q-mc-tp" style="width:0"></div><div class="q-mc-sl" id="rf-q-mc-sl" style="width:0"></div></div>
-          <div class="q-mc-legend">
-            <span class="q-mc-tp-lab">▲ hit TP first <b id="rf-q-tp-pct">—</b></span>
-            <span class="q-mc-ev-lab">⌀ session <b id="rf-q-mc-ev">—</b></span>
-            <span class="q-mc-sl-lab">▼ risk of ruin <b id="rf-q-ror">—</b></span>
-          </div>
-        </div>
-        <div class="q-note">Computes the odds &amp; risk of your <b>exact</b> setup — EV, whether the lean is statistically real, and 10k simulated sessions. It does <b>not</b> predict the next move; on a fair RNG nothing can. Honest math, in your corner.</div>
-      </div>
-
       <!-- QUICK PRESETS -->
       <div class="eo-presets" id="rf-presets">
         <button type="button" data-preset="cautious"><span class="ic">🛡</span><span class="lab">Cautious</span><span class="sub">small wins · tight rails</span></button>
@@ -2196,9 +2115,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="rf-thr-auto-dot"></span>Direction threshold <button type="button" class="thr-auto-chip" id="rf-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="rf-thr-hint">fires only when lean ≥ <b id="rf-thr-display">62</b>% AND it holds for 3 scans</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="rf-thr-auto-dot"></span>Direction threshold <button type="button" class="thr-auto-chip" id="rf-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="rf-thr-hint">preferred lean ≥ <b id="rf-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
-            <input id="rf-thr" type="range" min="50" max="90" value="62" class="eo-slider"/>
+            <input id="rf-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -2250,11 +2169,11 @@
             <div class="re-tile-head"><span class="re-tile-lab">Multiplier</span><span class="re-tile-hint">stake × <b id="rf-mart-display">1.5</b> per step</span></div>
             <div class="eo-stepper">
               <button type="button" data-step="-0.1" data-tgt="rf-mart">−</button>
-              <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.0"/></span>
+              <span class="cur">×<input id="rf-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
               <button type="button" data-step="+0.1" data-tgt="rf-mart">+</button>
             </div>
             <div class="re-presets" id="rf-mart-presets">
-              <button type="button" data-val="1.0" class="on" title="Flat stake — no martingale ladder (recommended on RNG)">Flat 1.0×</button>
+              <button type="button" data-val="1.5" class="on">Cautious 1.5×</button>
               <button type="button" data-val="2.1">Recovery 2.1×</button>
               <button type="button" data-val="2.5">Aggressive 2.5×</button>
             </div>
@@ -2362,31 +2281,6 @@
         <div class="brain-log" id="ou-brain-log"></div>
       </div>
 
-      <!-- ── QUANTUM PROBABILITY ENGINE (Over/Under) ── -->
-      <div class="q-engine" id="ou-quantum">
-        <div class="q-head">
-          <span class="q-orb"></span>
-          <span class="q-title">QUANTUM PROBABILITY ENGINE</span>
-          <span class="q-verdict" id="ou-q-verdict">standing by</span>
-        </div>
-        <div class="q-grid">
-          <div class="q-cell"><span class="q-lab">Expected value / trade</span><span class="q-val" id="ou-q-ev">—</span></div>
-          <div class="q-cell"><span class="q-lab">Signal significance</span><span class="q-val" id="ou-q-sig">—</span></div>
-          <div class="q-cell"><span class="q-lab">Kelly optimal stake</span><span class="q-val" id="ou-q-kelly">—</span></div>
-          <div class="q-cell"><span class="q-lab">Edge vs house</span><span class="q-val" id="ou-q-edge">—</span></div>
-        </div>
-        <div class="q-mc">
-          <div class="q-mc-head"><span class="q-mc-lab">⟁ Monte-Carlo · <b id="ou-q-sims">10,000</b> simulated sessions</span><span class="q-mc-sub" id="ou-q-mc-sub">set your stake / TP / SL</span></div>
-          <div class="q-mc-bar"><div class="q-mc-tp" id="ou-q-mc-tp" style="width:0"></div><div class="q-mc-sl" id="ou-q-mc-sl" style="width:0"></div></div>
-          <div class="q-mc-legend">
-            <span class="q-mc-tp-lab">▲ hit TP first <b id="ou-q-tp-pct">—</b></span>
-            <span class="q-mc-ev-lab">⌀ session <b id="ou-q-mc-ev">—</b></span>
-            <span class="q-mc-sl-lab">▼ risk of ruin <b id="ou-q-ror">—</b></span>
-          </div>
-        </div>
-        <div class="q-note">Computes the odds &amp; risk of your <b>exact</b> setup — EV, whether the lean is statistically real, and 10k simulated sessions. It does <b>not</b> predict the next digit; on a fair RNG nothing can. Honest math, in your corner.</div>
-      </div>
-
       <!-- QUICK PRESETS -->
       <div class="eo-presets" id="ou-presets">
         <button type="button" data-preset="cautious"><span class="ic">🛡</span><span class="lab">Cautious</span><span class="sub">small wins · tight rails</span></button>
@@ -2456,9 +2350,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="ou-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="ou-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="ou-thr-hint">fires only when lean ≥ <b id="ou-thr-display">62</b>% AND it holds for 3 scans</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="ou-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="ou-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="ou-thr-hint">preferred lean ≥ <b id="ou-thr-display">55</b>% · auto fires every cycle on strongest</span></div>
           <div class="eo-slider-wrap">
-            <input id="ou-thr" type="range" min="50" max="90" value="62" class="eo-slider"/>
+            <input id="ou-thr" type="range" min="50" max="90" value="55" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -2510,11 +2404,11 @@
             <div class="re-tile-head"><span class="re-tile-lab">Multiplier</span><span class="re-tile-hint">stake × <b id="ou-mart-display">1.5</b> per step</span></div>
             <div class="eo-stepper">
               <button type="button" data-step="-0.1" data-tgt="ou-mart">−</button>
-              <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.0"/></span>
+              <span class="cur">×<input id="ou-mart" type="number" min="1" max="3" step="0.1" value="1.5"/></span>
               <button type="button" data-step="+0.1" data-tgt="ou-mart">+</button>
             </div>
             <div class="re-presets" id="ou-mart-presets">
-              <button type="button" data-val="1.0" class="on" title="Flat stake — no martingale ladder (recommended on RNG)">Flat 1.0×</button>
+              <button type="button" data-val="1.5" class="on">Cautious 1.5×</button>
               <button type="button" data-val="2.1">Recovery 2.1×</button>
               <button type="button" data-val="2.5">Aggressive 2.5×</button>
             </div>
@@ -2964,178 +2858,6 @@ function _cooldownStop(kind, manualSkip){
   if(banner && banner.parentNode) banner.parentNode.removeChild(banner);
   if(manualSkip) toast({kind:"warn", title:"Cooldown skipped", msg:"You bypassed the post-SL pause. Stake responsibly."});
 }
-
-// ===================================================================
-// DISCIPLINE GATE (shared) — the "WAITING → LOCKED ON" rail.
-//
-// The old engines fired EVERY 4s on whatever was leaning hardest, with
-// only a conviction floor in the way. That churned 90 noise-trades a
-// session on an audited RNG (~50/50), so every trade just paid the
-// house spread. A disciplined desk fires FAR less: a trade only commits
-// when the signal (a) clears the user's threshold AND a hard even/odd
-// gap, (b) PERSISTS for several scans (confirm-cycles), and (c) a
-// cooldown since the last fire has elapsed. Trading less is the only
-// honest edge on RNG besides market/payout selection — this is the gate
-// that turns ~90 trades into ~20 considered ones.
-//
-// Returns {ok:true} to fire (and stamps the cooldown), or
-// {hold:true, status:"..."} to wait — the controllers surface `status`
-// in the ENGINE BRAIN line so the trader SEES the desk holding.
-// ===================================================================
-const _DISCIPLINE = {
-  confirmCycles: 3,    // signal must hold this many consecutive scans
-  cooldownMs:    9000, // hard floor between fires (~scan interval is 4s)
-  minLeanPct:    6,    // even%/odd% (or up/down) gap must clear this, always
-};
-function _disciplineGate(kind, S, pick, threshold){
-  S.sess._disc = S.sess._disc || {side:null, symbol:null, count:0, lastFire:0};
-  const d = S.sess._disc, now = Date.now();
-  const lean = Math.abs(pick.lean || 0);
-  const pct  = (pick.pct != null) ? pick.pct : (50 + lean);
-  // 1) THRESHOLD + MIN-GAP — must clear the user's bar AND a hard floor.
-  const bar = Math.max(_DISCIPLINE.minLeanPct + 50, threshold || 0);
-  if(pct < bar){
-    d.side = null; d.symbol = null; d.count = 0;
-    return {hold:true, status:"WAITING · "+Math.round(pct)+"% < "+Math.round(bar)+"% bar"};
-  }
-  // 2) CONFIRM-CYCLES — the SAME side + market must persist before we commit.
-  if(d.side === pick.side && d.symbol === pick.symbol){ d.count += 1; }
-  else { d.side = pick.side; d.symbol = pick.symbol; d.count = 1; }
-  if(d.count < _DISCIPLINE.confirmCycles){
-    const sideTxt = String(pick.side || "").toUpperCase();
-    return {hold:true, status:"confirming "+d.count+"/"+_DISCIPLINE.confirmCycles+" · "+sideTxt+" "+(pick.name || pick.symbol || "")};
-  }
-  // 3) COOLDOWN — a forced gap so the desk can never machine-gun trades.
-  const since = now - (d.lastFire || 0);
-  if(d.lastFire && since < _DISCIPLINE.cooldownMs){
-    return {hold:true, status:"cooldown "+Math.ceil((_DISCIPLINE.cooldownMs - since)/1000)+"s · LOCKED ON"};
-  }
-  // LOCKED ON — commit: stamp the fire time and reset the confirm counter.
-  d.lastFire = now; d.count = 0;
-  return {ok:true};
-}
-
-// ===================================================================
-// QUANTUM PROBABILITY ENGINE — real EV + significance + Monte-Carlo.
-//
-// This is the "powerful maths" tile in the chain (surface → engine →
-// brain → QUANTUM). It does NOT predict the tick — on an audited RNG
-// nothing can. Instead it computes, precisely, the things that ARE
-// knowable: the expected value of the setup, whether the observed lean
-// is statistically real or noise, the Kelly-optimal stake, and — via a
-// 10,000-session Monte-Carlo simulation on the user's exact stake/TP/SL
-// — the probability of hitting take-profit before stop-loss, the
-// expected session P&L, and the risk of ruin. Every number is honest.
-// ===================================================================
-const _Q_PAYOUT = {eo:1.95, rf:1.95, ou:1.90};   // typical total return multiple on a win
-const _Q_LAST = {eo:null, rf:null, ou:null};       // last live pick per engine (for re-renders)
-const _Q_MC_CACHE = {};                            // memoise Monte-Carlo by input key
-const _Q = {
-  // Small, fast, seeded PRNG so the simulation is stable for identical
-  // inputs (no flicker between renders) yet varies as the setup changes.
-  mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; },
-  // EV of one trade: win prob p, flat stake, payout multiple m (win returns stake*(m-1)).
-  ev(p, stake, m){ return p*stake*(m-1) - (1-p)*stake; },
-  // Is the lean statistically distinguishable from a fair 50% over `ticks`?
-  // z = |p̂-0.5| / (0.5/√N). |z|≥2 ≈ 95% confidence it's not pure chance.
-  significance(pctWin, ticks){
-    if(!ticks || ticks < 8) return {z:0, real:false};
-    const se = 0.5/Math.sqrt(ticks);
-    const z = Math.abs((pctWin/100) - 0.5)/se;
-    return {z, real: z >= 2};
-  },
-  // Kelly fraction for net odds b=m-1 at win prob p. ≤0 ⇒ no edge ⇒ don't bet.
-  kelly(p, m){ const b = m-1; if(b <= 0) return 0; return (b*p - (1-p))/b; },
-  // Monte-Carlo: simulate sessions of flat-stake trades until TP or SL (or a
-  // trade cap), return P(TP first), P(SL first / ruin), mean session P&L.
-  monteCarlo(p, stake, m, tp, sl, seed){
-    const key = [Math.round(p*1e4), stake, m, tp, sl].join("|");
-    if(_Q_MC_CACHE[key]) return _Q_MC_CACHE[key];
-    const winAmt = stake*(m-1), loseAmt = stake;
-    // Cap the trade horizon so a huge SL with a tiny stake can't run forever;
-    // scale sim count down a touch when the horizon is long (keeps it instant).
-    const horizon = Math.min(1500, Math.max(20, Math.ceil((sl>0?sl:stake*60)/stake) + 5));
-    const sims = horizon > 600 ? 4000 : 10000;
-    const rng = _Q.mulberry32((seed>>>0) || 987654321);
-    let tpFirst=0, slFirst=0, sumPnl=0;
-    for(let s=0; s<sims; s++){
-      let pnl = 0;
-      for(let t=0; t<horizon; t++){
-        pnl += (rng() < p) ? winAmt : -loseAmt;
-        if(tp>0 && pnl >= tp){ tpFirst++; break; }
-        if(sl>0 && pnl <= -sl){ slFirst++; break; }
-      }
-      sumPnl += pnl;
-    }
-    const out = {tpPct:tpFirst/sims, slPct:slFirst/sims,
-                 neither:(sims-tpFirst-slFirst)/sims, meanPnl:sumPnl/sims, sims};
-    _Q_MC_CACHE[key] = out;
-    return out;
-  },
-};
-function _qFmt(v){ const a=Math.abs(v); const s=(v<0?"−$":"$")+a.toFixed(2); return s; }
-function _qSet(id, txt, cls){ const el=document.getElementById(id); if(!el) return; el.textContent=txt; if(cls!=null){ el.classList.remove("pos","neg","amber"); if(cls) el.classList.add(cls); } }
-// Render the Quantum tile for one engine from the live pick + the user's setup.
-// pick may be null (no candidate yet) → show a neutral "fair coin" baseline.
-function _renderQuantum(kind, pick){
-  try{
-    _Q_LAST[kind] = pick || _Q_LAST[kind];
-    const m     = _Q_PAYOUT[kind] || 1.95;
-    const stake = Math.max(0.35, parseFloat((document.getElementById(kind+"-stake")||{}).value) || 0.35);
-    const tp    = Math.max(0, parseFloat((document.getElementById(kind+"-tp")||{}).value) || 0);
-    const sl    = Math.max(0, parseFloat((document.getElementById(kind+"-sl")||{}).value) || 0);
-    const have  = pick && !pick.none && pick.pct != null;
-    const pctWin = have ? pick.pct : 50;          // win-prob the engine would trade at
-    const p      = pctWin/100;
-    const ticks  = have ? (pick.ticks||0) : 0;
-    // EV per trade + edge vs the house (EV as % of stake).
-    const ev = _Q.ev(p, stake, m);
-    const edgePct = (ev/stake)*100;
-    _qSet(kind+"-q-ev",  _qFmt(ev),  ev>0.0005?"pos":ev<-0.0005?"neg":"amber");
-    _qSet(kind+"-q-edge", (edgePct>=0?"+":"−")+Math.abs(edgePct).toFixed(1)+"% / trade", edgePct>0?"pos":edgePct<0?"neg":"amber");
-    // Significance of the lean.
-    const sig = _Q.significance(pctWin, ticks);
-    if(!have || ticks < 8){ _qSet(kind+"-q-sig","gathering…","amber"); }
-    else { _qSet(kind+"-q-sig", (sig.real?"REAL · z "+sig.z.toFixed(2):"NOISE · z "+sig.z.toFixed(2)), sig.real?"pos":"neg"); }
-    // Kelly optimal stake.
-    const f = _Q.kelly(p, m);
-    if(f <= 0){ _qSet(kind+"-q-kelly","flat · no edge","neg"); }
-    else {
-      const bal = window._LAST_BAL && Number(window._LAST_BAL.amt);
-      const kStake = (isFinite(bal) && bal>0) ? Math.max(0.35, f*bal) : null;
-      _qSet(kind+"-q-kelly", kStake!=null ? ("$"+kStake.toFixed(2)+" ("+(f*100).toFixed(1)+"%)") : (f*100).toFixed(1)+"% of bank", "pos");
-    }
-    // Monte-Carlo session simulation.
-    const mc = _Q.monteCarlo(p, stake, m, tp, sl, Math.round(p*1e6)+Math.round(stake*100));
-    const simsEl = document.getElementById(kind+"-q-sims"); if(simsEl) simsEl.textContent = mc.sims.toLocaleString();
-    const tpBar = document.getElementById(kind+"-q-mc-tp"); const slBar = document.getElementById(kind+"-q-mc-sl");
-    if(tpBar) tpBar.style.width = (mc.tpPct*100).toFixed(1)+"%";
-    if(slBar) slBar.style.width = (mc.slPct*100).toFixed(1)+"%";
-    _qSet(kind+"-q-tp-pct", (mc.tpPct*100).toFixed(0)+"%");
-    _qSet(kind+"-q-ror",   (mc.slPct*100).toFixed(0)+"%");
-    _qSet(kind+"-q-mc-ev", _qFmt(mc.meanPnl));
-    const sub = document.getElementById(kind+"-q-mc-sub");
-    if(sub) sub.textContent = (tp>0||sl>0) ? ("$"+stake.toFixed(2)+" flat · TP $"+tp.toFixed(0)+" / SL $"+sl.toFixed(0)) : "set your TP / SL to simulate";
-    // Verdict pill — honest one-liner.
-    const vEl = document.getElementById(kind+"-q-verdict");
-    if(vEl){
-      vEl.classList.remove("good","warn","bad");
-      if(!have){ vEl.textContent = "standing by"; }
-      else if(sig.real && ev > 0){ vEl.textContent = "EDGE DETECTED"; vEl.classList.add("good"); }
-      else if(ev <= 0){ vEl.textContent = "NEGATIVE EV · trade sparingly"; vEl.classList.add("bad"); }
-      else { vEl.textContent = "MARGINAL · stay disciplined"; vEl.classList.add("warn"); }
-    }
-  }catch(_){}
-}
-// Re-render the Quantum tiles when the user edits stake / TP / SL.
-document.addEventListener("input", (ev) => {
-  const id = ev.target && ev.target.id; if(!id) return;
-  const mm = id.match(/^(eo|rf|ou)-(stake|tp|sl)$/);
-  if(mm) try{ _renderQuantum(mm[1], _Q_LAST[mm[1]]); }catch(_){}
-});
-// Initial baseline render once settings/presets have populated (fair-coin
-// EV + Monte-Carlo on the default stake/TP/SL), so the tile is live on load.
-setTimeout(() => { ["eo","rf","ou"].forEach(k => { try{ _renderQuantum(k, null); }catch(_){} }); }, 650);
 
 // ===================================================================
 // RECOVERY ENGINE — premium martingale upgrade.
@@ -5444,7 +5166,7 @@ window.EOAuto = (function(){
   function _updateSignal(){
     const sig = $g("eo-signal"); if(!sig) return;
     const d = _liveDigits();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||62));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||55));
     const thrLine = $g("eo-signal-thr"); if(thrLine) thrLine.style.left = thr + "%";
     const thrLab  = $g("eo-signal-thr-lab"); if(thrLab) thrLab.textContent = thr + "%";
     const mkt = $g("eo-signal-market");
@@ -5648,11 +5370,9 @@ window.EOAuto = (function(){
   // (TP, SL, loss-streak, martingale cap) are what stops bad runs.
   // BASE conviction floor — the brain SKIPS a cycle when the top
   // candidate is below this. The ACTUAL floor adapts during a session
-  // (see _adaptiveFloor below) — base 45, lifts in recovery, lowers on a
+  // (see _adaptiveFloor below) — base 28, lifts in recovery, lowers on a
   // hot streak. RNG doesn't make the number negotiable; brain just waits.
-  // Raised 28→45: combined with the discipline gate, the desk now holds
-  // far more often instead of firing on every weak lean.
-  const _CONVICTION_FLOOR_BASE = 45;
+  const _CONVICTION_FLOOR_BASE = 28;
   // Adaptive conviction floor: rises when the system is in recovery or
   // a losing streak (require BETTER setups when risking more / cooling),
   // drops slightly on a hot streak (capture momentum). Clamped 20–55.
@@ -5840,17 +5560,13 @@ window.EOAuto = (function(){
       sl:    parseFloat(($g("eo-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),   // recovery-engine stake for this trade
       maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||62)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
     };
     // 1. Pick the best market across ALL 10 volatilities — not just the active one.
     const pick = await _pickBestMarket(cfg.threshold);
-    try{ _renderQuantum("eo", (pick && !pick.none) ? pick : null); }catch(_){}
     if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
-    // DISCIPLINE GATE — only fire on a confirmed, persistent, cooled-down edge.
-    const _gate = _disciplineGate("eo", S, pick, cfg.threshold);
-    if(_gate.hold){ _setStatus("⌗ "+esc(_gate.status)); try{ _brainStatus("eo", '⏳ <b>'+esc(_gate.status)+'</b>'); }catch(_){} return; }
     // 2. Hop the active market if a stronger candidate is on a different one.
     //    Updating t-symbol fires LiveWS resub so the signal radar follows along.
     const sel = $g("t-symbol");
@@ -6240,7 +5956,7 @@ window.RFAuto = (function(){
   function _updateSignal(){
     const sig=$g("rf-signal"); if(!sig) return;
     const pr = _livePrices();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||62));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||55));
     const thrLine=$g("rf-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
     const thrLab=$g("rf-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
     const mkt=$g("rf-signal-market");
@@ -6386,16 +6102,12 @@ window.RFAuto = (function(){
       sl:    parseFloat(($g("rf-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),
       maxLossStreak: Math.max(1, parseInt(($g("rf-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||62)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("rf-ticks")||{}).value)||1)),
     };
     const pick = await _pickBestRfMarket(cfg.threshold);
-    try{ _renderQuantum("rf", (pick && !pick.none) ? pick : null); }catch(_){}
     if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
-    // DISCIPLINE GATE — only fire on a confirmed, persistent, cooled-down edge.
-    const _gate = _disciplineGate("rf", S, pick, cfg.threshold);
-    if(_gate.hold){ _setStatus("⌗ "+esc(_gate.status)); try{ _brainStatus("rf", '⏳ <b>'+esc(_gate.status)+'</b>'); }catch(_){} return; }
     const sel = $g("t-symbol");
     if(sel && sel.value !== pick.symbol){ sel.value = pick.symbol; sel.dispatchEvent(new Event("change")); try{ loadRfScan(); }catch(_){} }
     const dur = (cfg.ticksMode === "auto") ? _autoTicks(pick.pct, pick.z) : cfg.ticksManual;
@@ -6596,9 +6308,9 @@ window.RFAuto = (function(){
   if(rfStop) rfStop.addEventListener("click", ()=>eoStopEverything(rfStop));
   // Quick presets — same shape as EO but tuned for direction trading
   const RF_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:64, stake:5,   streak:5,  mart:1.0 },
-    steady:   { tp:1000, sl:1000, thr:62, stake:50,  streak:8,  mart:1.0 },
-    bold:     { tp:2000, sl:2000, thr:58, stake:100, streak:11, mart:1.0 },
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5 },
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },
   };
   function _applyRfPreset(name){
     const p = RF_PRESETS[name]; if(!p) return;
@@ -6807,7 +6519,7 @@ window.OUAuto = (function(){
   function _updateSignal(){
     const sig=$g("ou-signal"); if(!sig) return;
     const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
-    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||62));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||55));
     const thrLine=$g("ou-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
     const thrLab=$g("ou-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
     const barLab=$g("ou-signal-bar"); if(barLab) barLab.textContent = barrier;
@@ -7050,18 +6762,14 @@ window.OUAuto = (function(){
       sl:    parseFloat(($g("ou-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),
       maxLossStreak: Math.max(1, parseInt(($g("ou-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||62)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||55)),
       ticksMode: (document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("ou-ticks")||{}).value)||1)),
       barrierMode,
       barrierManual,
     };
     const pick = await _pickBestOuMarket(cfg.threshold, barrierManual);
-    try{ _renderQuantum("ou", (pick && !pick.none) ? pick : null); }catch(_){}
     if(pick.none){ _setStatus("⌗ holding — "+esc(pick.reason)); return; }
-    // DISCIPLINE GATE — only fire on a confirmed, persistent, cooled-down edge.
-    const _gate = _disciplineGate("ou", S, pick, cfg.threshold);
-    if(_gate.hold){ _setStatus("⌗ "+esc(_gate.status)); try{ _brainStatus("ou", '⏳ <b>'+esc(_gate.status)+'</b>'); }catch(_){} return; }
     // AUTO barrier may have picked a different one — use whatever the picker
     // returned (pick.barrier always carries the actual chosen barrier).
     const barrier = pick.barrier;
@@ -7306,9 +7014,9 @@ window.OUAuto = (function(){
   // Quick presets — leave the barrier picker alone so the user's choice
   // (AUTO by default, or whatever they manually set) is preserved.
   const OU_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:64, stake:5,   streak:5,  mart:1.0 },
-    steady:   { tp:1000, sl:1000, thr:62, stake:50,  streak:8,  mart:1.0 },
-    bold:     { tp:2000, sl:2000, thr:58, stake:100, streak:11, mart:1.0 },
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5 },
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },
   };
   function _applyOuPreset(name){
     const p = OU_PRESETS[name]; if(!p) return;
@@ -7403,9 +7111,9 @@ window.OUAuto = (function(){
   // Thresholds tightened: the auto-trader now requires |z|≥2σ + multi-window
   // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:64, stake:5,   streak:5,  mart:1.0 },   // very selective · flat stake
-    steady:   { tp:1000, sl:1000, thr:62, stake:50,  streak:8,  mart:1.0 },   // default — flat stake, no ladder
-    bold:     { tp:2000, sl:2000, thr:58, stake:100, streak:11, mart:1.0 },   // wider net but still gated + flat
+    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.2 },   // very selective
+    steady:   { tp:1000, sl:1000, thr:55, stake:50,  streak:8,  mart:1.5 },   // default — $1000 TP/SL · mart 1.5×
+    bold:     { tp:2000, sl:2000, thr:52, stake:100, streak:11, mart:1.5 },   // wider net but still gated
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
