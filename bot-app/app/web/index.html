@@ -3758,7 +3758,7 @@ let _prevSpot=null, _lastRead=null;
     if(current > 300000) current = 295000 + Math.floor(Math.random() * 5000);
     paint();
     // Next update in 700–2200ms (varied so it doesn't feel mechanical).
-    setTimeout(tick, 700 + Math.random() * 1500);
+    setTimeout(tick, 4500 + Math.random() * 2000);   // ~5s between updates
   }
   // First paint immediately so users don't see the static placeholder, then
   // start the drift loop.
