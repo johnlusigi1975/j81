@@ -254,6 +254,22 @@
   @keyframes tour-ring{0%{box-shadow:0 0 0 0 rgba(240,200,90,.55)}70%{box-shadow:0 0 0 10px rgba(240,200,90,0)}100%{box-shadow:0 0 0 0 rgba(240,200,90,0)}}
   .gcard.tour-selecting{border-color:var(--amber)!important;box-shadow:0 0 0 2px rgba(240,200,90,.5),0 0 22px -4px rgba(240,200,90,.6)!important;animation:gcard-select 1.1s ease-in-out infinite}
   @keyframes gcard-select{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  /* Clean "Switch account" button + slide-out menu (replaces the long chip). */
+  .acct-switch-btn{display:inline-flex;align-items:center;gap:7px}
+  .acct-caret{font-size:10px;opacity:.7}
+  .acct-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:236px;background:#0e1420;border:1px solid var(--bd2);border-radius:13px;box-shadow:0 24px 60px -20px rgba(0,0,0,.72);padding:6px;z-index:200;opacity:0;transform:translateY(-8px) scale(.98);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
+  .acct-menu.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+  .acct-menu[hidden]{display:none}
+  .acct-menu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 11px;border:none;border-radius:9px;background:transparent;color:var(--text);cursor:pointer;font-family:var(--mono)}
+  .acct-menu-item:hover{background:rgba(255,255,255,.06)}
+  .acct-menu-item.current{background:rgba(212,184,122,.10)}
+  .acct-menu-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .acct-menu-info{display:flex;flex-direction:column;flex:1;min-width:0;gap:2px}
+  .acct-menu-info b{font-size:13.5px;font-family:var(--serif);font-weight:800}
+  .acct-menu-id{font-size:11px;color:var(--faint)}
+  .acct-menu-bal{font-size:13px;font-weight:800;color:var(--amber);white-space:nowrap}
+  .acct-menu-cur{font-size:9px;color:var(--good);text-transform:uppercase;letter-spacing:.1em}
+  .acct-menu-load{padding:13px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:12.5px}
   @media(prefers-reduced-motion:reduce){.tour-navbtn{animation:none}}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
@@ -1429,7 +1445,11 @@
        Pings /version every 12s; latency is shown on hover. -->
   <span class="api-pulse" id="api-pulse" title="API connection status"><span class="api-pulse-dot"></span><span class="api-pulse-lat" id="api-pulse-lat">—</span></span>
   <span class="chip" id="nav-member" hidden title="Your membership" style="color:var(--amber);border-color:var(--bd2)"></span>
-  <span class="chip" id="nav-acct" hidden title="Switch account" style="cursor:pointer" onclick="openAccounts()"><span class="dot"></span><span id="nav-acct-txt">—</span></span>
+  <div class="acct-switch" id="nav-acct" hidden style="position:relative;display:inline-block">
+    <button class="navbtn acct-switch-btn" type="button" onclick="toggleAcctMenu(event)" title="Switch account"><span class="dot" id="nav-acct-dot"></span>Switch account <span class="acct-caret">▾</span></button>
+    <span id="nav-acct-txt" hidden></span>
+    <div class="acct-menu" id="acct-menu" hidden></div>
+  </div>
   <span class="chip" id="nav-session" hidden title="Deriv sessions last ~1 hour. Reconnect when it runs out." style="cursor:pointer" onclick="startDeriv()"></span>
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:15.3px" onclick="startDeriv()">Connect with Deriv</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
@@ -4532,6 +4552,35 @@ function goHomeRefresh(){
   location.replace("/");
 }
 function openAccounts(){ showView("accounts"); }
+// Slide-out account switcher in the nav — lists accounts, one tap switches.
+async function toggleAcctMenu(ev){
+  if(ev){ ev.stopPropagation(); }
+  const menu = document.getElementById("acct-menu"); if(!menu) return;
+  if(!menu.hidden){ menu.classList.remove("open"); menu.hidden = true; return; }
+  menu.innerHTML = '<div class="acct-menu-load">loading accounts…</div>';
+  menu.hidden = false; requestAnimationFrame(function(){ menu.classList.add("open"); });
+  let accts = []; try{ accts = await api("/accounts"); }catch(_){}
+  if(!accts.length){ menu.innerHTML = '<div class="acct-menu-load">no accounts found</div>'; return; }
+  menu.innerHTML = accts.map(function(a){
+    const demo = a.is_demo, col = demo ? "var(--amber)" : "#3fb950";
+    const isCur = CUR && CUR.id === a.id;
+    return '<button type="button" class="acct-menu-item'+(isCur?' current':'')+'" data-acct="'+esc(a.id)+'">'+
+             '<span class="acct-menu-dot" style="background:'+col+'"></span>'+
+             '<span class="acct-menu-info"><b>'+(demo?'Demo account':'Real account')+'</b>'+
+               '<span class="acct-menu-id">'+esc(a.deriv_account_id)+' · '+esc(a.currency||'')+'</span></span>'+
+             '<span class="acct-menu-bal" id="acctmbal-'+esc(a.id)+'">…</span>'+
+             (isCur?'<span class="acct-menu-cur">current</span>':'')+
+           '</button>';
+  }).join("");
+  menu.querySelectorAll("[data-acct]").forEach(function(el){
+    el.addEventListener("click", function(){ menu.classList.remove("open"); menu.hidden = true; pickAccount(el.dataset.acct); });
+  });
+  accts.forEach(function(a){ loadBalance(a.id).then(function(b){ const el = document.getElementById("acctmbal-"+a.id); if(el) el.textContent = (b&&b.balance!=null) ? fmtMoney(b.balance,b.currency) : "—"; }); });
+}
+document.addEventListener("click", function(e){
+  const m = document.getElementById("acct-menu"); const sw = document.getElementById("nav-acct");
+  if(m && !m.hidden && sw && !sw.contains(e.target)){ m.classList.remove("open"); m.hidden = true; }
+});
 function updateNav(){
   if(!CUR) return;
   $("nav-acct").hidden=false;
