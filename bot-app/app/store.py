@@ -154,6 +154,7 @@ class BotStore:
                     note        TEXT,
                     activated_at TEXT,
                     expires_at  TEXT,                            -- NULL ⇒ lifetime
+                    tier        TEXT NOT NULL DEFAULT 'all',     -- 'eo' ($5, Even/Odd only) | 'all' ($50, everything)
                     created_at  TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS ix_lic_session ON licenses(session_id);
@@ -192,6 +193,7 @@ class BotStore:
             ("accounts", "refresh_token", "BLOB"),     # Fernet-encrypted OAuth refresh token (new platform)
             ("accounts", "token_expires_at", "TEXT"),  # ISO time the access token expires (for proactive refresh)
             ("accounts", "brain_auto", "INTEGER"),     # 1 = brain-driven auto: trades best-payout Even/Odd every cycle
+            ("licenses", "tier", "TEXT NOT NULL DEFAULT 'all'"),  # 'eo' ($5) | 'all' ($50)
         ):
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -687,10 +689,11 @@ class BotStore:
         return [dict(r) for r in rows]
 
     # ----------------------------------------------------------- paid access
-    def create_licenses(self, count: int, days: int, note: str | None = None) -> list[str]:
+    def create_licenses(self, count: int, days: int, note: str | None = None, tier: str = "all") -> list[str]:
         """Owner mints N membership codes (give one to each paying customer)."""
         import secrets
         now = _now_iso()
+        tier = tier if tier in ("eo", "all") else "all"
         codes: list[str] = []
         with self._lock:
             for _ in range(max(1, min(count, 1000))):
@@ -698,8 +701,8 @@ class BotStore:
                     "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(4))
                     for _ in range(3))
                 self._conn.execute(
-                    "INSERT INTO licenses(code, days, status, note, created_at) "
-                    "VALUES (?,?, 'unused', ?, ?)", (code, days, note, now))
+                    "INSERT INTO licenses(code, days, status, note, created_at, tier) "
+                    "VALUES (?,?, 'unused', ?, ?, ?)", (code, days, note, now, tier))
                 codes.append(code)
             self._conn.commit()
         return codes
@@ -780,7 +783,7 @@ class BotStore:
                 # Lifetime license = expires_at NULL.
                 if not lic["expires_at"]:
                     return {"licensed": True, "lifetime": True, "days_left": None,
-                            "expires_at": None, "source": "deriv"}
+                            "expires_at": None, "source": "deriv", "tier": (dict(lic).get("tier") or "all")}
                 # Time-bound: same expiry math as legacy.
                 try:
                     exp = datetime.fromisoformat(lic["expires_at"])
@@ -792,7 +795,7 @@ class BotStore:
                     secs = (exp - now).total_seconds()
                     return {"licensed": True, "lifetime": False,
                             "days_left": max(1, round(secs / 86400)),
-                            "expires_at": exp.isoformat(), "source": "deriv"}
+                            "expires_at": exp.isoformat(), "source": "deriv", "tier": (dict(lic).get("tier") or "all")}
         # ── 1) Legacy session-cookie path (kept for backwards compat) ───
         exp = self._session_expiry(session_id)
         if exp:
@@ -943,7 +946,7 @@ class BotStore:
         return int(row["n"] if row and "n" in row.keys() else 0)
 
     def mint_for_ref(self, ref: str, days: int, note: str | None = None,
-                     loginids: list[str] | None = None) -> str:
+                     loginids: list[str] | None = None, tier: str = "all") -> str:
         """Idempotently mint ONE code tied to an external ref (e.g. a Stripe
         checkout session id). Re-calling for the same ref returns the same code
         — so a retried webhook never issues duplicates. `days=0` ⇒ LIFETIME
@@ -953,7 +956,7 @@ class BotStore:
         if existing:
             code = existing["code"]
         else:
-            code = self.create_licenses(1, days, note=note or ref)[0]
+            code = self.create_licenses(1, days, note=note or ref, tier=tier)[0]
         # Auto-activate as LIFETIME the moment Stripe says paid — no separate
         # redeem step. The Deriv loginid binding IS the anti-sharing key.
         if loginids:

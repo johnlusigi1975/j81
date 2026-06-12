@@ -196,6 +196,11 @@ def access_status(request: Request, response: Response) -> dict:
         pass
     return {**st, "require_access": s.require_access,
             "price_label": s.access_price_label, "buy_url": s.access_buy_url,
+            "tier": (st.get("tier") if st.get("licensed") else None),
+            "offers": {
+                "eo":  {"price_label": s.access_price_eo_label,  "buy_url": s.access_buy_url_eo  or s.access_buy_url},
+                "all": {"price_label": s.access_price_all_label, "buy_url": s.access_buy_url_all or s.access_buy_url},
+            },
             "days_per_membership": s.access_days,
             "lifetime": s.access_days == 0}
 
@@ -489,6 +494,18 @@ async def intasend_webhook(request: Request) -> dict:
 # ─────────────────────────────────────────────────────────────────────
 # SELAR WEBHOOK — current live processor (M-Pesa + cards via Selar)
 # ─────────────────────────────────────────────────────────────────────
+# Map a paid amount to a license tier: >=50 ⇒ all-access, >=1 ⇒ Even/Odd only.
+# Missing/odd amounts default to "all" so a real buyer is never under-granted.
+def _tier_from_amount(v) -> str:
+    try:
+        a = float(str(v).replace(",", "").strip())
+    except Exception:
+        return "all"
+    if a >= 50: return "all"
+    if a >= 1:  return "eo"
+    return "all"
+
+
 @app.post("/webhooks/selar", include_in_schema=False)
 async def selar_webhook(request: Request) -> dict:
     """Selar posts here when an order is completed.
@@ -552,7 +569,9 @@ async def selar_webhook(request: Request) -> dict:
                   or status in ("successful", "completed", "paid", "success"))
     if is_success:
         # days=0 ⇒ LIFETIME. Idempotent ref means retries hit the same code.
-        code = store.mint_for_ref(f"selar:{order_id}", 0, loginids=None)
+        _amt = (data.get("amount") or data.get("total") or data.get("price")
+                or data.get("amount_paid") or (data.get("order") or {}).get("amount"))
+        code = store.mint_for_ref(f"selar:{order_id}", 0, loginids=None, tier=_tier_from_amount(_amt))
         mail_result = {"sent": False, "reason": "no email"}
         if email and "@" in email:
             try:

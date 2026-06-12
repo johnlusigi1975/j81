@@ -74,7 +74,13 @@ class Settings(BaseSettings):
     admin_key: str = ""
     # 0 ⇒ LIFETIME (default). >0 ⇒ time-bound legacy membership of N days.
     access_days: int = 0
-    access_price_label: str = "$100"    # shown on the paywall
+    access_price_label: str = "$100"    # shown on the paywall (legacy single-tier)
+    # ── Two-tier pricing: $5 = Even/Odd only (starter) · $50 = all trade types.
+    # Tier is detected from the paid AMOUNT in the webhooks (>=50 ⇒ all, >=1 ⇒ eo).
+    access_price_eo_label: str = "$5"
+    access_price_all_label: str = "$50"
+    access_buy_url_eo: str = ""     # $5 Even/Odd checkout link (Selar etc.) — set in dashboard
+    access_buy_url_all: str = ""    # $50 all-access checkout link — set in dashboard
     # Your Stripe Payment Link — PUBLIC URL, safe to set here. The webhook
     # auto-mints + binds a lifetime license to the buyer's Deriv loginids,
     # so the moment they're back in the app they're unlocked.

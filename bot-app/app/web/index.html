@@ -270,6 +270,18 @@
   .acct-menu-bal{font-size:13px;font-weight:800;color:var(--amber);white-space:nowrap}
   .acct-menu-cur{font-size:9px;color:var(--good);text-transform:uppercase;letter-spacing:.1em}
   .acct-menu-load{padding:13px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:12.5px}
+  /* Trial (Even/Odd-only) tier: lock the other trade-type cards. */
+  .gcard.locked-tier{opacity:.72;position:relative}
+  .gcard.locked-tier::after{content:"🔒 $50";position:absolute;top:9px;right:9px;font-family:var(--mono);font-size:10px;font-weight:800;color:#241c0a;background:linear-gradient(135deg,#f5d168,#e0b64a);padding:3px 7px;border-radius:7px;letter-spacing:.04em}
+  /* Two-tier paywall options. */
+  .paywall-tiers{display:flex;flex-direction:column;gap:10px;margin:6px 0 12px;position:relative;z-index:2}
+  .paywall-tier{border:1px solid var(--bd2);border-radius:14px;padding:13px 15px;background:rgba(0,0,0,.22);text-align:left}
+  .paywall-tier.featured{border-color:rgba(212,184,122,.55);background:linear-gradient(135deg,rgba(212,184,122,.10),rgba(0,0,0,.22))}
+  .paywall-tier-name{font-family:var(--serif);font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)}
+  .paywall-tier-tag{font-family:var(--mono);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.08);color:var(--dim)}
+  .paywall-tier-tag.best{background:linear-gradient(135deg,#f5d168,#e0b64a);color:#241c0a}
+  .paywall-tier-price{font-family:var(--mono);font-size:13px;color:var(--amber);font-weight:800;margin:4px 0 3px}
+  .paywall-tier-desc{font-size:12px;color:var(--dim);line-height:1.45;margin-bottom:10px}
   @media(prefers-reduced-motion:reduce){.tour-navbtn{animation:none}}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
@@ -1381,21 +1393,21 @@
      Toggled by body.paywall-locked. -->
 <div id="paywall-lock" class="paywall-lock" hidden>
   <div class="paywall-lock-card">
-    <div class="paywall-lock-eyebrow">FULL ACCESS · LIFETIME UNLOCK</div>
-    <div class="paywall-lock-price-row">
-      <span class="paywall-lock-price"><span class="paywall-lock-currency">$</span><span id="lock-price">100</span></span>
-      <div class="paywall-lock-tag">
-        <div class="paywall-lock-once">one-time</div>
-        <div class="paywall-lock-life">lifetime · all updates</div>
+    <div class="paywall-lock-eyebrow">CHOOSE YOUR ACCESS</div>
+    <div class="paywall-tiers">
+      <div class="paywall-tier">
+        <div class="paywall-tier-name">Even/Odd <span class="paywall-tier-tag">starter</span></div>
+        <div class="paywall-tier-price"><span id="lock-eo-price">$5</span> · one-time</div>
+        <div class="paywall-tier-desc">The simplest desk — the highest fixed payouts. Even/Odd only.</div>
+        <button class="btn big paywall-lock-cta" type="button" id="lock-buy-eo">🔓 Get Even/Odd — <span id="lock-eo-price2">$5</span></button>
+      </div>
+      <div class="paywall-tier featured">
+        <div class="paywall-tier-name">All trade types <span class="paywall-tier-tag best">lifetime</span></div>
+        <div class="paywall-tier-price"><span id="lock-all-price">$50</span> · one-time</div>
+        <div class="paywall-tier-desc">Everything — Rise/Fall, Over/Under &amp; every engine. Pay once, yours forever.</div>
+        <button class="btn big paywall-lock-cta" type="button" id="lock-buy-all">🔓 Unlock everything — <span id="lock-all-price2">$50</span></button>
       </div>
     </div>
-    <div class="paywall-lock-anchor">Pay once. Use forever. No subscription.</div>
-    <ul class="paywall-lock-features">
-      <li>Trading Brain · Recovery Engine · AUTO ticks &amp; barrier</li>
-      <li>Risk gauge · multi-window confidence · digit heatmap</li>
-      <li>All your Deriv accounts unlock — any device, any time</li>
-    </ul>
-    <button class="btn big paywall-lock-cta" type="button" id="lock-buy">🔓 Unlock J81 — <span class="lock-price2">$100</span> · lifetime</button>
     <div class="paywall-lock-trust">
       🔒 Stripe checkout · <span class="live-stat" id="lock-social"><span class="live-dot"></span><span class="live-user-count" data-count>237,482</span>&nbsp;active users · live</span>
     </div>
@@ -4249,18 +4261,21 @@ document.addEventListener("click", function(ev){
 // Wire the Unlock button in the lock overlay — uses the same checkout link
 // helper as the full paywall card.
 document.addEventListener("click", function(ev){
-  const t = ev.target.closest && ev.target.closest("#lock-buy");
+  const t = ev.target.closest && ev.target.closest("#lock-buy-eo, #lock-buy-all, #lock-buy");
   if(!t) return;
+  const tier = (t.id === "lock-buy-eo") ? "eo" : "all";
   t.classList.add("firing");
   (async function(){
     try{
-      const r = await api("/access/checkout_link");
+      const off = window.OFFERS && window.OFFERS[tier];
+      if(off && off.buy_url){ location.href = off.buy_url; return; }
+      const r = await api("/access/checkout_link?tier=" + tier);
       if(r && r.url){ location.href = r.url; return; }
       if(r && r.reason === "connect_first"){
         try{ toast({kind:"warn", title:"Connect Deriv first", msg:"We bind your purchase to your Deriv account."}); }catch(_){}
         showView("connect"); return;
       }
-      try{ toast({kind:"warn", title:"Checkout unavailable", msg:"Payment link not configured yet."}); }catch(_){}
+      try{ toast({kind:"warn", title:"Checkout coming soon", msg:"This plan's payment link isn't set yet."}); }catch(_){}
     }catch(_){}
     finally{ t.classList.remove("firing"); }
   })();
@@ -4270,6 +4285,9 @@ async function checkAccess(){
     const a=await api("/access/status");
     window.REQUIRE_ACCESS = !!a.require_access;
     window.LICENSED = !a.require_access || !!a.licensed;   // open app when paywall off
+    window.TIER = a.tier || ((!a.require_access || a.licensed) ? "all" : null);  // 'eo' | 'all' | null
+    window.OFFERS = a.offers || null;
+    try{ renderGames(); }catch(_){}
     // Paint the lock overlay's prices + tags too (they mirror the full paywall).
     if(a.price_label){
       var raw2 = String(a.price_label).replace(/^\$/, "");
@@ -4678,6 +4696,9 @@ function renderGames(){
     `<div class="sec-title">${esc(grp)}</div><div class="grid">${GAMES.filter(g=>g.grp===grp).map(card).join("")}</div>`
   ).join("");
   document.querySelectorAll(".gcard").forEach(c=>c.addEventListener("click",()=>{ if(c.dataset.live==="live") openTrade(c.dataset.game); }));
+  if(window.TIER === "eo"){
+    document.querySelectorAll('#choose-grid .gcard[data-live="live"]').forEach(function(c){ if(c.dataset.game !== "even_odd") c.classList.add("locked-tier"); });
+  }
 }
 async function loadHome(){
   renderGames();
@@ -5208,7 +5229,26 @@ function renderDigitPicker(game){
   row.querySelectorAll(".digbtn").forEach(b=>b.addEventListener("click",()=>{ SELDIGIT=+b.dataset.dig; row.querySelectorAll(".digbtn").forEach(x=>x.classList.toggle("on",+x.dataset.dig===SELDIGIT)); scheduleTradeMath(); }));
   $("digit-hint").textContent = "— win if the last digit lands over / under this";
 }
+function _showUpgrade(game){
+  const off = (window.OFFERS && window.OFFERS.all) || {};
+  const url = off.buy_url || "";
+  const price = off.price_label || "$50";
+  const name = (typeof GAME_NAMES !== "undefined" && GAME_NAMES[game]) || "This trade type";
+  const wrap = document.createElement("div"); wrap.className = "pop-wrap";
+  const box = document.createElement("div"); box.className = "pop win";
+  box.innerHTML = '<div class="ic">🔓</div>' +
+    '<h3>' + esc(name) + ' is a lifetime feature</h3>' +
+    '<div class="msg">Your starter plan covers <b>Even/Odd</b> — the simplest, highest-payout desk. Unlock Rise/Fall, Over/Under and every engine with the <b>' + esc(price) + ' lifetime</b> — one-time, yours forever.</div>' +
+    (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none"><button type="button" class="btn big" style="width:100%;margin-bottom:8px">Upgrade to lifetime — ' + esc(price) + ' →</button></a>' : '') +
+    '<button type="button" class="up-later" style="background:transparent;border:1px solid var(--bd);color:var(--dim);padding:9px 14px;border-radius:9px;cursor:pointer;font-family:var(--mono);font-size:12px">Maybe later</button>';
+  wrap.appendChild(box);
+  const close = function(){ try{ wrap.remove(); }catch(_){} };
+  box.querySelector(".up-later").addEventListener("click", close);
+  wrap.addEventListener("click", function(e){ if(e.target === wrap) close(); });
+  document.body.appendChild(wrap);
+}
 async function openTrade(game){
+  if(window.TIER === "eo" && game !== "even_odd"){ _showUpgrade(game); return; }
   GAME=game; showView("trade");
   $("trade-kind").textContent = GAME_NAMES[game] || "Trade";
   $("mpro-extra").hidden = (game!=="m_pro");
