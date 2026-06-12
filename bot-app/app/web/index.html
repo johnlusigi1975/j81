@@ -1446,6 +1446,9 @@
       <button class="btn big" type="button" onclick="startDeriv()">Connect with Deriv →</button>
       <button class="btn ghost big" type="button" style="width:auto;min-width:180px" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
     </div>
+    <div class="cta-ref" style="margin-top:14px;font-size:15px;color:var(--dim)">
+      New to Deriv? <a id="landing-ref-link" href="https://track.deriv.com/_6uqV-95nzXtZl7VyVw174GNd7ZgqdRLk/1/" target="_blank" rel="noopener" style="color:var(--amber);font-weight:700;text-decoration:none">Open a free account →</a>
+    </div>
     <div class="cta-sub" style="margin-top:11px;font-size:14.8px"></div>
     <div class="trustline">
       <span>🔒 <b>Trade-only access</b> — we can never withdraw</span>
@@ -4380,7 +4383,7 @@ async function boot(){
   spawnMoney();
   await checkAccess();
   try{ const h=await api("/health"); DRY=h.dry_run; if(!h.encryption_configured) showEncSetup();
-       const rl=$("ref-link"); if(rl&&h.referral_url) rl.href=h.referral_url; }catch(_){}
+       const rl=$("ref-link"); if(rl&&h.referral_url) rl.href=h.referral_url; const rl2=$("landing-ref-link"); if(rl2&&h.referral_url) rl2.href=h.referral_url; }catch(_){}
   // Handle the return trip from Deriv OAuth (/oauth/callback redirects here).
   const qs=new URLSearchParams(location.search);
   // Returning from a Stripe payment? Pick up the auto-issued code and unlock.
