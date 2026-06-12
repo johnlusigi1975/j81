@@ -1432,7 +1432,7 @@
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="startDeriv()">Connect with Deriv</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
   <button class="navbtn" id="nav-help" type="button" title="Keyboard shortcuts (?)" onclick="document.getElementById('kbd-help').hidden=false" style="padding:6px 11px">?</button>
-  <button class="navbtn tour-navbtn" id="nav-tour" hidden type="button" onclick="startTour()" title="Guided walkthrough — about a minute">🎓 Tutorial</button>
+  <button class="navbtn tour-navbtn" id="nav-tour" hidden type="button" onclick="startTour()" title="Guided walkthrough — about a minute">🎓 Tour</button>
   <button class="navbtn" id="nav-exit" hidden onclick="logout()">Log out</button>
 </div></nav>
 
@@ -1651,10 +1651,10 @@
     <div class="brain-head">
       <div>
         <div class="brain-eyebrow">🤖 Brain Auto</div>
-        <div style="font-size:13px;color:var(--dim);margin-top:3px">Auto-trade across trade types (Even/Odd + Rise/Fall) on the best market each cycle. TP/SL still in force.</div>
+        <div style="font-size:13px;color:var(--dim);margin-top:3px">Auto-trade Even/Odd on the highest-payout market each cycle. TP/SL still in force.</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="engines-pwr" id="brain-auto-toggle" type="button" title="Brain Auto: every cycle places ONE trade (Even/Odd or Rise/Fall) on the best market at your stake cap">
+        <button class="engines-pwr" id="brain-auto-toggle" type="button" title="Brain Auto: every cycle places ONE Even/Odd on the best-payout market at your stake cap">
           <span class="dot"></span><span class="lbl">Brain Auto off</span>
         </button>
       </div>
@@ -3780,7 +3780,7 @@ const TOUR_STEPS = [
     selector: "#brain-card",
     view: "home",
     title: "🤖 Brain Auto (one-tap autopilot)",
-    body: "Flip this on and J81 places ONE trade per cycle — rotating across trade types (Even/Odd + Rise/Fall) on the best market, automatically, around the clock. Your TP/SL and stake limits stay in force. Tap once, walk away, come back to results."
+    body: "Flip this on and J81 picks ONE Even/Odd trade per cycle on the highest-payout market — automatically, around the clock. Your TP/SL and stake limits stay in force. Tap once, walk away, come back to results."
   },
   {
     selector: ".statstrip",
@@ -4022,8 +4022,9 @@ function _showTourStep(){
 function _positionTourStep(step){
   const target = _q(step.selector);
   if(!target){
-    // Don't skip — explain it anyway (centered, no spotlight) so no system is missed.
-    _drawTourStep(step, null);
+    // Target missing — auto-skip this step
+    _tourIdx++;
+    setTimeout(_showTourStep, 50);
     return;
   }
   // Scroll target into view so the spotlight is visible
@@ -4031,38 +4032,34 @@ function _positionTourStep(step){
   setTimeout(()=>_drawTourStep(step, target), 350);
 }
 function _drawTourStep(step, target){
+  const r = target.getBoundingClientRect();
   const cutout = document.getElementById("tour-cutout");
+  if(cutout){
+    const pad = 8;
+    cutout.style.top    = (r.top    - pad) + "px";
+    cutout.style.left   = (r.left   - pad) + "px";
+    cutout.style.width  = (r.width  + pad*2) + "px";
+    cutout.style.height = (r.height + pad*2) + "px";
+  }
+  // Position the tip — below target if there's room, else above
   const tip = document.getElementById("tour-tip"); if(!tip) return;
   const tipW = Math.min(380, window.innerWidth - 40);
   const tipH = 220;   // approx
-  const r = target ? target.getBoundingClientRect() : null;
-  if(r && (r.width || r.height)){
-    if(cutout){
-      const pad = 8;
-      cutout.style.display = "";
-      cutout.style.top    = (r.top    - pad) + "px";
-      cutout.style.left   = (r.left   - pad) + "px";
-      cutout.style.width  = (r.width  + pad*2) + "px";
-      cutout.style.height = (r.height + pad*2) + "px";
-    }
-    const below = r.bottom + 18;
-    const above = r.top - tipH - 18;
-    let top, left;
-    if(below + tipH < window.innerHeight - 12){ top = below; }
-    else if(above > 12){ top = above; }
-    else { top = Math.max(12, (window.innerHeight - tipH) / 2); }
-    left = r.left + (r.width / 2) - (tipW / 2);
-    left = Math.max(12, Math.min(window.innerWidth - tipW - 12, left));
-    tip.style.top = top + "px";
-    tip.style.left = left + "px";
-    tip.style.width = tipW + "px";
+  const below = r.bottom + 18;
+  const above = r.top - tipH - 18;
+  let top, left;
+  if(below + tipH < window.innerHeight - 12){
+    top = below;
+  } else if(above > 12){
+    top = above;
   } else {
-    // Hidden/missing target — center the tip, hide the spotlight, still explain it.
-    if(cutout) cutout.style.display = "none";
-    tip.style.top = Math.max(12, (window.innerHeight - tipH) / 2) + "px";
-    tip.style.left = Math.max(12, (window.innerWidth - tipW) / 2) + "px";
-    tip.style.width = tipW + "px";
+    top = Math.max(12, (window.innerHeight - tipH) / 2);
   }
+  left = r.left + (r.width / 2) - (tipW / 2);
+  left = Math.max(12, Math.min(window.innerWidth - tipW - 12, left));
+  tip.style.top = top + "px";
+  tip.style.left = left + "px";
+  tip.style.width = tipW + "px";
   // Update content
   document.getElementById("tour-step-n").textContent = _tourIdx + 1;
   document.getElementById("tour-tip-title").textContent = step.title;
@@ -5530,8 +5527,8 @@ window.EOAuto = (function(){
     const so=$g("eo-signal-o"); if(so) so.textContent = odp + "%";
     const st=$g("eo-signal-state");
     if(st){
-      if(overThr) st.innerHTML = 'EVEN <b>'+evp+'%</b> · ODD <b>'+odp+'%</b> — '+dom+' over the '+thr+'% line · arming (must hold 2 scans + cooldown)';
-      else        st.innerHTML = 'EVEN <b>'+evp+'%</b> · ODD <b>'+odp+'%</b> — need ≥'+thr+'% to arm ('+(thr-lead)+'% to go)';
+      if(overThr) st.innerHTML = '✓ <b>'+dom+'</b> at '+lead+'% — over '+thr+'% threshold · would fire';
+      else        st.innerHTML = '⏸ '+dom+' leading at '+lead+'% — '+(thr-lead)+'% away from the '+thr+'% trigger';
     }
     // -- Multi-window confidence: EVEN% across 20 / 50 / 200 ticks. When all
     // three windows are on the same side, the "agree" chip lights green —

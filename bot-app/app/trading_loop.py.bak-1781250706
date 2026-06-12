@@ -179,8 +179,8 @@ class TradingLoop:
         await self._peer_watch()
 
     async def _run_brain_account(self, acct: dict, summary: list) -> bool:
-        """Brain-driven auto: every cycle, place ONE trade — rotating across
-        trade types (Even/Odd + Rise/Fall) on the best-payout market, at the stake the user set (anti-martingale,
+        """Brain-driven auto: every cycle, place ONE Even/Odd trade on the
+        library's best-payout market, at the stake the user set (anti-martingale,
         capped). No fear-based confidence gate — the system acts on the documented
         EV lever (payout/market selection) and lets discipline (TP/SL/daily-cap)
         be the only guardrail. Honest framing: this trades MORE, not better — but
@@ -210,25 +210,13 @@ class TradingLoop:
         stake = float(acct.get("max_stake_per_trade") or 0.35)
         if stake < 0.35:
             stake = 0.35
-        # Rotate across trade types each cycle (Even/Odd + Rise/Fall — both
-        # executor-supported). Direction is random: odds are 50/50 and momentum
-        # is gambler's fallacy on RNG, so we just spread across types/markets.
-        pick = random.choice(["even_odd", "rise_fall"])
+        # Direction: random — odds are 50/50; momentum is gambler's fallacy on RNG.
+        side = random.choice(["even", "odd"])
         try:
-            if pick == "rise_fall":
-                dirn = random.choice(["up", "down"])
-                res = await execute_manual_trade(
-                    acct, trade_type="rise_fall", symbol=best_symbol,
-                    direction=dirn, prediction=None, stake=stake,
-                    duration=1, duration_unit="t")
-                strat = f"brain_auto: Rise/Fall · {dirn}"
-            else:
-                side = random.choice(["even", "odd"])
-                res = await execute_manual_trade(
-                    acct, trade_type="even_odd", symbol=best_symbol,
-                    direction=None, prediction=side, stake=stake,
-                    duration=1, duration_unit="t")
-                strat = f"brain_auto: Even/Odd · {side}"
+            res = await execute_manual_trade(
+                acct, trade_type="even_odd", symbol=best_symbol,
+                direction=None, prediction=side, stake=stake,
+                duration=1, duration_unit="t")
         except Exception as exc:
             summary.append({"account": acct["deriv_account_id"], "outcome": "error", "reason": repr(exc)})
             return True
@@ -237,7 +225,7 @@ class TradingLoop:
         summary.append({
             "account": acct["deriv_account_id"], "symbol": best_symbol,
             "outcome": res.get("outcome"), "reason": res.get("reason") or res.get("error"),
-            "strategy": strat,
+            "strategy": f"brain_auto: best-payout Even/Odd · {side}",
         })
         return True
 
