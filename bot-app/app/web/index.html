@@ -1435,6 +1435,7 @@
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
   <button class="navbtn" id="nav-help" type="button" title="Keyboard shortcuts (?)" onclick="document.getElementById('kbd-help').hidden=false" style="padding:6px 11px">?</button>
   <button class="navbtn tour-navbtn" id="nav-tour" hidden type="button" onclick="startTour()" title="Guided walkthrough — about a minute">🎓 Tutorial</button>
+  <span class="chip live-stat" id="nav-online" hidden title="Traders active on J81 right now" style="color:var(--good);border-color:rgba(45,220,130,.30)"><span class="live-dot"></span><b class="live-user-count" data-count style="color:var(--good)">237,482</b>&nbsp;online</span>
   <button class="navbtn" id="nav-exit" hidden onclick="logout()">Log out</button>
 </div></nav>
 
@@ -3659,7 +3660,7 @@ function showView(v){
   var nb = $("nav-back");
   if(nb){ if(bt){ window._BACK_TO=bt; nb.hidden=false; } else { window._BACK_TO=null; nb.hidden=true; } }
   const inApp=(v==="accounts"||v==="home"||v==="trade");
-  ["nav-home","nav-tour","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
+  ["nav-home","nav-tour","nav-online","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display="none";   // beach theme: ocean body gradient is the backdrop (no gold bars)
