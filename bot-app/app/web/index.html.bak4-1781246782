@@ -247,17 +247,6 @@
   .home-hero-sub{font-size:12.5px;color:var(--dim);margin-top:5px;max-width:520px;line-height:1.5}
   .home-hero-right{display:flex;align-items:center;gap:10px}
   @media(max-width:560px){.home-hero{padding:16px 18px}.home-hero-title{font-size:23px}}
-  /* Floating "How it works" tutorial button — top-right of the home view.
-     Bobs gently + pulses a glowing ring so it invites a click on landing. */
-  .tour-fab{position:fixed;top:74px;right:22px;z-index:120;display:flex;align-items:center;gap:8px;padding:10px 17px;border:none;border-radius:999px;cursor:pointer;font-family:var(--serif);font-weight:800;font-size:13.5px;color:#241803;background:linear-gradient(135deg,#ffe9a8,#f5d168 52%,#e0b64a);box-shadow:0 12px 30px -8px rgba(240,200,90,.65);animation:fab-bob 3.4s ease-in-out infinite,fab-ring 2.6s ease-in-out infinite;transition:transform .18s ease}
-  .tour-fab:hover{transform:translateY(-3px) scale(1.05)}
-  .tour-fab:active{transform:translateY(-1px) scale(.99)}
-  .tour-fab .tour-fab-ic{font-size:16px;line-height:1}
-  .tour-fab .tour-fab-new{font-family:var(--mono);font-size:8.5px;font-weight:800;letter-spacing:.12em;background:#241803;color:#f5d168;padding:2px 6px;border-radius:6px;text-transform:uppercase}
-  @keyframes fab-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-  @keyframes fab-ring{0%{box-shadow:0 12px 30px -8px rgba(240,200,90,.6),0 0 0 0 rgba(240,200,90,.55)}70%{box-shadow:0 12px 30px -8px rgba(240,200,90,.6),0 0 0 16px rgba(240,200,90,0)}100%{box-shadow:0 12px 30px -8px rgba(240,200,90,.6),0 0 0 0 rgba(240,200,90,0)}}
-  @media(max-width:560px){.tour-fab{top:auto;bottom:20px;right:16px;padding:13px 16px}.tour-fab .tour-fab-txt{display:none}}
-  @media(prefers-reduced-motion:reduce){.tour-fab{animation:none}}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
   @media(max-width:520px){.grid{grid-template-columns:1fr}}
@@ -1638,12 +1627,6 @@
 
 <!-- ============ VIEW: HOME (choose) ============ -->
 <div class="view wrap" id="view-home" hidden>
-  <!-- Floating tutorial launcher — greets the user on the home page. -->
-  <button class="tour-fab" id="tour-fab" type="button" onclick="startTour()" title="New here? Take the guided walkthrough — about a minute.">
-    <span class="tour-fab-ic">🎓</span>
-    <span class="tour-fab-txt">How it works</span>
-    <span class="tour-fab-new">tour</span>
-  </button>
   <button class="backbtn" onclick="showView('landing')">← home page</button>
   <div class="home-hero">
     <div class="home-hero-left">
@@ -3830,14 +3813,8 @@ const TOUR_STEPS = [
   {
     selector: "#eo-re",
     view: "trade",
-    title: "Recovery Engine (flat by default)",
-    body: "Out of the box this stays FLAT — the same stake on every trade, which is the steadiest way to run. You can switch to a recovery ladder (Fibonacci / Linear) if you choose, but the max-step cap is always your brake so a losing streak can never run away."
-  },
-  {
-    selector: "#eo-quantum",
-    view: "trade",
-    title: "🧮 Quantum Probability Engine",
-    body: "Tap this bar to open it. It does the maths on your exact setup — the expected value of each trade, whether the current lean is a REAL signal or just noise, your best stake size, and 10,000 simulated sessions showing your odds of hitting take-profit before stop-loss. Your honest co-pilot — check it before you commit."
+    title: "Recovery Engine (Smart Martingale)",
+    body: "When a trade loses, the engine bumps the next stake to claw back the loss. Choose Flat × / Fibonacci / Linear, set the max-step cap (prevents runaway), and watch the visual ladder. Cap acts as your safety brake."
   },
   {
     selector: ".risk-gauge",
