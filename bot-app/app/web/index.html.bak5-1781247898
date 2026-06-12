@@ -247,12 +247,17 @@
   .home-hero-sub{font-size:12.5px;color:var(--dim);margin-top:5px;max-width:520px;line-height:1.5}
   .home-hero-right{display:flex;align-items:center;gap:10px}
   @media(max-width:560px){.home-hero{padding:16px 18px}.home-hero-title{font-size:23px}}
-  /* Tutorial button lives in the nav beside Log out — gold with a soft
-     pulsing ring so it draws the eye without bobbing the nav row. */
-  .tour-navbtn{position:relative;background:linear-gradient(135deg,#ffe9a8,#f5d168 52%,#e0b64a)!important;color:#241803!important;border-color:transparent!important;font-weight:800;animation:tour-ring 2.6s ease-in-out infinite}
-  .tour-navbtn:hover{filter:brightness(1.05);transform:translateY(-1px)}
-  @keyframes tour-ring{0%{box-shadow:0 0 0 0 rgba(240,200,90,.55)}70%{box-shadow:0 0 0 10px rgba(240,200,90,0)}100%{box-shadow:0 0 0 0 rgba(240,200,90,0)}}
-  @media(prefers-reduced-motion:reduce){.tour-navbtn{animation:none}}
+  /* Floating "How it works" tutorial button — top-right of the home view.
+     Bobs gently + pulses a glowing ring so it invites a click on landing. */
+  .tour-fab{position:fixed;top:74px;right:22px;z-index:120;display:flex;align-items:center;gap:8px;padding:10px 17px;border:none;border-radius:999px;cursor:pointer;font-family:var(--serif);font-weight:800;font-size:13.5px;color:#241803;background:linear-gradient(135deg,#ffe9a8,#f5d168 52%,#e0b64a);box-shadow:0 12px 30px -8px rgba(240,200,90,.65);animation:fab-bob 3.4s ease-in-out infinite,fab-ring 2.6s ease-in-out infinite;transition:transform .18s ease}
+  .tour-fab:hover{transform:translateY(-3px) scale(1.05)}
+  .tour-fab:active{transform:translateY(-1px) scale(.99)}
+  .tour-fab .tour-fab-ic{font-size:16px;line-height:1}
+  .tour-fab .tour-fab-new{font-family:var(--mono);font-size:8.5px;font-weight:800;letter-spacing:.12em;background:#241803;color:#f5d168;padding:2px 6px;border-radius:6px;text-transform:uppercase}
+  @keyframes fab-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes fab-ring{0%{box-shadow:0 12px 30px -8px rgba(240,200,90,.6),0 0 0 0 rgba(240,200,90,.55)}70%{box-shadow:0 12px 30px -8px rgba(240,200,90,.6),0 0 0 16px rgba(240,200,90,0)}100%{box-shadow:0 12px 30px -8px rgba(240,200,90,.6),0 0 0 0 rgba(240,200,90,0)}}
+  @media(max-width:560px){.tour-fab{top:auto;bottom:20px;right:16px;padding:13px 16px}.tour-fab .tour-fab-txt{display:none}}
+  @media(prefers-reduced-motion:reduce){.tour-fab{animation:none}}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   @media(max-width:780px){.grid{grid-template-columns:1fr 1fr}}
   @media(max-width:520px){.grid{grid-template-columns:1fr}}
@@ -1348,7 +1353,6 @@
     <p id="tour-tip-body">…</p>
     <div class="tour-progress"><i id="tour-progress-bar"></i></div>
     <div class="tour-tip-actions">
-      <button class="tour-tip-prev" id="tour-pause" type="button" title="Pause the countdown so you can read">⏸ Pause</button>
       <button class="tour-tip-prev" id="tour-prev" type="button">← Back</button>
       <button class="btn primary tour-tip-next" id="tour-next" type="button">Next →</button>
     </div>
@@ -1432,7 +1436,6 @@
   <button class="btn" id="nav-connect" hidden style="padding:8px 16px;font-size:13px" onclick="startDeriv()">Connect with Deriv</button>
   <button class="navbtn" id="nav-home" hidden onclick="showView('home')">Dashboard</button>
   <button class="navbtn" id="nav-help" type="button" title="Keyboard shortcuts (?)" onclick="document.getElementById('kbd-help').hidden=false" style="padding:6px 11px">?</button>
-  <button class="navbtn tour-navbtn" id="nav-tour" hidden type="button" onclick="startTour()" title="Guided walkthrough — about a minute">🎓 Tour</button>
   <button class="navbtn" id="nav-exit" hidden onclick="logout()">Log out</button>
 </div></nav>
 
@@ -1635,6 +1638,12 @@
 
 <!-- ============ VIEW: HOME (choose) ============ -->
 <div class="view wrap" id="view-home" hidden>
+  <!-- Floating tutorial launcher — greets the user on the home page. -->
+  <button class="tour-fab" id="tour-fab" type="button" onclick="startTour()" title="New here? Take the guided walkthrough — about a minute.">
+    <span class="tour-fab-ic">🎓</span>
+    <span class="tour-fab-txt">How it works</span>
+    <span class="tour-fab-new">tour</span>
+  </button>
   <button class="backbtn" onclick="showView('landing')">← home page</button>
   <div class="home-hero">
     <div class="home-hero-left">
@@ -3654,7 +3663,7 @@ function showView(v){
   var nb = $("nav-back");
   if(nb){ if(bt){ window._BACK_TO=bt; nb.hidden=false; } else { window._BACK_TO=null; nb.hidden=true; } }
   const inApp=(v==="accounts"||v==="home"||v==="trade");
-  ["nav-home","nav-tour","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
+  ["nav-home","nav-exit"].forEach(id=>{const e=$(id);if(e)e.hidden=!inApp;});
   const na=$("nav-acct"); if(na) na.hidden=!(inApp&&CUR);
   const nc=$("nav-connect"); if(nc) nc.hidden=(v!=="landing");
   const mb=$("money-bg"); if(mb) mb.style.display="none";   // beach theme: ocean body gradient is the backdrop (no gold bars)
@@ -3854,8 +3863,6 @@ let _tourIdx = 0;
 let _tourTimer = null;
 let _tourTickTimer = null;
 let _tourStartedAt = 0;
-let _tourPaused = false;
-let _tourRemaining = 0;
 
 function _q(sel){ return document.querySelector(sel); }
 
@@ -4070,8 +4077,6 @@ function _drawTourStep(step, target){
   const bar = document.getElementById("tour-progress-bar");
   if(bar){ bar.style.width = "0%"; }
   _tourStartedAt = Date.now();
-  _tourPaused = false;
-  { const pb = document.getElementById("tour-pause"); if(pb) pb.textContent = "⏸ Pause"; }
   if(_tourTickTimer) clearInterval(_tourTickTimer);
   _tourTickTimer = setInterval(()=>{
     const elapsed = Date.now() - _tourStartedAt;
@@ -4084,29 +4089,8 @@ function _drawTourStep(step, target){
     _showTourStep();
   }, TOUR_DURATION);
 }
-// Pause / resume the auto-advancing tour so the user can read at their pace.
-function _tourTogglePause(){
-  const btn = document.getElementById("tour-pause");
-  if(_tourPaused){
-    _tourPaused = false; if(btn) btn.textContent = "⏸ Pause";
-    const rem = Math.max(300, _tourRemaining || TOUR_DURATION);
-    _tourStartedAt = Date.now() - (TOUR_DURATION - rem);
-    const bar = document.getElementById("tour-progress-bar");
-    if(_tourTickTimer) clearInterval(_tourTickTimer);
-    _tourTickTimer = setInterval(()=>{ const e = Date.now() - _tourStartedAt; if(bar) bar.style.width = Math.min(100,(e/TOUR_DURATION)*100) + "%"; }, 60);
-    if(_tourTimer) clearTimeout(_tourTimer);
-    _tourTimer = setTimeout(()=>{ _tourIdx++; _showTourStep(); }, rem);
-  } else {
-    _tourPaused = true; if(btn) btn.textContent = "▶ Resume";
-    _tourRemaining = Math.max(0, TOUR_DURATION - (Date.now() - _tourStartedAt));
-    if(_tourTimer){ clearTimeout(_tourTimer); _tourTimer = null; }
-    if(_tourTickTimer){ clearInterval(_tourTickTimer); _tourTickTimer = null; }
-  }
-}
 // Wire welcome + tour buttons
 document.addEventListener("click", function(ev){
-  const tpa = ev.target.closest && ev.target.closest("#tour-pause");
-  if(tpa){ _tourTogglePause(); return; }
   const t = ev.target.closest && ev.target.closest("#welcome-tour-start");
   if(t){ startTour(); return; }
   const sk = ev.target.closest && ev.target.closest("#welcome-skip");
