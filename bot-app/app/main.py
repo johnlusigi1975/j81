@@ -216,17 +216,24 @@ def access_redeem(body: RedeemCode, request: Request, response: Response) -> dic
         sid = _new_sid(); _set_session_cookie(response, sid)
     store = get_store()
     code_in = (body.code or "").strip()
-    master  = (get_settings().master_unlock_code or "").strip()
-    # ── MASTER UNLOCK PATH ───────────────────────────────────────────
-    # Constant-time comparison (hmac.compare_digest) prevents timing-side-
-    # channel brute-force on the master code. Case-insensitive by upper().
+    # ── MASTER UNLOCK PATH (per-tier codes) ──────────────────────────
+    # Two master codes (set on each Selar product's delivery message): one for
+    # the $5 Even/Odd tier, one for the $50 all-access tier. Legacy
+    # master_unlock_code still grants all-access. Constant-time compare
+    # (hmac.compare_digest) prevents timing-side-channel brute-force.
     import hmac as _hmac
-    is_master = bool(
-        master and code_in
-        and len(code_in) == len(master)
-        and _hmac.compare_digest(code_in.upper().encode(), master.upper().encode())
-    )
-    if is_master:
+    _s = get_settings()
+    def _match(val: str) -> bool:
+        val = (val or "").strip()
+        return bool(val and code_in
+                    and len(code_in) == len(val)
+                    and _hmac.compare_digest(code_in.upper().encode(), val.upper().encode()))
+    master_tier = None
+    if _match(_s.master_code_all) or _match(_s.master_unlock_code):
+        master_tier = "all"
+    elif _match(_s.master_code_eo):
+        master_tier = "eo"
+    if master_tier:
         loginids: list[str] = []
         try:
             for a in store.list_accounts_public(sid):
@@ -236,9 +243,9 @@ def access_redeem(body: RedeemCode, request: Request, response: Response) -> dic
             pass
         if not loginids:
             raise HTTPException(400, "Connect a Deriv account first — the license binds to your loginid.")
-        ref = f"master:{sid[:16]}"
-        code = store.mint_for_ref(ref, 0, loginids=loginids)   # days=0 ⇒ lifetime
-        return {"ok": True, "lifetime": True, "code": code, "bound": loginids,
+        ref = f"master:{master_tier}:{sid[:16]}"
+        code = store.mint_for_ref(ref, 0, loginids=loginids, tier=master_tier)   # days=0 ⇒ lifetime
+        return {"ok": True, "lifetime": True, "tier": master_tier, "code": code, "bound": loginids,
                 **store.access_status(sid, loginids=loginids)}
     # ── Standard redeem path with ANTI-SHARING enforcement ──
     # Collect the caller's Deriv loginids first — we need them BEFORE we redeem

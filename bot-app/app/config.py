@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     # influencer keys. Blank disables the feature. Pick something you don't
     # want guessed — e.g. "J81-OWNR-LIFE-7Z3K".
     master_unlock_code: str = ""
+    # PER-TIER master codes for the no-webhook Selar flow: paste each into the
+    # matching Selar product's delivery message. master_code_eo → $5 Even/Odd
+    # tier; master_code_all → $50 all-access. (master_unlock_code above still
+    # grants all-access.) Pick long, unguessable strings.
+    master_code_eo: str = ""
+    master_code_all: str = ""
     # Resend (resend.com) API key for emailing the lifetime license code to
     # the buyer after their Stripe payment succeeds. Free tier: 3,000/mo. Set
     # RESEND_API_KEY in the dashboard. Blank disables emails (paywall still
