@@ -506,6 +506,30 @@ def _tier_from_amount(v) -> str:
     return "all"
 
 
+def _selar_tier(data) -> str:
+    """Tier from a Selar order by PRODUCT NAME — currency-proof (the order can
+    report KES or USD, so amount alone is ambiguous with dual pricing).
+    Check the ALL keywords FIRST so a stray 'Even/Odd' in the all-access
+    description can't mis-tier it. Products:
+    'J81 Even/Odd Access' (eo) vs 'J81 Lifetime — All Trade Types' (all)."""
+    import json as _j
+    try:
+        hay = _j.dumps(data).lower()
+    except Exception:
+        hay = str(data).lower()
+    if "lifetime" in hay or "all trade" in hay or "all access" in hay:
+        return "all"
+    if "even" in hay or "odd" in hay:
+        return "eo"
+    # Rare fallback — amount hint: KES ~6500 or USD ~50 ⇒ all, else eo (least privilege).
+    try:
+        amt = float(str(data.get("amount") or data.get("total") or data.get("price")
+                        or (data.get("order") or {}).get("amount") or 0).replace(",", "").strip())
+    except Exception:
+        amt = 0.0
+    return "all" if (amt >= 6000 or 40 <= amt <= 60) else "eo"
+
+
 @app.post("/webhooks/selar", include_in_schema=False)
 async def selar_webhook(request: Request) -> dict:
     """Selar posts here when an order is completed.
@@ -569,9 +593,7 @@ async def selar_webhook(request: Request) -> dict:
                   or status in ("successful", "completed", "paid", "success"))
     if is_success:
         # days=0 ⇒ LIFETIME. Idempotent ref means retries hit the same code.
-        _amt = (data.get("amount") or data.get("total") or data.get("price")
-                or data.get("amount_paid") or (data.get("order") or {}).get("amount"))
-        code = store.mint_for_ref(f"selar:{order_id}", 0, loginids=None, tier=_tier_from_amount(_amt))
+        code = store.mint_for_ref(f"selar:{order_id}", 0, loginids=None, tier=_selar_tier(data))
         mail_result = {"sent": False, "reason": "no email"}
         if email and "@" in email:
             try:

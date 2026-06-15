@@ -802,9 +802,11 @@ class BotStore:
             now = datetime.now(timezone.utc)
             if exp > now:
                 secs = (exp - now).total_seconds()
+                _sl = self.license_by_session(session_id)
                 return {"licensed": True, "lifetime": False,
                         "days_left": max(1, round(secs / 86400)),
-                        "expires_at": exp.isoformat(), "source": "session"}
+                        "expires_at": exp.isoformat(), "source": "session",
+                        "tier": ((_sl.get("tier") if _sl else None) or "all")}
             return {"licensed": False, "days_left": 0,
                     "expires_at": exp.isoformat(), "expired": True}
         return {"licensed": False, "days_left": 0, "expires_at": None}

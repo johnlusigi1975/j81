@@ -1563,31 +1563,25 @@
 <div class="view wrap" id="view-access" hidden>
   <button class="backbtn" onclick="showView(HAS_ACCOUNTS?'accounts':'landing')">← back</button>
   <div class="hero">
-    <div class="paywall-eyebrow">FULL ACCESS · LIFETIME UNLOCK</div>
-    <h1>One payment. <span class="g">Lifetime</span> access.</h1>
-    <p>Unlock J81 once and use it forever — demo and real, every account under your Deriv login, on any device. No subscription, no rebills, no surprises.</p>
+    <div class="paywall-eyebrow">CHOOSE YOUR ACCESS</div>
+    <h1>Start at <span class="g">$5</span>. Go lifetime at <span class="g">$50</span>.</h1>
+    <p>Begin with Even/Odd — the simplest, highest-payout desk — for $5. Unlock every trade type forever for $50. One-time, no subscription, every account under your Deriv login.</p>
   </div>
   <div class="glass paywall-card">
-    <div class="paywall-price-row">
-      <div class="paywall-price"><span class="paywall-currency">$</span><span id="acc-price">100</span></div>
-      <div class="paywall-price-side">
-        <div class="paywall-once">one-time</div>
-        <div class="paywall-life" id="acc-life-tag">lifetime · all updates included</div>
+    <div class="paywall-tiers">
+      <div class="paywall-tier">
+        <div class="paywall-tier-name">Even/Odd <span class="paywall-tier-tag">starter</span></div>
+        <div class="paywall-tier-price">$5 · one-time</div>
+        <div class="paywall-tier-desc">The simplest desk — the highest fixed payouts. Even/Odd only · all your accounts · any device.</div>
+        <button id="acc-buy-eo" class="btn big paywall-cta" type="button" style="display:block;width:100%;text-align:center">🔓 Get Even/Odd — $5</button>
+      </div>
+      <div class="paywall-tier featured">
+        <div class="paywall-tier-name">All trade types <span class="paywall-tier-tag best">lifetime</span></div>
+        <div class="paywall-tier-price">$50 · one-time</div>
+        <div class="paywall-tier-desc">Everything — Rise/Fall, Over/Under, Trading Brain, Recovery Engine, scanner. Pay once, yours forever, all updates included.</div>
+        <button id="acc-buy-all" class="btn big paywall-cta" type="button" style="display:block;width:100%;text-align:center">🔓 Unlock everything — $50</button>
       </div>
     </div>
-    <div class="paywall-anchor">
-      Cheaper than 2 months of TradingView Premium · works as long as J81 is operated.
-    </div>
-    <ul class="paywall-features">
-      <li><b>Trading Brain</b> — live thinking console + decision log</li>
-      <li><b>Recovery Engine</b> — flat × / Fibonacci / linear martingale with cap + visual ladder</li>
-      <li><b>AUTO ticks 1–10</b> + <b>AUTO barrier</b> (system picks the digit each cycle)</li>
-      <li><b>Risk gauge</b>, stop-loss cooldown, balance-aware stake safety</li>
-      <li><b>10-market scanner</b>, multi-window confidence, composite confidence score</li>
-      <li><b>All accounts under your Deriv login unlock</b> — demo + real, on any device</li>
-      <li><b>All future updates included</b> — no upsells</li>
-    </ul>
-    <button id="acc-buy" class="btn big paywall-cta" type="button" style="display:block;width:100%;text-align:center">Unlock J81 — <span class="acc-price2">$100</span> · lifetime</button>
     <div class="paywall-trust">
       <span class="paywall-trust-item">🔒 Stripe-secured checkout</span>
       <span class="paywall-trust-sep">·</span>
@@ -4261,9 +4255,9 @@ document.addEventListener("click", function(ev){
 // Wire the Unlock button in the lock overlay — uses the same checkout link
 // helper as the full paywall card.
 document.addEventListener("click", function(ev){
-  const t = ev.target.closest && ev.target.closest("#lock-buy-eo, #lock-buy-all, #lock-buy");
+  const t = ev.target.closest && ev.target.closest("#lock-buy-eo, #lock-buy-all, #lock-buy, #acc-buy-eo, #acc-buy-all, #acc-buy");
   if(!t) return;
-  const tier = (t.id === "lock-buy-eo") ? "eo" : "all";
+  const tier = (t.id === "lock-buy-eo" || t.id === "acc-buy-eo") ? "eo" : "all";
   t.classList.add("firing");
   (async function(){
     try{
