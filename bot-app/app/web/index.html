@@ -1409,7 +1409,7 @@
       </div>
     </div>
     <div class="paywall-lock-trust">
-      🔒 Stripe checkout · <span class="live-stat" id="lock-social"><span class="live-dot"></span><span class="live-user-count" data-count>237,482</span>&nbsp;active users · live</span>
+      🔒 Secure checkout · <span class="live-stat" id="lock-social"><span class="live-dot"></span><span class="live-user-count" data-count>237,482</span>&nbsp;active users · live</span>
     </div>
     <div class="paywall-lock-bind" id="lock-bind">License locks to your Deriv login — only your account can use it.</div>
     <div class="paywall-lock-footer">
@@ -1583,7 +1583,7 @@
       </div>
     </div>
     <div class="paywall-trust">
-      <span class="paywall-trust-item">🔒 Stripe-secured checkout</span>
+      <span class="paywall-trust-item">🔒 Secure checkout</span>
       <span class="paywall-trust-sep">·</span>
       <span class="paywall-trust-item live-stat" id="acc-social-proof"><span class="live-dot"></span><span class="live-user-count" data-count>237,482</span>&nbsp;active users · live</span>
     </div>
@@ -2006,9 +2006,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">fires when lean ≥ <span class="thr-display-num" id="eo-thr-display">56</span>% and holds for 2 scans</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="eo-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="eo-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="eo-thr-hint">fires whenever lean ≥ <span class="thr-display-num" id="eo-thr-display">52</span>% — drag to tune</span></div>
           <div class="eo-slider-wrap" id="eo-thr-wrap">
-            <input id="eo-thr" type="range" min="50" max="90" value="56" class="eo-slider"/>
+            <input id="eo-thr" type="range" min="50" max="90" value="52" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
           <!-- Live AUTO-tune feed — surfaces what the auto-threshold is thinking
@@ -2244,9 +2244,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="rf-thr-auto-dot"></span>Direction threshold <button type="button" class="thr-auto-chip" id="rf-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="rf-thr-hint">fires when lean ≥ <b id="rf-thr-display">56</b>% and holds for 2 scans</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="rf-thr-auto-dot"></span>Direction threshold <button type="button" class="thr-auto-chip" id="rf-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="rf-thr-hint">fires whenever lean ≥ <b id="rf-thr-display">52</b>% — drag to tune</span></div>
           <div class="eo-slider-wrap">
-            <input id="rf-thr" type="range" min="50" max="90" value="56" class="eo-slider"/>
+            <input id="rf-thr" type="range" min="50" max="90" value="52" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -2504,9 +2504,9 @@
           </div>
         </div>
         <div class="eo-tile">
-          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="ou-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="ou-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="ou-thr-hint">fires when lean ≥ <b id="ou-thr-display">56</b>% and holds for 2 scans</span></div>
+          <div class="eo-tile-head"><span class="eo-tile-lab"><span class="thr-auto-dot" id="ou-thr-auto-dot"></span>Signal threshold <button type="button" class="thr-auto-chip" id="ou-thr-auto" title="Let the desk pick the threshold based on session performance">AUTO</button></span><span class="eo-tile-hint" id="ou-thr-hint">fires whenever lean ≥ <b id="ou-thr-display">52</b>% — drag to tune</span></div>
           <div class="eo-slider-wrap">
-            <input id="ou-thr" type="range" min="50" max="90" value="56" class="eo-slider"/>
+            <input id="ou-thr" type="range" min="50" max="90" value="52" class="eo-slider"/>
             <div class="eo-slider-marks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
           </div>
         </div>
@@ -3031,9 +3031,9 @@ function _cooldownStop(kind, manualSkip){
 // in the ENGINE BRAIN line so the trader SEES the desk holding.
 // ===================================================================
 const _DISCIPLINE = {
-  confirmCycles: 2,    // signal must hold this many consecutive scans
-  cooldownMs:    4000, // hard floor between fires (~one scan interval)
-  minLeanPct:    3,    // even%/odd% (or up/down) gap must clear this, always
+  confirmCycles: 1,    // fire on the first qualifying scan — no persistence wait
+  cooldownMs:    3000, // small gap so it can't machine-gun, but it keeps trading
+  minLeanPct:    0,    // no hidden gap floor — the threshold slider is the ONLY bar
 };
 function _disciplineGate(kind, S, pick, threshold){
   S.sess._disc = S.sess._disc || {side:null, symbol:null, count:0, lastFire:0};
@@ -4436,7 +4436,7 @@ async function claimPaid(sid){
     }catch(_){}
     await new Promise(function(res){ setTimeout(res, 1500); });
   }
-  if(msg) msg.innerHTML='<span style="color:var(--bad)">Payment received, but the license isn\'t showing yet. Refresh in a moment — if it still doesn\'t appear, reach out via the support email on your Stripe receipt.</span>';
+  if(msg) msg.innerHTML='<span style="color:var(--bad)">Payment received, but the license isn\'t showing yet. Refresh in a moment — if it still doesn\'t appear, reach out via the support email on your Selar receipt.</span>';
 }
 
 // ---------- boot ----------
@@ -5612,7 +5612,7 @@ window.EOAuto = (function(){
   function _updateSignal(){
     const sig = $g("eo-signal"); if(!sig) return;
     const d = _liveDigits();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||56));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||52));
     const thrLine = $g("eo-signal-thr"); if(thrLine) thrLine.style.left = thr + "%";
     const thrLab  = $g("eo-signal-thr-lab"); if(thrLab) thrLab.textContent = thr + "%";
     const mkt = $g("eo-signal-market");
@@ -5818,9 +5818,9 @@ window.EOAuto = (function(){
   // candidate is below this. The ACTUAL floor adapts during a session
   // (see _adaptiveFloor below) — base 45, lifts in recovery, lowers on a
   // hot streak. RNG doesn't make the number negotiable; brain just waits.
-  // Tuned to 35 + a 2-scan confirm gate: holds on noise but still trades
-  // at a healthy clip on a real lean (45 + 3-scan was too strict — silent).
-  const _CONVICTION_FLOOR_BASE = 35;
+  // Lowered to 20: the desk should TRADE, not sit out. The threshold slider
+  // is the user's one honest lever; the floor just blocks pure noise.
+  const _CONVICTION_FLOOR_BASE = 20;
   // Adaptive conviction floor: rises when the system is in recovery or
   // a losing streak (require BETTER setups when risking more / cooling),
   // drops slightly on a hot streak (capture momentum). Clamped 20–55.
@@ -6008,7 +6008,7 @@ window.EOAuto = (function(){
       sl:    parseFloat(($g("eo-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),   // recovery-engine stake for this trade
       maxLossStreak: Math.max(1, parseInt(($g("eo-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||56)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("eo-thr")||{}).value)||52)),
       ticksMode: (document.querySelector('#eo-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("eo-ticks")||{}).value)||1)),
     };
@@ -6408,7 +6408,7 @@ window.RFAuto = (function(){
   function _updateSignal(){
     const sig=$g("rf-signal"); if(!sig) return;
     const pr = _livePrices();
-    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||56));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||52));
     const thrLine=$g("rf-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
     const thrLab=$g("rf-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
     const mkt=$g("rf-signal-market");
@@ -6554,7 +6554,7 @@ window.RFAuto = (function(){
       sl:    parseFloat(($g("rf-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),
       maxLossStreak: Math.max(1, parseInt(($g("rf-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||56)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("rf-thr")||{}).value)||52)),
       ticksMode: (document.querySelector('#rf-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("rf-ticks")||{}).value)||1)),
     };
@@ -6764,9 +6764,9 @@ window.RFAuto = (function(){
   if(rfStop) rfStop.addEventListener("click", ()=>eoStopEverything(rfStop));
   // Quick presets — same shape as EO but tuned for direction trading
   const RF_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.0 },
-    steady:   { tp:1000, sl:1000, thr:56, stake:50,  streak:8,  mart:1.0 },
-    bold:     { tp:2000, sl:2000, thr:53, stake:100, streak:11, mart:1.0 },
+    cautious: { tp:300,  sl:200,  thr:54, stake:5,   streak:5,  mart:1.0 },
+    steady:   { tp:1000, sl:1000, thr:52, stake:50,  streak:8,  mart:1.0 },
+    bold:     { tp:2000, sl:2000, thr:50, stake:100, streak:11, mart:1.0 },
   };
   function _applyRfPreset(name){
     const p = RF_PRESETS[name]; if(!p) return;
@@ -6975,7 +6975,7 @@ window.OUAuto = (function(){
   function _updateSignal(){
     const sig=$g("ou-signal"); if(!sig) return;
     const barrier = Math.max(1, Math.min(8, parseInt(($g("ou-barrier")||{}).value)||4));
-    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||56));
+    const thr = Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||52));
     const thrLine=$g("ou-signal-thr"); if(thrLine) thrLine.style.left = thr+"%";
     const thrLab=$g("ou-signal-thr-lab"); if(thrLab) thrLab.textContent = thr+"%";
     const barLab=$g("ou-signal-bar"); if(barLab) barLab.textContent = barrier;
@@ -7218,7 +7218,7 @@ window.OUAuto = (function(){
       sl:    parseFloat(($g("ou-sl")||{}).value)||0,
       stake: Math.max(0.35, martStake),
       maxLossStreak: Math.max(1, parseInt(($g("ou-streak")||{}).value)||11),
-      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||56)),
+      threshold:     Math.max(50, Math.min(95, parseInt(($g("ou-thr")||{}).value)||52)),
       ticksMode: (document.querySelector('#ou-tick-seg button.on')||{}).dataset?.mode || "auto",
       ticksManual:   Math.max(1, Math.min(10, parseInt(($g("ou-ticks")||{}).value)||1)),
       barrierMode,
@@ -7474,9 +7474,9 @@ window.OUAuto = (function(){
   // Quick presets — leave the barrier picker alone so the user's choice
   // (AUTO by default, or whatever they manually set) is preserved.
   const OU_PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.0 },
-    steady:   { tp:1000, sl:1000, thr:56, stake:50,  streak:8,  mart:1.0 },
-    bold:     { tp:2000, sl:2000, thr:53, stake:100, streak:11, mart:1.0 },
+    cautious: { tp:300,  sl:200,  thr:54, stake:5,   streak:5,  mart:1.0 },
+    steady:   { tp:1000, sl:1000, thr:52, stake:50,  streak:8,  mart:1.0 },
+    bold:     { tp:2000, sl:2000, thr:50, stake:100, streak:11, mart:1.0 },
   };
   function _applyOuPreset(name){
     const p = OU_PRESETS[name]; if(!p) return;
@@ -7571,9 +7571,9 @@ window.OUAuto = (function(){
   // Thresholds tightened: the auto-trader now requires |z|≥2σ + multi-window
   // agreement on top of the % lean, so even Cautious/Bold filter heavily.
   const PRESETS = {
-    cautious: { tp:300,  sl:200,  thr:60, stake:5,   streak:5,  mart:1.0 },   // selective · flat stake
-    steady:   { tp:1000, sl:1000, thr:56, stake:50,  streak:8,  mart:1.0 },   // default — trades at a healthy clip, flat
-    bold:     { tp:2000, sl:2000, thr:53, stake:100, streak:11, mart:1.0 },   // most active · flat
+    cautious: { tp:300,  sl:200,  thr:54, stake:5,   streak:5,  mart:1.0 },   // selective · flat stake
+    steady:   { tp:1000, sl:1000, thr:52, stake:50,  streak:8,  mart:1.0 },   // default — trades actively, flat
+    bold:     { tp:2000, sl:2000, thr:50, stake:100, streak:11, mart:1.0 },   // most active — fires on any lean, flat
   };
   function _applyPreset(name){
     const p = PRESETS[name]; if(!p) return;
